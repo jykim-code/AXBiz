@@ -39,22 +39,21 @@ _(없음)_
 - [ ] `/admin` "의견함" 탭 — `GET /api/suggestions`(PIN) 목록
 - [ ] 스팸 방지: 허니팟 + 길이 제한 + (후속) Cloudflare Turnstile
 
-## 🕸️ 에픽: 지식그래프 온톨로지화 (사이드바 에픽과 연결)
+## 🕸️ 에픽: 지식그래프 온톨로지화 (홈 레이더 인라인 고도화)
 > 상세 기획: `.omc/plans/ax-biz-radar-knowledge-graph-plan.md` (로컬 전용)
-> 확정: Cytoscape.js(fcose) / 결정론적 온톨로지 MVP(+LLM 후속) / 홈=오버뷰 미니 + 별도 graph.html
+> 확정: Cytoscape.js(concentric=레이더형) / 결정론적 온톨로지 MVP(+LLM 후속) / **전용 페이지 없음 — 홈 레이더에 흡수**
 > 핵심: 노드 클릭 내비게이션 — **Company→company.html**, **Tag→explore.html?tag=** (뷰잉 전용→내비 허브)
-> 의존성: explore.html(P1)·company.html(P2)·sidebar.js 선행/병행. 순서 권장: 사이드바 P1 → P2 → KG.
+> 의존성: explore.html(P1)·company.html(P2) 선행/병행. 순서 권장: 사이드바 P1 → P2 → KG.
 
-### KG-1. 온톨로지 + 인터랙티브 그래프 페이지  ⬜
+### KG-1. 온톨로지 + 홈 레이더 Cytoscape 고도화  ⬜
 - [ ] `public/assets/js/ontology.js` — `buildOntology(reports)` 타입드 노드/엣지(AX·Category·Company·Tag), ID 타입 프리픽스
-- [ ] `public/graph.html` + `public/assets/js/graph.js` — Cytoscape+fcose, hover 하이라이트, 검색, 범례
+- [ ] `public/assets/js/graph.js` — 홈 카드 Cytoscape(concentric 레이더형), hover 하이라이트·줌/팬·클릭 내비
 - [ ] 노드 내비: Company→`company.html?name=`, Tag→`explore.html?tag=`, Category→그래프 내 포커스
-- [ ] 사이드바 "지식그래프" 항목, `_headers` CSP에 Cytoscape CDN 추가
+- [ ] `index.html` 그래프 카드 컨테이너 정리 + Cytoscape CDN 로드, `_headers` CSP에 CDN 추가
+- [ ] 레이더 룩 유지(동심원 배경·라임/다크·스윕 오버레이, reduced-motion 존중)
+- (제거) 전용 graph.html / 사이드바 "지식그래프" 항목 — 홈에 흡수
 
-### KG-2. 홈 카드 연결  ⬜
-- [ ] `dashboard.js` `buildGraph`를 `ontology.js` 사용으로 리팩터 + 노드 클릭 내비 + "전체 지식그래프" 링크(→graph.html)
-
-### KG-3. LLM 보강 (후속)  ⬜
+### KG-2. LLM 보강 (후속)  ⬜
 - [ ] 키포인트→후보 태그/관계 LLM 추출(Workers AI/Claude API) → `/admin` 검증(source/status 필드)
 
 ### (이후 아이디어 적재용)
