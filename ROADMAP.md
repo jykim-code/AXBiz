@@ -15,6 +15,26 @@ _(없음)_
 
 ## ⬜ 예정
 
+## 🔎 에픽: RAG 시맨틱 검색 (탐색 고도화)
+> 상세 기획: `.omc/plans/ax-biz-radar-rag-search-plan.md` (로컬 전용)
+> 확정: 검색=Cloudflare Vectorize / 임베딩=Workers AI bge-m3(1024d) / 생성=OpenRouter / `/explore` 키워드→RAG 대체(태그 목록은 유지)
+
+### RAG-1. 인프라  ⬜
+- [ ] Vectorize 인덱스(`ax-biz-radar-idx`, 1024d/cosine) 생성 + `[ai]`·`[[vectorize]]` 바인딩
+- [ ] `OPENROUTER_API_KEY`/`OPENROUTER_MODEL` 시크릿(.dev.vars/Pages env) + `functions/_rag.js`(임베딩/청크/upsert)
+
+### RAG-2. 인덱싱  ⬜
+- [ ] `POST /api/reindex`(PIN) 백필 + `POST /api/reports` 증분 재인덱싱(이전 날짜 ID 삭제→재삽입)
+
+### RAG-3. 질의  ⬜
+- [ ] `POST /api/ask` — 질문 임베딩→Vectorize 검색→OpenRouter 생성→`{answer, sources[]}`(구조화·근거 한정·인젝션 방지)
+
+### RAG-4. 프론트(`/explore` 대체)  ⬜
+- [ ] 키워드창→자연어 질문 + 답변·출처 카드(→`/company?name=`/원문), 태그 목록 유지, 로딩/빈/오류 상태, `API.ask()`
+
+### RAG-5. 운영  ⬜
+- [ ] 공개 `/api/ask` Cloudflare Rate Limiting(IP/분) + 질문 길이 상한, 배포·검증
+
 ### 소개(About) 페이지  ⬜
 - [ ] 서비스 소개·데이터 출처·갱신 주기 안내 (사이드바 "소개" 항목 + 페이지). **보류 — 추후 추가**.
 
