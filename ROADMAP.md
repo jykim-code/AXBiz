@@ -15,9 +15,10 @@ _(없음)_
 
 ## ⬜ 예정
 
-## 🔎 에픽: RAG 시맨틱 검색 (탐색 고도화)
-> 상세 기획: `.omc/plans/ax-biz-radar-rag-search-plan.md` (로컬 전용)
-> 확정: 검색=Cloudflare Vectorize / 임베딩=Workers AI bge-m3(1024d) / 생성=OpenRouter / `/explore` 키워드→RAG 대체(태그 목록은 유지)
+## 🔎 에픽: RAG 시맨틱 검색 (탐색 고도화)  — 다음 작업
+> **이어가기/선결·결정 전체: [HANDOFF.md](HANDOFF.md)** (상세 기획 `.omc/plans/ax-biz-radar-rag-search-plan.md`는 로컬 전용)
+> 확정: 검색=Cloudflare Vectorize(1024d/cosine) / 임베딩=Workers AI `bge-m3`(1024d) / 생성=**OpenRouter 무료 챗(`:free`)** / `/explore` 키워드→RAG 대체(**키워드 폴백·태그 목록 유지**)
+> 선결: 토큰에 `Vectorize Edit`+`Workers AI Read` 추가, `.dev.vars`에 `OPENROUTER_API_KEY`/`OPENROUTER_MODEL`
 
 ### RAG-1. 인프라  ⬜
 - [ ] Vectorize 인덱스(`ax-biz-radar-idx`, 1024d/cosine) 생성 + `[ai]`·`[[vectorize]]` 바인딩
