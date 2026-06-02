@@ -1,0 +1,25 @@
+name: Deploy to Cloudflare Pages
+
+# main 에 push 될 때마다 Cloudflare Pages 운영 환경으로 자동 배포.
+# (GitHub Actions 러너는 Cloudflare 로 직접 업로드하므로 사내 프록시 영향을 받지 않음)
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.96.0"
+          # 프로젝트명/출력디렉터리/D1 바인딩은 wrangler.toml 에서 읽음
+          command: pages deploy --branch=main
