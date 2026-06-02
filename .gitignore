@@ -4,6 +4,9 @@ node_modules/
 # wrangler / cloudflare
 .wrangler/
 .dev.vars
+.env
+.env.*
+!.env.example
 
 # oh-my-claudecode 세션 상태 (앱과 무관)
 .omc/
