@@ -1,0 +1,50 @@
+# AX Biz Radar — 개발 지침 (사용자 명시 규칙)
+
+> 이 파일은 사용자가 명시한 지침을 누적 기록하는 단일 출처(Source of Truth)다.
+> Claude는 매 작업 전 이 파일을 먼저 확인하고, 새 지침이 나오면 여기에 추가한다.
+> 디자인 관련 지침은 항상 `design-preview.html`을 기준으로 한다.
+
+## ⭐ 최우선 규칙
+- **프론트엔드 개발 시 반드시 `design-preview.html`을 참고할 것.** 이 파일이 확정된 디자인 기준이다.
+  - 색/폰트/레이아웃/컴포넌트 스타일은 모두 이 파일을 따른다.
+  - `AX-Biz-Radar-기획.md`의 디자인 서술(레이더/오렌지/다크 컨셉)은 **폐기**되었고,
+    디자인은 `design-preview.html`(Template 기반 라임 톤)이 우선한다.
+- **관리자 페이지의 존재를 대시보드(메인)에 절대 노출하지 말 것.**
+  - nav·푸터·어디에도 `/admin` 링크/버튼/힌트를 두지 않는다.
+  - 관리자 페이지는 URL을 직접 아는 사람만 접근한다.
+
+## 확정된 디자인 (design-preview.html 기준)
+- **톤**: Template(`Template/index.html`)의 비주얼 언어를 그대로 차용한 밝은 에디토리얼 스타일.
+- **색**: 라임 `#c8f200`, 베이지 `#f7f5f0`, ink `#111`, 라벨용 `lime-600 #7ba500`.
+- **폰트**: 제목 `Space Grotesk`(font-display), 본문 `Inter`. 대형 헤딩은 `tracking-tight/tighter`.
+- **컴포넌트**: 라임 nav(`bg-lime/90` blur), 흰 라운드 카드(`rounded-[24px]` + `shadow-xl shadow-ink/5` + hover lift),
+  `text-lime-600` 대문자 미니 라벨, `bg-ink` 다크 대비 카드, `.sn-reveal` 등장 애니메이션.
+- **레이아웃 (한 화면)**:
+  - 상단: 라임 nav (브랜드 + 태그라인 좌측 / Report Date 우측). **관리자 버튼 없음.**
+  - 좌측(~42%): **지식 그래프** 다크 카드 — 임의 노드-링크 관계망(기업↔태그, 중앙 AX 허브) +
+    하단 통계(취합 데이터 총 개수 / 추적 기업 / 분석일 / 태그 수). 크기 현행 유지.
+  - 우측(~58%): **세로 스윔레인** — 대기업 → 중견기업 → 스타트업·중소 (순서 고정).
+    각 섹션은 전체 폭 사용, 카드 `lg:grid-cols-2`로 2장씩 넓게 배치. 우측 영역 세로 스크롤.
+  - 하단: 흰 라운드 카드 월 캘린더 (데이터 날짜 라임 점, 선택 시 라임 채움, 기본=최신 날짜).
+  - 기업 카드: 기업명 + 요약 → 클릭 펼침 → 주요 내용 / 시사점 / **한컴 인사이트(라임 박스)** /
+    출처·상세모니터링(Confluence) 링크 / 태그 칩.
+- **태그라인**: "AX 레이더 : 시장의 동향 포착에서 인사이트까지"
+
+## 확정된 기술 스택
+- 프론트: 바닐라 HTML/CSS/JS + Tailwind CDN (빌드 단계 없음).
+- DB: **Cloudflare D1** (서버리스 SQLite), Pages Functions에 `DB` 바인딩.
+- 백엔드/REST: Cloudflare Pages Functions (`/api/*`).
+- 배포: Cloudflare Pages + GitHub 레포 자동 배포.
+- 관리자 인증: 단순 숫자 PIN. 서버(Function)에서 `ADMIN_PIN` 환경변수와 대조하여 검증.
+
+## 데이터 / API (계획 기준 — AX-Biz-Radar-기획.md 참조)
+- 스키마: `reports(date PK, companies TEXT(JSON), updated_at)`. 날짜 PK upsert(덮어쓰기).
+- 엔드포인트: `GET /api/dates`, `GET /api/reports?date=`, `POST /api/reports`(PIN 검증, 자동화 진입점).
+
+---
+
+## 지침 로그 (시간순 누적)
+- 디자인은 `design-preview.html` 기준. (사용자 확정)
+- 기획안의 레이더/오렌지/다크 컨셉 → Template 라임 톤으로 전환. (사용자 지시)
+- 칸반: 가로 3컬럼 → 세로 스윔레인 + 카드 2장 grid. (사용자 지시)
+- 관리자 입력 버튼 삭제, 관리자 페이지 존재 비노출. (사용자 지시)

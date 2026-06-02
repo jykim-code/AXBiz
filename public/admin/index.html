@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>AX Biz Radar — 관리자</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          display: ['"Space Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body { background-color: #f7f5f0; color: #111; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family: 'Space Grotesk', sans-serif; }
+  ::selection { background: #c8f200; color: #111; }
+  .field { width: 100%; border: 1px solid rgba(17,17,17,.12); border-radius: 12px; padding: .6rem .8rem; font-size: .9rem; background:#fff; }
+  .field:focus { outline: none; border-color: #c8f200; box-shadow: 0 0 0 3px rgba(200,242,0,.35); }
+  .btn { font-weight:600; border-radius: 9999px; transition: all .2s; }
+  .label { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#7ba500; }
+</style>
+</head>
+<body class="min-h-screen bg-beige">
+
+  <!-- Nav -->
+  <nav class="bg-lime/90 backdrop-blur-md border-b border-ink/5 sticky top-0 z-20">
+    <div class="max-w-[1100px] mx-auto px-5 sm:px-8 h-20 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="font-display font-bold text-xl tracking-tight">AX Biz Radar</div>
+        <span class="text-sm font-medium opacity-60">관리자 입력</span>
+      </div>
+      <a href="/" class="text-xs font-semibold border border-ink/15 rounded-full px-4 py-2 hover:bg-ink hover:text-white transition-colors">대시보드 보기</a>
+    </div>
+  </nav>
+
+  <!-- ===== PIN Gate ===== -->
+  <section id="gate" class="max-w-[420px] mx-auto px-6 py-24">
+    <div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-8">
+      <div class="label mb-2">Admin Access</div>
+      <h1 class="font-display font-bold text-2xl tracking-tight mb-6">PIN 입력</h1>
+      <form id="gateForm" class="space-y-4">
+        <input id="pinInput" type="password" inputmode="numeric" autocomplete="off"
+               placeholder="숫자 PIN" class="field text-center tracking-[.4em] text-lg" />
+        <div id="gateErr" class="text-sm text-red-500 hidden">PIN이 올바르지 않습니다.</div>
+        <button type="submit" class="btn w-full bg-ink text-white py-3 hover:bg-lime hover:text-ink">입력</button>
+      </form>
+      <p class="text-xs opacity-40 mt-4 leading-relaxed">입력한 PIN은 저장 요청 시 서버에서 검증됩니다.</p>
+    </div>
+  </section>
+
+  <!-- ===== Editor (PIN 통과 후) ===== -->
+  <section id="editor" class="max-w-[1100px] mx-auto px-5 sm:px-8 py-10 hidden">
+
+    <div class="flex flex-col sm:flex-row sm:items-end gap-4 mb-8">
+      <div class="flex-1">
+        <div class="label mb-1.5">분석 날짜</div>
+        <input id="reportDate" type="date" class="field max-w-[220px]" />
+      </div>
+      <button id="loadBtn" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">기존 데이터 불러오기</button>
+      <span id="loadStatus" class="text-sm opacity-50"></span>
+    </div>
+
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-display font-bold text-xl tracking-tight">기업 목록</h2>
+      <button id="addCompany" class="btn bg-lime text-ink px-5 py-2.5 hover:bg-ink hover:text-white">+ 기업 추가</button>
+    </div>
+
+    <div id="companies" class="space-y-5"></div>
+
+    <div class="flex items-center gap-4 mt-8 pt-6 border-t border-ink/10">
+      <button id="saveBtn" class="btn bg-ink text-white px-8 py-3 hover:bg-lime hover:text-ink">저장 (덮어쓰기)</button>
+      <span id="saveStatus" class="text-sm"></span>
+    </div>
+  </section>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-ink text-white text-sm px-5 py-3 rounded-full shadow-xl opacity-0 pointer-events-none transition-opacity duration-300 z-50"></div>
+
+<script src="/assets/js/util.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/admin.js"></script>
+</body>
+</html>

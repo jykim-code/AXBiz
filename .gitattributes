@@ -1,0 +1,5 @@
+# 줄바꿈 정규화: 저장소에는 LF 로 저장 (Windows/Linux 협업·Cloudflare 빌드 일관성)
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

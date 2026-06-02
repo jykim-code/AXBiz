@@ -1,0 +1,6 @@
+# 로컬 개발용 환경변수 샘플.
+# 이 파일을 복사해 `.dev.vars` 로 저장하고 값을 채운다. (.dev.vars 는 커밋 금지)
+#   cp .dev.vars.example .dev.vars
+#
+# 관리자 페이지(/admin) 쓰기 요청을 검증하는 숫자 PIN.
+ADMIN_PIN=1234

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AX Biz Radar</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          display: ['"Space Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  html { scroll-behavior: smooth; }
+  body { background-color: #f7f5f0; color: #111; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family: 'Space Grotesk', sans-serif; }
+  ::selection { background: #c8f200; color: #111; }
+  .sn-reveal { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
+  .sn-reveal.sn-visible { opacity: 1; transform: translateY(0); }
+  .col-scroll::-webkit-scrollbar { width: 8px; }
+  .col-scroll::-webkit-scrollbar-thumb { background: rgba(17,17,17,.12); border-radius: 8px; }
+  /* grid-rows 0fr→1fr: 콘텐츠 높이에 맞춰 자동 확장(매직넘버 없이 클리핑 방지) */
+  .card-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s ease; }
+  .card.open .card-body { grid-template-rows: 1fr; }
+  .card-body > div { overflow: hidden; min-height: 0; }
+  .card.open .chev { transform: rotate(180deg); }
+  .card:focus-visible, [data-date]:focus-visible { outline: 2px solid #7ba500; outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .sn-reveal { transition: none; }
+    .card-body { transition: none; }
+  }
+</style>
+</head>
+<body class="min-h-screen bg-beige selection:bg-lime selection:text-ink">
+<div class="flex flex-col min-h-screen lg:h-screen">
+
+  <!-- ===== Nav ===== -->
+  <nav class="flex-none bg-lime/90 backdrop-blur-md border-b border-ink/5 sticky top-0 z-20">
+    <div class="max-w-[1600px] mx-auto px-5 sm:px-8 h-20 flex items-center justify-between">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="font-display font-bold text-xl tracking-tight">AX Biz Radar</div>
+        <span class="hidden md:inline text-sm font-medium opacity-60">AX 레이더 : 시장의 동향 포착에서 인사이트까지</span>
+      </div>
+      <div class="text-right flex-none">
+        <div class="text-[10px] font-semibold uppercase tracking-widest opacity-50">Report Date</div>
+        <div class="font-display font-semibold text-lg leading-tight" id="selDate">—</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== Main ===== -->
+  <main class="flex-1 min-h-0">
+    <div class="max-w-[1600px] mx-auto px-5 sm:px-8 py-6 h-full flex flex-col gap-6">
+
+      <div class="flex-1 min-h-0 flex flex-col lg:flex-row gap-6">
+
+        <!-- Left: knowledge graph (전체 누적) -->
+        <aside class="w-full lg:w-[42%] flex-none h-[360px] lg:h-auto">
+          <div class="sn-reveal h-full bg-ink text-white rounded-[28px] p-7 relative overflow-hidden flex flex-col">
+            <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-lime/40 to-transparent"></div>
+            <div class="flex items-center justify-between">
+              <div class="text-sm font-bold uppercase tracking-widest text-lime">Knowledge Graph</div>
+              <div class="text-[10px] uppercase tracking-widest opacity-40">기업 · 태그 관계망</div>
+            </div>
+
+            <!-- graph svg -->
+            <div class="flex-1 min-h-0 my-2" id="graph"></div>
+
+            <!-- stats -->
+            <div class="flex items-end gap-7 pt-5 border-t border-white/10">
+              <div>
+                <div class="font-display font-bold text-5xl text-lime leading-none" id="statTotal">0</div>
+                <div class="text-[11px] font-semibold uppercase tracking-widest opacity-50 mt-2">취합 데이터</div>
+              </div>
+              <div class="flex flex-wrap gap-x-6 gap-y-1 pb-1">
+                <div class="text-sm"><span class="font-display font-bold text-xl" id="statCompanies">0</span> <span class="opacity-50">추적 기업</span></div>
+                <div class="text-sm"><span class="font-display font-bold text-xl" id="statDates">0</span> <span class="opacity-50">분석일</span></div>
+                <div class="text-sm"><span class="font-display font-bold text-xl" id="statTags">0</span> <span class="opacity-50">태그</span></div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Right: kanban (세로 스윔레인) -->
+        <div class="col-scroll flex-1 min-w-0 min-h-0 overflow-visible lg:overflow-y-auto flex flex-col gap-8 pr-0 lg:pr-1">
+
+          <section>
+            <div class="flex items-end justify-between border-b border-ink/10 pb-3 mb-4">
+              <div class="flex items-baseline gap-3">
+                <div class="text-xs font-bold uppercase tracking-widest text-lime-600">Enterprise</div>
+                <h3 class="text-2xl font-display font-bold tracking-tight">대기업</h3>
+              </div>
+              <span class="font-display font-bold text-xl opacity-25" id="cnt-large">0</span>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start" id="col-large"></div>
+          </section>
+
+          <section>
+            <div class="flex items-end justify-between border-b border-ink/10 pb-3 mb-4">
+              <div class="flex items-baseline gap-3">
+                <div class="text-xs font-bold uppercase tracking-widest text-lime-600">Mid-market</div>
+                <h3 class="text-2xl font-display font-bold tracking-tight">중견기업</h3>
+              </div>
+              <span class="font-display font-bold text-xl opacity-25" id="cnt-mid">0</span>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start" id="col-mid"></div>
+          </section>
+
+          <section>
+            <div class="flex items-end justify-between border-b border-ink/10 pb-3 mb-4">
+              <div class="flex items-baseline gap-3">
+                <div class="text-xs font-bold uppercase tracking-widest text-lime-600">Startup · SMB</div>
+                <h3 class="text-2xl font-display font-bold tracking-tight">스타트업·중소</h3>
+              </div>
+              <span class="font-display font-bold text-xl opacity-25" id="cnt-startup">0</span>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start" id="col-startup"></div>
+          </section>
+
+        </div>
+      </div>
+
+      <!-- Bottom calendar -->
+      <div class="sn-reveal flex-none bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 px-5 sm:px-7 py-4 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
+        <div class="flex items-center gap-3 min-w-[190px]">
+          <button id="prevM" aria-label="이전 달" class="w-9 h-9 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-lg">‹</button>
+          <div class="font-display font-bold text-lg min-w-[100px] text-center" id="calMon">—</div>
+          <button id="nextM" aria-label="다음 달" class="w-9 h-9 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-lg">›</button>
+        </div>
+        <div class="grid grid-cols-7 gap-1.5 w-full sm:w-[420px] sm:flex-none" id="calGrid"></div>
+
+        <!-- 선택일 브리핑 -->
+        <div class="flex-1 min-w-0 w-full sm:border-l sm:border-ink/10 sm:pl-6 flex flex-col gap-2">
+          <div class="flex items-baseline gap-2">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-lime-600">Selected</span>
+            <span class="font-display font-semibold text-sm" id="briefDate">—</span>
+          </div>
+          <div class="flex items-baseline gap-3">
+            <span class="font-display font-bold text-3xl leading-none" id="briefCount">0</span>
+            <span class="text-xs opacity-60 leading-snug" id="briefBreakdown">데이터 없음</span>
+          </div>
+          <div class="flex flex-wrap gap-1.5" id="briefTags"></div>
+          <div class="text-xs opacity-50 flex items-center gap-2 mt-auto pt-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-lime-600"></span> 분석 데이터 있는 날짜
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="assets/js/util.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/dashboard.js"></script>
+</body>
+</html>

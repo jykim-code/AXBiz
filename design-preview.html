@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AX Biz Radar</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          display: ['"Space Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  html { scroll-behavior: smooth; }
+  body { background-color: #f7f5f0; color: #111; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family: 'Space Grotesk', sans-serif; }
+  ::selection { background: #c8f200; color: #111; }
+  .sn-reveal { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
+  .sn-reveal.sn-visible { opacity: 1; transform: translateY(0); }
+  .col-scroll::-webkit-scrollbar { width: 8px; }
+  .col-scroll::-webkit-scrollbar-thumb { background: rgba(17,17,17,.12); border-radius: 8px; }
+  .card-body { max-height: 0; overflow: hidden; transition: max-height .4s ease; }
+  .card.open .card-body { max-height: 1200px; }
+  .card.open .chev { transform: rotate(180deg); }
+</style>
+</head>
+<body class="min-h-screen bg-beige selection:bg-lime selection:text-ink">
+<div class="flex flex-col h-screen">
+
+  <!-- ===== Nav ===== -->
+  <nav class="flex-none bg-lime/90 backdrop-blur-md border-b border-ink/5">
+    <div class="max-w-[1600px] mx-auto px-8 h-20 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="font-display font-bold text-xl tracking-tight">AX Biz Radar</div>
+        <span class="hidden md:inline text-sm font-medium opacity-60">AX 레이더 : 시장의 동향 포착에서 인사이트까지</span>
+      </div>
+      <div class="text-right">
+        <div class="text-[10px] font-semibold uppercase tracking-widest opacity-50">Report Date</div>
+        <div class="font-display font-semibold text-lg leading-tight" id="selDate">2026-06-01</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== Main ===== -->
+  <main class="flex-1 min-h-0">
+    <div class="max-w-[1600px] mx-auto px-8 py-6 h-full flex flex-col gap-6">
+
+      <div class="flex-1 min-h-0 flex gap-6">
+
+        <!-- Left: knowledge graph (expanded) -->
+        <aside class="w-[42%] flex-none">
+          <div class="sn-reveal h-full bg-ink text-white rounded-[28px] p-7 relative overflow-hidden flex flex-col">
+            <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-lime/40 to-transparent"></div>
+            <div class="flex items-center justify-between">
+              <div class="text-sm font-bold uppercase tracking-widest text-lime">Knowledge Graph</div>
+              <div class="text-[10px] uppercase tracking-widest opacity-40">기업 · 태그 관계망</div>
+            </div>
+
+            <!-- graph svg -->
+            <div class="flex-1 min-h-0 my-2" id="graph"></div>
+
+            <!-- stats -->
+            <div class="flex items-end gap-7 pt-5 border-t border-white/10">
+              <div>
+                <div class="font-display font-bold text-5xl text-lime leading-none" id="statTotal">0</div>
+                <div class="text-[11px] font-semibold uppercase tracking-widest opacity-50 mt-2">취합 데이터</div>
+              </div>
+              <div class="flex gap-6 pb-1">
+                <div class="text-sm"><span class="font-display font-bold text-xl" id="statCompanies">0</span> <span class="opacity-50">추적 기업</span></div>
+                <div class="text-sm"><span class="font-display font-bold text-xl" id="statDates">0</span> <span class="opacity-50">분석일</span></div>
+                <div class="text-sm"><span class="font-display font-bold text-xl" id="statTags">0</span> <span class="opacity-50">태그</span></div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Right: kanban (세로 스윔레인) -->
+        <div class="col-scroll flex-1 min-w-0 min-h-0 overflow-y-auto flex flex-col gap-8 pr-1">
+
+          <section>
+            <div class="flex items-end justify-between border-b border-ink/10 pb-3 mb-4">
+              <div class="flex items-baseline gap-3">
+                <div class="text-xs font-bold uppercase tracking-widest text-lime-600">Enterprise</div>
+                <h3 class="text-2xl font-display font-bold tracking-tight">대기업</h3>
+              </div>
+              <span class="font-display font-bold text-xl opacity-25" id="cnt-large">0</span>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start" id="col-large"></div>
+          </section>
+
+          <section>
+            <div class="flex items-end justify-between border-b border-ink/10 pb-3 mb-4">
+              <div class="flex items-baseline gap-3">
+                <div class="text-xs font-bold uppercase tracking-widest text-lime-600">Mid-market</div>
+                <h3 class="text-2xl font-display font-bold tracking-tight">중견기업</h3>
+              </div>
+              <span class="font-display font-bold text-xl opacity-25" id="cnt-mid">0</span>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start" id="col-mid"></div>
+          </section>
+
+          <section>
+            <div class="flex items-end justify-between border-b border-ink/10 pb-3 mb-4">
+              <div class="flex items-baseline gap-3">
+                <div class="text-xs font-bold uppercase tracking-widest text-lime-600">Startup · SMB</div>
+                <h3 class="text-2xl font-display font-bold tracking-tight">스타트업·중소</h3>
+              </div>
+              <span class="font-display font-bold text-xl opacity-25" id="cnt-startup">0</span>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start" id="col-startup"></div>
+          </section>
+
+        </div>
+      </div>
+
+      <!-- Bottom calendar -->
+      <div class="sn-reveal flex-none bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 px-7 py-4 flex items-center gap-8">
+        <div class="flex items-center gap-3 min-w-[190px]">
+          <button id="prevM" class="w-9 h-9 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-lg">‹</button>
+          <div class="font-display font-bold text-lg min-w-[100px] text-center" id="calMon">2026 . 06</div>
+          <button id="nextM" class="w-9 h-9 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-lg">›</button>
+        </div>
+        <div class="grid grid-cols-7 gap-1.5 flex-1 max-w-[560px]" id="calGrid"></div>
+        <div class="ml-auto text-xs opacity-50 flex items-center gap-2 whitespace-nowrap">
+          <span class="w-1.5 h-1.5 rounded-full bg-lime-600"></span> 분석 데이터 있는 날짜
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+/* ====== 샘플 데이터 (백엔드 연동 전 디자인 확인용) ====== */
+const SAMPLE = {
+  "2026-06-01":[
+    {name:"삼성SDS",category:"대기업",sourceUrl:"https://example.com/samsungsds",confluenceUrl:"https://hancom.atlassian.net/wiki/s1",
+     keyPoints:["패브릭스(FabriX)·브리티 코파일럿 기반 기업용 생성형 AI 플랫폼 라인업 확대 발표","제조·물류 도메인 특화 에이전트 레퍼런스 공개"],
+     implications:["엔터프라이즈 AX 시장에서 '플랫폼+에이전트' 번들 경쟁 본격화","도메인 특화가 핵심 차별점으로 부상"],
+     hancomInsight:["Agentic OS의 문서·오피스 컨텍스트 강점을 제조 워크플로우 에이전트와 결합할 여지","번들보다 '기존 문서 자산 즉시 활용'을 차별 메시지로"],
+     tags:["엔터프라이즈AX","제조AX","에이전트"]},
+    {name:"네이버클라우드",category:"대기업",sourceUrl:"https://example.com/navercloud",confluenceUrl:"https://hancom.atlassian.net/wiki/s2",
+     keyPoints:["HyperCLOVA X 기반 소버린 AI 패키지를 공공·금융 대상 확대","온프레미스 구축형 옵션 강화"],
+     implications:["데이터 주권 이슈로 공공 시장 소버린 AI 수요 가속","구축형 레퍼런스 확보 경쟁 심화"],
+     hancomInsight:["한컴의 공공 레퍼런스·문서표준 대응력과 결합 시 소버린 AX 포지션 강화 가능"],
+     tags:["소버린AI","공공","온프레미스"]}
+  ],
+  "2026-05-30":[
+    {name:"메가존클라우드",category:"중견기업",sourceUrl:"https://example.com/megazone",confluenceUrl:"https://hancom.atlassian.net/wiki/s3",
+     keyPoints:["멀티 LLM 오케스트레이션 매니지드 서비스 출시"],
+     implications:["MSP들이 모델 중립 통합 레이어로 차별화 시도"],
+     hancomInsight:["Agentic OS를 모델 중립 오케스트레이션 관점에서 포지셔닝 검토"],
+     tags:["MSP","오케스트레이션"]},
+    {name:"뤼튼테크놀로지스",category:"스타트업·중소",sourceUrl:"https://example.com/wrtn",confluenceUrl:"https://hancom.atlassian.net/wiki/s4",
+     keyPoints:["개인화 AI 에이전트 앱 MAU 급성장, B2B 진출 시사"],
+     implications:["소비자 AI 습관이 업무용으로 전이되는 흐름"],
+     hancomInsight:["오피스 사용자 일상 진입점을 에이전트로 확장하는 UX 벤치마크"],
+     tags:["에이전트","B2C","UX"]}
+  ],
+  "2026-05-28":[
+    {name:"LG CNS",category:"대기업",sourceUrl:"https://example.com/lgcns",confluenceUrl:"https://hancom.atlassian.net/wiki/s5",
+     keyPoints:["생성형 AI 기반 코드·업무 자동화 솔루션 전사 적용 사례 공개"],
+     implications:["SI 대기업의 내재화 사례가 고객 설득 자료로 활용"],
+     hancomInsight:["한컴 내부 적용 → 레퍼런스화 전략의 중요성 시사"],
+     tags:["업무자동화","SI"]},
+    {name:"업스테이지",category:"스타트업·중소",sourceUrl:"https://example.com/upstage",confluenceUrl:"https://hancom.atlassian.net/wiki/s6",
+     keyPoints:["문서 특화 LLM '솔라' 기반 기업용 문서 AI 패키지 확대"],
+     implications:["문서 도메인 특화 모델 경쟁 가열"],
+     hancomInsight:["한컴 문서 포맷·엔진 자산과 직접 경합/협업 가능 영역 — 면밀 모니터링 필요"],
+     tags:["문서AI","LLM","소버린AI"]}
+  ]
+};
+const CAT={"대기업":"large","중견기업":"mid","스타트업·중소":"startup"};
+
+/* ====== Knowledge Graph (임의 관계망) ====== */
+function hash(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))&0xffff;return h;}
+function buildGraph(){
+  const all=Object.values(SAMPLE).flat();
+  const seen={},companies=[];
+  all.forEach(c=>{ if(!seen[c.name]){seen[c.name]={name:c.name,tags:new Set()};companies.push(seen[c.name]);} (c.tags||[]).forEach(t=>seen[c.name].tags.add(t)); });
+  const tagMap={};
+  companies.forEach(c=>c.tags.forEach(t=>{(tagMap[t]=tagMap[t]||[]).push(c.name);}));
+  const tags=Object.keys(tagMap);
+
+  const W=480,H=360,cx=W/2,cy=H/2;
+  const cp={};
+  companies.forEach((c,i)=>{const a=(-90+i*360/companies.length)*Math.PI/180; cp[c.name]={x:cx+Math.cos(a)*128,y:cy+Math.sin(a)*98,a};});
+  const tp={};
+  tags.forEach(t=>{
+    const conn=tagMap[t];let sx=0,sy=0;conn.forEach(n=>{sx+=Math.cos(cp[n].a);sy+=Math.sin(cp[n].a);});
+    let a=Math.atan2(sy,sx)+((hash(t)%44-22)*Math.PI/180);
+    let x=cx+Math.cos(a)*205,y=cy+Math.sin(a)*150;
+    tp[t]={x:Math.max(34,Math.min(W-34,x)),y:Math.max(26,Math.min(H-26,y))};
+  });
+
+  let edges='',nodes='';
+  // hub -> company
+  companies.forEach(c=>{const p=cp[c.name];edges+='<line x1="'+cx+'" y1="'+cy+'" x2="'+p.x+'" y2="'+p.y+'" stroke="#c8f200" stroke-opacity=".45" stroke-width="1.4"/>';});
+  // company -> tag
+  tags.forEach(t=>{tagMap[t].forEach(n=>{const a=cp[n],b=tp[t];edges+='<line x1="'+a.x+'" y1="'+a.y+'" x2="'+b.x+'" y2="'+b.y+'" stroke="#ffffff" stroke-opacity=".12" stroke-width="1"/>';});});
+  // tag nodes
+  tags.forEach(t=>{const p=tp[t];const anc=p.x<cx?'end':'start';const dx=p.x<cx?-7:7;
+    nodes+='<circle cx="'+p.x+'" cy="'+p.y+'" r="3.4" fill="#ffffff" fill-opacity=".5"/>';
+    nodes+='<text x="'+(p.x+dx)+'" y="'+(p.y+3)+'" text-anchor="'+anc+'" font-size="9" fill="#ffffff" fill-opacity=".42" font-family="Inter">#'+t+'</text>';});
+  // company nodes
+  companies.forEach(c=>{const p=cp[c.name];const anc=p.x<cx?'end':'start';const dx=p.x<cx?-9:9;
+    nodes+='<circle cx="'+p.x+'" cy="'+p.y+'" r="6.5" fill="#c8f200"/>';
+    nodes+='<text x="'+(p.x+dx)+'" y="'+(p.y+4)+'" text-anchor="'+anc+'" font-size="11.5" fill="#ffffff" font-weight="600" font-family="Space Grotesk">'+c.name+'</text>';});
+  // hub
+  nodes+='<circle cx="'+cx+'" cy="'+cy+'" r="11" fill="#c8f200"/>'+
+         '<circle cx="'+cx+'" cy="'+cy+'" r="11" fill="none" stroke="#c8f200" stroke-width="1.5"><animate attributeName="r" values="11;30" dur="2.8s" repeatCount="indefinite"/><animate attributeName="opacity" values=".6;0" dur="2.8s" repeatCount="indefinite"/></circle>'+
+         '<text x="'+cx+'" y="'+(cy+4)+'" text-anchor="middle" font-size="10" fill="#111" font-weight="700" font-family="Space Grotesk">AX</text>';
+
+  document.getElementById('graph').innerHTML=
+    '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" width="100%" height="100%">'+
+      '<ellipse cx="'+cx+'" cy="'+cy+'" rx="128" ry="98" fill="none" stroke="#ffffff" stroke-opacity=".05"/>'+
+      '<ellipse cx="'+cx+'" cy="'+cy+'" rx="205" ry="150" fill="none" stroke="#ffffff" stroke-opacity=".04"/>'+
+      edges+nodes+
+    '</svg>';
+
+  // stats
+  document.getElementById('statTotal').textContent=all.length;
+  document.getElementById('statCompanies').textContent=companies.length;
+  document.getElementById('statDates').textContent=Object.keys(SAMPLE).length;
+  document.getElementById('statTags').textContent=tags.length;
+}
+
+/* ====== Cards ====== */
+function icon(t){
+  if(t==="link")return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+}
+const bullets=a=>'<ul class="space-y-2">'+a.map(x=>'<li class="text-sm leading-relaxed opacity-70 pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-ink/30">'+x+'</li>').join('')+'</ul>';
+
+function cardHTML(c){
+  const sum=(c.keyPoints&&c.keyPoints[0])||"";
+  let h='<div class="card group bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 hover:-translate-y-1 transition-transform duration-300 cursor-pointer" onclick="this.classList.toggle(\'open\')">';
+  h+='<div class="p-6 flex items-start gap-3">';
+  h+='<div class="flex-1 min-w-0"><h4 class="font-display font-bold text-lg tracking-tight">'+c.name+'</h4><p class="text-sm opacity-60 mt-1.5 leading-snug">'+sum+'</p></div>';
+  h+='<span class="chev flex-none mt-1 opacity-40 transition-transform duration-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m6 9 6 6 6-6"/></svg></span>';
+  h+='</div>';
+  h+='<div class="card-body"><div class="px-6 pb-6 space-y-5">';
+  if(c.keyPoints?.length)h+='<div><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2.5">주요 내용</div>'+bullets(c.keyPoints)+'</div>';
+  if(c.implications?.length)h+='<div><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2.5">시사점</div>'+bullets(c.implications)+'</div>';
+  if(c.hancomInsight?.length){
+    h+='<div class="bg-lime/15 border border-lime rounded-2xl p-4"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2.5">한컴 인사이트</div>'+
+       '<ul class="space-y-2">'+c.hancomInsight.map(x=>'<li class="text-sm leading-relaxed pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime-600">'+x+'</li>').join('')+'</ul></div>';
+  }
+  h+='<div class="flex flex-wrap gap-2 pt-1">';
+  if(c.sourceUrl)h+='<a href="'+c.sourceUrl+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="text-xs font-medium border border-ink/10 rounded-full px-3.5 py-2 flex items-center gap-1.5 hover:bg-ink hover:text-white transition-colors">'+icon("link")+' 출처 기사</a>';
+  if(c.confluenceUrl)h+='<a href="'+c.confluenceUrl+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="text-xs font-medium border border-ink/10 rounded-full px-3.5 py-2 flex items-center gap-1.5 hover:bg-ink hover:text-white transition-colors">'+icon("doc")+' 상세 모니터링</a>';
+  h+='</div>';
+  if(c.tags?.length)h+='<div class="flex flex-wrap gap-2">'+c.tags.map(t=>'<span class="text-xs opacity-60 bg-beige border border-ink/5 rounded-full px-3 py-1">#'+t+'</span>').join('')+'</div>';
+  h+='</div></div></div>';
+  return h;
+}
+
+function renderDate(date){
+  document.getElementById("selDate").textContent=date;
+  const cols={large:[],mid:[],startup:[]};
+  (SAMPLE[date]||[]).forEach(c=>{const k=CAT[c.category];if(k)cols[k].push(c);});
+  for(const k of ["large","mid","startup"]){
+    document.getElementById("col-"+k).innerHTML=cols[k].map(cardHTML).join('')||'<div class="text-sm opacity-40 px-2 py-3">해당 분류 데이터 없음</div>';
+    document.getElementById("cnt-"+k).textContent=cols[k].length;
+  }
+}
+
+/* Calendar */
+const DATA_DATES=Object.keys(SAMPLE).sort().reverse();
+let selected=DATA_DATES[0];
+let view={y:+selected.slice(0,4),m:+selected.slice(5,7)-1};
+const pad2=n=>String(n).padStart(2,'0');
+function renderCal(){
+  document.getElementById("calMon").textContent=view.y+" . "+pad2(view.m+1);
+  const dows=["일","월","화","수","목","금","토"];
+  let h=dows.map(d=>'<div class="text-[10px] font-semibold uppercase tracking-wider opacity-40 text-center">'+d+'</div>').join('');
+  const first=new Date(view.y,view.m,1).getDay();
+  const days=new Date(view.y,view.m+1,0).getDate();
+  for(let i=0;i<first;i++)h+='<div></div>';
+  for(let d=1;d<=days;d++){
+    const ds=view.y+"-"+pad2(view.m+1)+"-"+pad2(d);
+    const has=!!SAMPLE[ds],sel=ds===selected;
+    let cls='relative h-8 rounded-lg flex items-center justify-center text-sm font-display ';
+    if(sel)cls+='bg-lime text-ink font-bold';
+    else if(has)cls+='bg-beige border border-ink/5 font-semibold cursor-pointer hover:border-lime';
+    else cls+='opacity-30';
+    h+='<div class="'+cls+'"'+(has&&!sel?' data-date="'+ds+'"':'')+'>'+d+(has&&!sel?'<span class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-lime-600"></span>':'')+'</div>';
+  }
+  const g=document.getElementById("calGrid");g.innerHTML=h;
+  g.querySelectorAll('[data-date]').forEach(el=>el.onclick=()=>{selected=el.dataset.date;renderDate(selected);renderCal();});
+}
+document.getElementById("prevM").onclick=()=>{view.m--;if(view.m<0){view.m=11;view.y--;}renderCal();};
+document.getElementById("nextM").onclick=()=>{view.m++;if(view.m>11){view.m=0;view.y++;}renderCal();};
+
+/* reveal */
+document.addEventListener('DOMContentLoaded',function(){
+  var o=new IntersectionObserver(function(e){e.forEach(function(i){if(i.isIntersecting){i.target.classList.add('sn-visible');o.unobserve(i.target)}})},{threshold:0.1});
+  document.querySelectorAll('.sn-reveal').forEach(function(el){o.observe(el)});
+});
+
+buildGraph();
+renderDate(selected);
+renderCal();
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# AX Biz Radar — Cloudflare Pages + D1 설정
+# 정적 파일은 루트에서, REST는 functions/api/* 에서 서빙된다 (빌드 단계 없음).
+
+name = "ax-biz-radar"
+compatibility_date = "2024-09-23"
+# 배포되는 정적 파일만 public/ 에 둔다. 루트의 문서/설정(CLAUDE.md, *.md, schema.sql 등)은
+# 레포에는 남지만 사이트로는 서빙되지 않는다. Functions 는 루트 functions/ 에서 자동 인식.
+pages_build_output_dir = "public"
+
+# D1 바인딩: 코드에서 env.DB 로 접근. 시크릿 아님(계정 내부 바인딩).
+# database_id 는 `npx wrangler d1 create ax-biz-radar` 실행 후 출력값으로 교체할 것.
+[[d1_databases]]
+binding = "DB"
+database_name = "ax-biz-radar"
+database_id = "REPLACE_WITH_DATABASE_ID_FROM_wrangler_d1_create"
+
+# ADMIN_PIN 은 시크릿이므로 여기 두지 않는다.
+#  - 로컬:  .dev.vars 의 ADMIN_PIN
+#  - 운영:  Cloudflare Pages > Settings > Environment variables 에 ADMIN_PIN 등록
