@@ -15,46 +15,14 @@ _(없음)_
 
 ## ⬜ 예정
 
-## 🧱 에픽: 사이드바 IA 개편 + 탐색/기업상세/의견폼
-> 상세 기획: `.omc/plans/ax-biz-radar-sidebar-epic-plan.md` (로컬 전용)
-> 확정: 멀티페이지 + 공유 사이드바(JS 주입) / 상시 좌측 사이드바 + 모바일 드로어 / 데이터는 `/api/reports/all` 재사용
-> 사이드바 항목: 대시보드·탐색·기업·태그·의견 보내기 (+하단 요약통계·About). **관리자(/admin) 미포함(하드 규칙)**
+### 소개(About) 페이지  ⬜
+- [ ] 서비스 소개·데이터 출처·갱신 주기 안내 (사이드바 "소개" 항목 + 페이지). **보류 — 추후 추가**.
 
-### P1. 사이드바 셸 + 탐색(Explore)  ⬜
-- [ ] `public/assets/js/sidebar.js` — 공유 사이드바 주입 + 활성 표시 + 모바일 드로어
-- [ ] 로고를 사이드바 상단으로 이동(E2 계승), 각 페이지 레이아웃 래퍼 조정
-- [ ] `public/explore.html` + `public/assets/js/explore.js` — 전체 필드 검색 + 태그 필터(`?tag=`)
-- [ ] 홈 그래프 태그 노드 클릭 → `explore.html?tag=<태그>` (dashboard.js)
-
-### P2. 기업 상세(Company)  ⬜
-- [ ] `public/company.html` + `public/assets/js/company.js` — 기업 목록 + `?name=` 상세(날짜별 타임라인)
-- [ ] 홈 그래프 회사 노드 클릭 / 카드 기업명 클릭 → `company.html?name=<기업명>`
-- [ ] (선택) 연관 기업(태그 공유) 링크
-
-### P3. 의견 제출 폼  ⬜
-- 결정 완료: **D1 테이블 + 관리자 검토** + 진입점 **모달**(사이드바 "의견 보내기")
-- [ ] D1 `suggestions` 테이블(schema.sql) + 로컬·원격 적용
-- [ ] `functions/api/suggestions.js` — POST(공개, 허니팟·검증·길이상한) / GET(PIN)
-- [ ] `public/assets/js/feedback.js` — 의견 모달(유형·내용·기업·연락처)
-- [ ] `/admin` "의견함" 탭 — `GET /api/suggestions`(PIN) 목록
-- [ ] 스팸 방지: 허니팟 + 길이 제한 + (후속) Cloudflare Turnstile
-
-## 🕸️ 에픽: 지식그래프 온톨로지화 (홈 레이더 인라인 고도화)
-> 상세 기획: `.omc/plans/ax-biz-radar-knowledge-graph-plan.md` (로컬 전용)
-> 확정: Cytoscape.js(concentric=레이더형) / 결정론적 온톨로지 MVP(+LLM 후속) / **전용 페이지 없음 — 홈 레이더에 흡수**
-> 핵심: 노드 클릭 내비게이션 — **Company→company.html**, **Tag→explore.html?tag=** (뷰잉 전용→내비 허브)
-> 의존성: explore.html(P1)·company.html(P2) 선행/병행. 순서 권장: 사이드바 P1 → P2 → KG.
-
-### KG-1. 온톨로지 + 홈 레이더 Cytoscape 고도화  ⬜
-- [ ] `public/assets/js/ontology.js` — `buildOntology(reports)` 타입드 노드/엣지(AX·Category·Company·Tag), ID 타입 프리픽스
-- [ ] `public/assets/js/graph.js` — 홈 카드 Cytoscape(concentric 레이더형), hover 하이라이트·줌/팬·클릭 내비
-- [ ] 노드 내비: Company→`company.html?name=`, Tag→`explore.html?tag=`, Category→그래프 내 포커스
-- [ ] `index.html` 그래프 카드 컨테이너 정리 + Cytoscape CDN 로드, `_headers` CSP에 CDN 추가
-- [ ] 레이더 룩 유지(동심원 배경·라임/다크·스윕 오버레이, reduced-motion 존중)
-- (제거) 전용 graph.html / 사이드바 "지식그래프" 항목 — 홈에 흡수
-
-### KG-2. LLM 보강 (후속)  ⬜
+### 지식그래프 LLM 보강 (후속)  ⬜
 - [ ] 키포인트→후보 태그/관계 LLM 추출(Workers AI/Claude API) → `/admin` 검증(source/status 필드)
+
+### 의견함 고도화 (후속)  ⬜
+- [ ] 의견 상태 변경(handled)·알림 / 공개 폼 Cloudflare Turnstile
 
 ### (이후 아이디어 적재용)
 - [ ] …
@@ -62,6 +30,15 @@ _(없음)_
 ---
 
 ## ✅ 완료
+
+### 사이드바 IA + 탐색/기업상세/의견폼 + 지식그래프  ✅  _(2026-06-02)_
+- [x] 공유 사이드바(`sidebar.js`): 기본 닫힘 드로어, 이모지 없음, `/admin` 미노출
+- [x] 탐색(`/explore`): 전체 필드 검색 + 태그 필터(`?tag=`)
+- [x] 기업 상세(`/company`): 목록 + `?name=` 날짜별 타임라인 + 연관 기업
+- [x] 의견(`/feedback`): 별도 페이지(유형/기업/내용/소속팀/이름) + 작성 예시 + 문의 채널(김정연·손아영)
+- [x] 백엔드: D1 `suggestions` + `/api/suggestions`(POST 공개·허니팟 / GET PIN) + 관리자 의견함 탭
+- [x] 지식그래프: 홈 레이더 **Cytoscape(concentric)** 온톨로지 허브, 노드 클릭→기업/탐색, SVG 폴백, CSP에 jsdelivr 허용
+- [x] 내부 링크 확장자 없는 canonical 경로 통일, 라이브 배포·검증
 
 ### E2. Hancom CI 적용  ✅  _(2026-06-02)_
 - [x] nav 브랜드에 한컴 로고(`/assets/HANCOM.png`) 적용 — 브랜드 텍스트 앞 + 구분선 (`index.html`, `admin/index.html`)
