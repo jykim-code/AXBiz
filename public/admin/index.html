@@ -66,6 +66,12 @@
   <!-- ===== Editor (PIN 통과 후) ===== -->
   <section id="editor" class="max-w-[1100px] mx-auto px-5 sm:px-8 py-10 hidden">
 
+    <div class="flex gap-2 mb-8">
+      <button id="tabReportBtn" class="btn px-4 py-2 bg-ink text-white">보고서 입력</button>
+      <button id="tabSuggBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">의견함</button>
+    </div>
+
+    <div id="tab-report">
     <div class="flex flex-col sm:flex-row sm:items-end gap-4 mb-8">
       <div class="flex-1">
         <div class="label mb-1.5">분석 날짜</div>
@@ -85,6 +91,15 @@
     <div class="flex items-center gap-4 mt-8 pt-6 border-t border-ink/10">
       <button id="saveBtn" class="btn bg-ink text-white px-8 py-3 hover:bg-lime hover:text-ink">저장 (덮어쓰기)</button>
       <span id="saveStatus" class="text-sm"></span>
+    </div>
+    </div><!-- /tab-report -->
+
+    <div id="tab-suggestions" class="hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display font-bold text-xl tracking-tight">접수된 의견</h2>
+        <button id="suggRefresh" class="btn border border-ink/15 px-4 py-2 hover:bg-ink hover:text-white">새로고침</button>
+      </div>
+      <div id="suggList" class="space-y-3"></div>
     </div>
   </section>
 

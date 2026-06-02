@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AX Biz Radar — Design Preview v2</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+    fontFamily: { sans: ['Inter','ui-sans-serif','system-ui','sans-serif'], display: ['"Space Grotesk"','ui-sans-serif','system-ui','sans-serif'] },
+  }}};
+</script>
+<style>
+  body { background:#f7f5f0; color:#111; font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family:'Space Grotesk',sans-serif; }
+  ::selection { background:#c8f200; color:#111; }
+  #sb { transition: transform .3s ease; }
+  .nav-item.active { background:rgba(200,242,0,.22); font-weight:600; }
+  #radar-wrap { position:relative; }
+  #radar-rings { position:absolute; inset:0; pointer-events:none; }
+  #radar-sweep { position:absolute; inset:0; pointer-events:none;
+    background: conic-gradient(from 0deg, rgba(200,242,0,.16), transparent 22%, transparent 100%);
+    animation: spin 11s linear infinite; mix-blend-mode:screen; opacity:.5; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #cy { position:absolute; inset:0; }
+  .card-body { display:grid; grid-template-rows:0fr; transition:grid-template-rows .35s ease; }
+  .card.open .card-body { grid-template-rows:1fr; }
+  .card-body > div { overflow:hidden; min-height:0; }
+  .card.open .chev { transform: rotate(180deg); }
+  .col-scroll::-webkit-scrollbar { width:8px; } .col-scroll::-webkit-scrollbar-thumb { background:rgba(17,17,17,.12); border-radius:8px; }
+  .screen { display:none; } .screen.active { display:block; }
+  .field{width:100%;border:1px solid rgba(17,17,17,.12);border-radius:12px;padding:.6rem .8rem;font-size:.9rem;background:#fff}
+  .field:focus{outline:none;border-color:#c8f200;box-shadow:0 0 0 3px rgba(200,242,0,.35)}
+  .label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#7ba500;margin-bottom:.3rem}
+  @media (prefers-reduced-motion: reduce){ #radar-sweep{animation:none} .card-body,#sb{transition:none} }
+</style>
+</head>
+<body class="min-h-screen bg-beige">
+
+<!-- ===== Sidebar (기본 닫힘, 토글) ===== -->
+<aside id="sb" class="fixed z-40 top-0 left-0 h-full w-64 bg-white border-r border-ink/10 flex flex-col -translate-x-full">
+  <div class="h-20 flex items-center justify-between px-5 border-b border-ink/5">
+    <div class="flex items-center gap-2">
+      <span class="font-display font-bold text-lg tracking-tight">HANCOM</span>
+      <span class="w-px h-5 bg-ink/20"></span>
+      <span class="font-display font-semibold text-sm">AX Biz Radar</span>
+    </div>
+    <button id="sbClose" class="opacity-50 hover:opacity-100" aria-label="닫기">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M6 18L18 6"/></svg>
+    </button>
+  </div>
+  <nav class="flex-1 overflow-y-auto p-3 space-y-1 text-sm">
+    <a data-screen="home"    class="nav-item active block px-4 py-2.5 rounded-xl hover:bg-ink/5 cursor-pointer">대시보드</a>
+    <a data-screen="explore" class="nav-item block px-4 py-2.5 rounded-xl hover:bg-ink/5 cursor-pointer">탐색</a>
+    <a data-screen="company" class="nav-item block px-4 py-2.5 rounded-xl hover:bg-ink/5 cursor-pointer">기업</a>
+    <a data-screen="explore" data-tagmode="1" class="nav-item block px-4 py-2.5 rounded-xl hover:bg-ink/5 cursor-pointer">태그</a>
+    <a data-screen="feedback" class="nav-item block px-4 py-2.5 rounded-xl hover:bg-ink/5 cursor-pointer">의견 보내기</a>
+  </nav>
+  <div class="p-4 border-t border-ink/5 text-xs">
+    <a class="opacity-50 hover:opacity-100 cursor-pointer">소개 · 데이터 출처</a>
+  </div>
+</aside>
+<div id="overlay" class="fixed inset-0 bg-ink/40 z-30 hidden"></div>
+
+<!-- ===== Content (풀폭) ===== -->
+<div class="min-h-screen flex flex-col">
+  <header class="h-20 bg-lime/90 backdrop-blur-md border-b border-ink/5 sticky top-0 z-20 flex items-center gap-3 px-5 sm:px-8">
+    <button id="burger" class="-ml-1 p-1 rounded-lg hover:bg-ink/10" aria-label="메뉴 열기">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="flex items-center gap-2 min-w-0">
+      <span class="font-display font-bold text-lg tracking-tight">HANCOM</span>
+      <span class="hidden sm:inline w-px h-5 bg-ink/20"></span>
+      <span class="hidden sm:inline font-display font-semibold text-sm" id="screenTitle">AX Biz Radar</span>
+    </div>
+    <div class="ml-auto text-right">
+      <div class="text-[10px] font-semibold uppercase tracking-widest opacity-50">Report Date</div>
+      <div class="font-display font-semibold text-base" id="selDate">2026-06-01</div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-5 sm:px-8 py-6">
+
+    <!-- ===== HOME (원본 레이아웃 유지) ===== -->
+    <section id="screen-home" class="screen active">
+      <div class="flex flex-col gap-6">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- radar (42%) -->
+          <aside class="w-full lg:w-[42%] flex-none h-[380px] lg:h-[460px]">
+            <div class="h-full bg-ink text-white rounded-[28px] p-7 relative overflow-hidden flex flex-col">
+              <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-lime/40 to-transparent"></div>
+              <div class="flex items-center justify-between">
+                <div class="text-sm font-bold uppercase tracking-widest text-lime">Knowledge Graph</div>
+                <div class="text-[10px] uppercase tracking-widest opacity-40">클릭→상세 · 호버 · 줌</div>
+              </div>
+              <div id="radar-wrap" class="flex-1 min-h-0 my-2">
+                <svg id="radar-rings" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <ellipse cx="50" cy="50" rx="20" ry="20" fill="none" stroke="#fff" stroke-opacity=".06"/>
+                  <ellipse cx="50" cy="50" rx="34" ry="34" fill="none" stroke="#fff" stroke-opacity=".05"/>
+                  <ellipse cx="50" cy="50" rx="47" ry="47" fill="none" stroke="#fff" stroke-opacity=".04"/>
+                </svg>
+                <div id="radar-sweep"></div>
+                <div id="cy"></div>
+              </div>
+              <div class="flex items-end gap-7 pt-5 border-t border-white/10">
+                <div>
+                  <div class="font-display font-bold text-5xl text-lime leading-none" id="statTotal">0</div>
+                  <div class="text-[11px] font-semibold uppercase tracking-widest opacity-50 mt-2">취합 데이터</div>
+                </div>
+                <div class="flex flex-wrap gap-x-6 gap-y-1 pb-1">
+                  <div class="text-sm"><span class="font-display font-bold text-xl" id="statCompanies">0</span> <span class="opacity-50">추적 기업</span></div>
+                  <div class="text-sm"><span class="font-display font-bold text-xl" id="statDates">0</span> <span class="opacity-50">분석일</span></div>
+                  <div class="text-sm"><span class="font-display font-bold text-xl" id="statTags">0</span> <span class="opacity-50">태그</span></div>
+                </div>
+              </div>
+            </div>
+          </aside>
+          <!-- swimlanes -->
+          <div class="col-scroll flex-1 min-w-0 flex flex-col gap-8" id="home-lanes"></div>
+        </div>
+
+        <!-- calendar + brief -->
+        <div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 px-5 sm:px-7 py-4 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
+          <div class="flex items-center gap-3 min-w-[190px]">
+            <button id="prevM" class="w-9 h-9 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-lg">‹</button>
+            <div class="font-display font-bold text-lg min-w-[100px] text-center" id="calMon">2026 . 06</div>
+            <button id="nextM" class="w-9 h-9 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-lg">›</button>
+          </div>
+          <div class="grid grid-cols-7 gap-1.5 w-full sm:w-[420px] sm:flex-none" id="calGrid"></div>
+          <div class="flex-1 min-w-0 w-full sm:border-l sm:border-ink/10 sm:pl-6 flex flex-col gap-2">
+            <div class="flex items-baseline gap-2"><span class="text-[10px] font-bold uppercase tracking-widest text-lime-600">Selected</span><span class="font-display font-semibold text-sm" id="briefDate">—</span></div>
+            <div class="flex items-baseline gap-3"><span class="font-display font-bold text-3xl leading-none" id="briefCount">0</span><span class="text-xs opacity-60" id="briefBreakdown">—</span></div>
+            <div class="flex flex-wrap gap-1.5" id="briefTags"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== EXPLORE ===== -->
+    <section id="screen-explore" class="screen">
+      <div class="bg-white rounded-[20px] border border-ink/5 shadow-xl shadow-ink/5 p-5 mb-5">
+        <input id="q" placeholder="기업명·내용·시사점·태그 전체 검색…" class="w-full border border-ink/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime" />
+        <div class="flex flex-wrap gap-2 mt-3" id="tagcloud"></div>
+        <div class="text-xs opacity-50 mt-3" id="expCount"></div>
+      </div>
+      <div id="expResults" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- ===== COMPANY ===== -->
+    <section id="screen-company" class="screen">
+      <div class="flex flex-wrap gap-2 mb-5" id="compList"></div>
+      <div id="compDetail"></div>
+    </section>
+
+    <!-- ===== FEEDBACK (별도 페이지) ===== -->
+    <section id="screen-feedback" class="screen">
+      <div class="max-w-[640px] mx-auto">
+        <div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6 sm:p-8">
+          <h2 class="font-display font-bold text-2xl tracking-tight">의견 보내기</h2>
+          <p class="text-sm opacity-60 mt-1.5">추적했으면 하는 기업, 보완할 내용, 오류 등을 자유롭게 제안해 주세요. 관리자 검토 후 반영됩니다.</p>
+
+          <div class="space-y-4 mt-6">
+            <div><div class="label">유형</div>
+              <select class="field"><option>기업 추가 요청</option><option>내용 추가/수정</option><option>오류 제보</option><option>기타</option></select></div>
+            <div><div class="label">관련 기업명 (선택)</div><input class="field" placeholder="예: 클로바엑스랩" /></div>
+            <div><div class="label">내용</div><textarea rows="5" class="field" placeholder="제안 내용을 적어주세요"></textarea></div>
+            <div class="grid grid-cols-2 gap-3">
+              <div><div class="label">소속 팀</div><input class="field" placeholder="예: AX사업팀" /></div>
+              <div><div class="label">이름</div><input class="field" placeholder="예: 홍길동" /></div>
+            </div>
+            <button id="fbSubmit" class="w-full bg-ink text-white rounded-full py-3 font-semibold hover:bg-lime hover:text-ink transition-colors">제출</button>
+          </div>
+
+          <!-- 작성 예시 -->
+          <div class="bg-beige border border-ink/5 rounded-2xl p-4 mt-6">
+            <div class="label mb-2">작성 예시 — 기업 추가</div>
+            <ul class="text-sm opacity-75 space-y-1">
+              <li>· <b>유형</b>: 기업 추가 요청</li>
+              <li>· <b>관련 기업명</b>: 클로바엑스랩</li>
+              <li>· <b>내용</b>: 최근 의료 특화 LLM 출시로 헬스케어 AX 경쟁사로 부상. 추적 대상 추가 요청.</li>
+              <li>· <b>소속 팀 / 이름</b>: AX사업팀 / 김OO</li>
+            </ul>
+          </div>
+
+          <!-- 문의 채널 -->
+          <div class="border-t border-ink/10 mt-6 pt-5">
+            <div class="label mb-2">문의 채널</div>
+            <div class="flex flex-col gap-1.5 text-sm">
+              <a href="mailto:jeongyeonkim@hancom.com" class="hover:text-lime-600">김정연 · jeongyeonkim@hancom.com</a>
+              <a href="mailto:yarong09@hancom.com" class="hover:text-lime-600">손아영 · yarong09@hancom.com</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-ink text-white text-sm px-5 py-3 rounded-full shadow-xl opacity-0 pointer-events-none transition-opacity z-50"></div>
+
+<script>
+/* ===== Sample ===== */
+const SAMPLE = {
+  "2026-06-01":[
+    {name:"삼성SDS",category:"대기업",keyPoints:["패브릭스·브리티 코파일럿 기반 기업용 생성형 AI 플랫폼 라인업 확대","제조·물류 도메인 특화 에이전트 레퍼런스 공개"],implications:["'플랫폼+에이전트' 번들 경쟁 본격화"],hancomInsight:["문서 자산 즉시 활용을 차별 메시지로"],tags:["엔터프라이즈AX","제조AX","에이전트"]},
+    {name:"네이버클라우드",category:"대기업",keyPoints:["HyperCLOVA X 기반 소버린 AI 패키지 공공·금융 확대"],implications:["공공 소버린 AI 수요 가속"],hancomInsight:["공공 레퍼런스·문서표준과 결합 시 포지션 강화"],tags:["소버린AI","공공","온프레미스"]}
+  ],
+  "2026-05-30":[
+    {name:"메가존클라우드",category:"중견기업",keyPoints:["멀티 LLM 오케스트레이션 매니지드 서비스 출시"],implications:["MSP 모델중립 통합 레이어 차별화"],hancomInsight:["모델 중립 오케스트레이션 포지셔닝 검토"],tags:["MSP","오케스트레이션","에이전트"]},
+    {name:"뤼튼테크놀로지스",category:"스타트업·중소",keyPoints:["개인화 AI 에이전트 앱 MAU 급성장, B2B 진출 시사"],implications:["소비자 AI 습관의 업무용 전이"],hancomInsight:["오피스 일상 진입점을 에이전트로 확장하는 UX 벤치마크"],tags:["에이전트","B2C","UX"]}
+  ],
+  "2026-05-28":[
+    {name:"삼성SDS",category:"대기업",keyPoints:["코드 자동화 PoC 결과 공개"],implications:["내재화 사례 축적"],hancomInsight:["레퍼런스화 전략 참고"],tags:["업무자동화","엔터프라이즈AX"]},
+    {name:"업스테이지",category:"스타트업·중소",keyPoints:["문서 특화 LLM '솔라' 기업용 패키지 확대"],implications:["문서 도메인 특화 경쟁 가열"],hancomInsight:["한컴 문서 자산과 경합/협업 영역 — 면밀 모니터링"],tags:["문서AI","LLM","소버린AI"]}
+  ]
+};
+const CATKEY={"대기업":"large","중견기업":"mid","스타트업·중소":"startup"};
+const CATLABEL={large:"대기업",mid:"중견기업",startup:"스타트업·중소"};
+const pad2=n=>String(n).padStart(2,'0');
+
+/* ===== Ontology + stats ===== */
+function buildOntology(){
+  const all=Object.values(SAMPLE).flat(); const comp={},tagSet=new Set(),pairs=new Set();
+  all.forEach(c=>{ comp[c.name]=comp[c.name]||{name:c.name,category:c.category,count:0,tags:new Set()}; comp[c.name].count++; (c.tags||[]).forEach(t=>{tagSet.add(t);comp[c.name].tags.add(t);pairs.add(c.name+'||'+t);}); });
+  return {companies:Object.values(comp),tags:[...tagSet],pairs:[...pairs],total:all.length,dates:Object.keys(SAMPLE).length};
+}
+const ONT=buildOntology();
+statTotal.textContent=ONT.total; statCompanies.textContent=ONT.companies.length; statDates.textContent=ONT.dates; statTags.textContent=ONT.tags.length;
+
+/* ===== Cytoscape radar ===== */
+function initRadar(){
+  const els=[{data:{id:'AX',label:'AX',type:'ax',level:0}}];
+  ONT.companies.forEach(c=>els.push({data:{id:'company:'+c.name,label:c.name,type:'company',level:1,deg:c.tags.size}}));
+  ONT.tags.forEach(t=>els.push({data:{id:'tag:'+t,label:'#'+t,type:'tag',level:2,deg:0}}));
+  ONT.companies.forEach(c=>els.push({data:{id:'eax'+c.name,source:'AX',target:'company:'+c.name,kind:'hub'}}));
+  ONT.pairs.forEach(p=>{const[n,t]=p.split('||');els.push({data:{id:'e'+n+t,source:'company:'+n,target:'tag:'+t,kind:'tag'}});});
+  const cy=cytoscape({container:document.getElementById('cy'),elements:els,
+    style:[
+      {selector:'node',css:{'label':'data(label)','color':'#fff','font-size':9,'font-family':'Inter','text-valign':'center','text-halign':'right','text-margin-x':3}},
+      {selector:'node[type="ax"]',css:{'background-color':'#c8f200','width':22,'height':22,'label':'AX','color':'#111','text-halign':'center','font-weight':'bold'}},
+      {selector:'node[type="company"]',css:{'background-color':'#c8f200','width':'mapData(deg,0,4,12,22)','height':'mapData(deg,0,4,12,22)','font-weight':600,'font-size':10}},
+      {selector:'node[type="tag"]',css:{'background-color':'#ffffff','background-opacity':.55,'width':7,'height':7,'opacity':.7}},
+      {selector:'edge',css:{'width':1,'line-color':'#c8f200','line-opacity':.4}},
+      {selector:'edge[kind="tag"]',css:{'line-color':'#ffffff','line-opacity':.12}},
+      {selector:'.dim',css:{'opacity':.12}},{selector:'.hi',css:{'opacity':1,'line-opacity':.9}}
+    ],
+    layout:{name:'concentric',concentric:n=>3-n.data('level'),levelWidth:()=>1,minNodeSpacing:24},
+    wheelSensitivity:.2,autoungrabify:true});
+  cy.on('mouseover','node',e=>{cy.elements().addClass('dim');e.target.closedNeighborhood().removeClass('dim').addClass('hi');});
+  cy.on('mouseout','node',()=>cy.elements().removeClass('dim hi'));
+  cy.on('tap','node',e=>{const t=e.target.data('type');if(t==='company')showCompany(e.target.data('label'));else if(t==='tag')showExplore(e.target.data('label').replace(/^#/,''));});
+  cy.on('tap',e=>{if(e.target===cy)cy.fit(undefined,28);});
+  setTimeout(()=>cy.fit(undefined,28),80);
+}
+
+/* ===== Home: swimlanes + calendar + brief (원본 동작) ===== */
+const sec=(t,a)=>a&&a.length?'<div><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">'+t+'</div><ul class="space-y-1.5">'+a.map(x=>'<li class="text-sm opacity-70 pl-3 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-ink/30">'+x+'</li>').join('')+'</ul></div>':'';
+function cardHTML(c){
+  return '<div class="card bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 hover:-translate-y-1 transition-transform duration-300 cursor-pointer" onclick="this.classList.toggle(\'open\')">'+
+    '<div class="p-6 flex items-start gap-3"><div class="flex-1 min-w-0"><h4 class="font-display font-bold text-lg tracking-tight">'+c.name+'</h4><p class="text-sm opacity-60 mt-1.5">'+(c.keyPoints[0]||'')+'</p></div>'+
+    '<span class="chev mt-1 opacity-40 transition-transform duration-300"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span></div>'+
+    '<div class="card-body"><div class="px-6 pb-6 space-y-5">'+sec('주요 내용',c.keyPoints)+sec('시사점',c.implications)+
+      '<div class="bg-lime/15 border border-lime rounded-2xl p-4"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">한컴 인사이트</div><ul class="space-y-1.5">'+(c.hancomInsight||[]).map(x=>'<li class="text-sm pl-3 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime-600">'+x+'</li>').join('')+'</ul></div>'+
+      '<div class="flex flex-wrap gap-2">'+(c.tags||[]).map(t=>'<span class="text-xs opacity-60 bg-beige border border-ink/5 rounded-full px-3 py-1">#'+t+'</span>').join('')+'</div>'+
+    '</div></div></div>';
+}
+function renderDate(date){
+  selDate.textContent=date; briefDate.textContent=date;
+  const cols={large:[],mid:[],startup:[]}; (SAMPLE[date]||[]).forEach(c=>cols[CATKEY[c.category]].push(c));
+  document.getElementById('home-lanes').innerHTML=['large','mid','startup'].map(k=>
+    '<section><div class="flex items-end justify-between border-b border-ink/10 pb-3 mb-4"><div class="flex items-baseline gap-3"><div class="text-xs font-bold uppercase tracking-widest text-lime-600">'+({large:'Enterprise',mid:'Mid-market',startup:'Startup · SMB'}[k])+'</div><h3 class="text-2xl font-display font-bold tracking-tight">'+CATLABEL[k]+'</h3></div><span class="font-display font-bold text-xl opacity-25">'+cols[k].length+'</span></div>'+
+    '<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">'+(cols[k].map(cardHTML).join('')||'<div class="text-sm opacity-40 px-2 py-3">해당 분류 데이터 없음</div>')+'</div></section>'
+  ).join('');
+  const tot=(SAMPLE[date]||[]).length; briefCount.textContent=tot;
+  briefBreakdown.textContent=tot?('대기업 '+cols.large.length+' · 중견 '+cols.mid.length+' · 스타트업 '+cols.startup.length):'데이터 없음';
+  const freq={}; (SAMPLE[date]||[]).forEach(c=>(c.tags||[]).forEach(t=>freq[t]=(freq[t]||0)+1));
+  briefTags.innerHTML=Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).slice(0,5).map(t=>'<span class="text-[11px] opacity-60 bg-beige border border-ink/5 rounded-full px-2.5 py-0.5">#'+t+'</span>').join('');
+}
+const DATA=Object.keys(SAMPLE).sort().reverse(); let selected=DATA[0]; let view={y:+selected.slice(0,4),m:+selected.slice(5,7)-1};
+function renderCal(){
+  calMon.textContent=view.y+' . '+pad2(view.m+1);
+  const dows=['일','월','화','수','목','금','토']; let h=dows.map(d=>'<div class="text-[10px] font-semibold uppercase tracking-wider opacity-40 text-center">'+d+'</div>').join('');
+  const first=new Date(view.y,view.m,1).getDay(),days=new Date(view.y,view.m+1,0).getDate();
+  for(let i=0;i<first;i++)h+='<div></div>';
+  for(let d=1;d<=days;d++){const ds=view.y+'-'+pad2(view.m+1)+'-'+pad2(d),has=!!SAMPLE[ds],sel=ds===selected;
+    let cls='relative h-8 rounded-lg flex items-center justify-center text-sm font-display '; cls+= sel?'bg-lime text-ink font-bold':has?'bg-beige border border-ink/5 font-semibold cursor-pointer hover:border-lime':'opacity-30';
+    h+='<div class="'+cls+'"'+(has&&!sel?' data-date="'+ds+'"':'')+'>'+d+(has&&!sel?'<span class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-lime-600"></span>':'')+'</div>';}
+  calGrid.innerHTML=h; calGrid.querySelectorAll('[data-date]').forEach(el=>el.onclick=()=>{selected=el.dataset.date;renderDate(selected);renderCal();});
+}
+prevM.onclick=()=>{view.m--;if(view.m<0){view.m=11;view.y--;}renderCal();}; nextM.onclick=()=>{view.m++;if(view.m>11){view.m=0;view.y++;}renderCal();};
+
+/* ===== Explore / Company (생략 없이 동일) ===== */
+let activeTag=null;
+function exploreEntries(){const out=[];Object.entries(SAMPLE).forEach(([d,a])=>a.forEach(c=>out.push({date:d,...c})));return out.sort((a,b)=>b.date.localeCompare(a.date));}
+function renderTagCloud(){tagcloud.innerHTML=ONT.tags.map(t=>'<span class="tagchip cursor-pointer text-xs rounded-full px-3 py-1.5 border '+(t===activeTag?'bg-lime border-lime text-ink font-semibold':'bg-beige border-ink/5 opacity-70 hover:border-lime')+'" data-t="'+t+'">#'+t+'</span>').join('');document.querySelectorAll('.tagchip').forEach(el=>el.onclick=()=>{activeTag=activeTag===el.dataset.t?null:el.dataset.t;renderExplore();});}
+function renderExplore(){renderTagCloud();const q=q_.value.trim().toLowerCase();let rows=exploreEntries();if(activeTag)rows=rows.filter(r=>(r.tags||[]).includes(activeTag));if(q)rows=rows.filter(r=>(r.name+' '+(r.keyPoints||[]).join(' ')+' '+(r.implications||[]).join(' ')+' '+(r.hancomInsight||[]).join(' ')+' '+(r.tags||[]).join(' ')).toLowerCase().includes(q));
+  expCount.textContent=rows.length+'건'+(activeTag?' · #'+activeTag:'');
+  expResults.innerHTML=rows.map(r=>'<div class="bg-white rounded-[18px] border border-ink/5 shadow-lg shadow-ink/5 p-4"><div class="flex items-center gap-2 mb-1"><a class="font-display font-bold tracking-tight cursor-pointer hover:text-lime-600" onclick="showCompany(\''+r.name+'\')">'+r.name+'</a><span class="text-[10px] bg-beige border border-ink/5 rounded-full px-2 py-0.5 opacity-60">'+r.category+'</span><span class="text-[10px] opacity-40 ml-auto">'+r.date+'</span></div><p class="text-sm opacity-70">'+(r.keyPoints[0]||'')+'</p><div class="flex flex-wrap gap-1.5 mt-2">'+(r.tags||[]).map(t=>'<span class="text-[11px] opacity-60 bg-beige border border-ink/5 rounded-full px-2 py-0.5">#'+t+'</span>').join('')+'</div></div>').join('')||'<div class="opacity-40 text-sm p-4">결과 없음</div>';}
+const q_=document.getElementById('q'); q_.addEventListener('input',renderExplore);
+function renderCompanyList(){compList.innerHTML=ONT.companies.map(c=>'<span class="cchip cursor-pointer text-sm rounded-full px-4 py-2 border bg-white border-ink/10 hover:border-lime" data-n="'+c.name+'">'+c.name+' <span class="opacity-40">'+c.count+'</span></span>').join('');document.querySelectorAll('.cchip').forEach(el=>el.onclick=()=>showCompany(el.dataset.n));}
+function showCompany(name){switchScreen('company');renderCompanyList();
+  const ap=[];Object.entries(SAMPLE).forEach(([d,a])=>a.filter(c=>c.name===name).forEach(c=>ap.push({date:d,...c})));ap.sort((a,b)=>b.date.localeCompare(a.date));
+  const tags=[...new Set(ap.flatMap(a=>a.tags||[]))],cat=ap[0]?.category||'';
+  const rel=ONT.companies.filter(c=>c.name!==name&&[...c.tags].some(t=>tags.includes(t))).slice(0,4).map(c=>c.name);
+  compDetail.innerHTML='<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6"><div class="flex items-center gap-3"><h2 class="font-display font-bold text-3xl tracking-tight">'+name+'</h2><span class="text-xs bg-beige border border-ink/5 rounded-full px-3 py-1 opacity-60">'+cat+'</span></div><div class="flex gap-6 mt-2 text-sm opacity-60"><span><b class="font-display text-lg text-ink">'+ap.length+'</b> 회 등장</span><span>최근 <b class="text-ink">'+ap[0].date+'</b></span><span><b class="font-display text-lg text-ink">'+tags.length+'</b> 태그</span></div><div class="flex flex-wrap gap-1.5 mt-3">'+tags.map(t=>'<span class="cursor-pointer text-xs bg-beige border border-ink/5 rounded-full px-2.5 py-1 hover:border-lime" onclick="showExplore(\''+t+'\')">#'+t+'</span>').join('')+'</div><div class="mt-6 space-y-4 border-l-2 border-lime/40 pl-5">'+ap.map(a=>'<div class="relative"><div class="absolute -left-[27px] top-1 w-3 h-3 rounded-full bg-lime border-2 border-white"></div><div class="text-xs font-bold text-lime-600">'+a.date+'</div>'+sec('주요 내용',a.keyPoints)+sec('시사점',a.implications)+'</div>').join('')+'</div>'+(rel.length?'<div class="mt-6 pt-4 border-t border-ink/10"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">연관 기업</div><div class="flex flex-wrap gap-2">'+rel.map(n=>'<span class="cursor-pointer text-sm rounded-full px-3 py-1.5 border bg-white border-ink/10 hover:border-lime" onclick="showCompany(\''+n+'\')">'+n+'</span>').join('')+'</div></div>':'')+'</div>';}
+function showExplore(tag){activeTag=tag||null;switchScreen('explore');renderExplore();}
+
+/* ===== Screen switch / drawer / modal ===== */
+function switchScreen(name){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id==='screen-'+name));document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.screen===name&&!n.dataset.tagmode));screenTitle.textContent={home:'AX Biz Radar',explore:'탐색',company:'기업',feedback:'의견 보내기'}[name]||'';closeDrawer();if(name==='company'&&!compDetail.innerHTML){renderCompanyList();showCompany(ONT.companies[0].name);}}
+document.querySelectorAll('.nav-item[data-screen]').forEach(el=>el.onclick=()=>{el.dataset.tagmode?showExplore(null):switchScreen(el.dataset.screen);});
+const sb=document.getElementById('sb'),ov=document.getElementById('overlay');
+function openDrawer(){sb.classList.remove('-translate-x-full');ov.classList.remove('hidden');}
+function closeDrawer(){sb.classList.add('-translate-x-full');ov.classList.add('hidden');}
+burger.onclick=openDrawer;sbClose.onclick=closeDrawer;ov.onclick=closeDrawer;
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
+fbSubmit.onclick=()=>{toast.textContent='의견이 접수되었습니다 (미리보기)';toast.style.opacity=1;setTimeout(()=>toast.style.opacity=0,2200);};
+
+/* ===== init ===== */
+renderDate(selected); renderCal(); renderExplore(); initRadar();
+</script>
+</body>
+</html>

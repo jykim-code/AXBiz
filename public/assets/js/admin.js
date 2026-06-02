@@ -238,6 +238,11 @@ function init() {
   document.getElementById('loadBtn').addEventListener('click', loadExisting);
   document.getElementById('saveBtn').addEventListener('click', save);
 
+  // 탭: 보고서 입력 / 의견함
+  document.getElementById('tabReportBtn').addEventListener('click', () => showTab('report'));
+  document.getElementById('tabSuggBtn').addEventListener('click', () => showTab('sugg'));
+  document.getElementById('suggRefresh').addEventListener('click', loadSuggestions);
+
   // 세션에 PIN이 있으면 바로 에디터로 (편의용; 서버 검증은 저장 시)
   const saved = sessionStorage.getItem('adminPin');
   if (saved) {
@@ -245,6 +250,36 @@ function init() {
     showEditor();
   } else {
     showGate(false);
+  }
+}
+
+/* ===== 의견함 탭 ===== */
+function showTab(which) {
+  const reportOn = which === 'report';
+  document.getElementById('tab-report').classList.toggle('hidden', !reportOn);
+  document.getElementById('tab-suggestions').classList.toggle('hidden', reportOn);
+  document.getElementById('tabReportBtn').className = 'btn px-4 py-2 ' + (reportOn ? 'bg-ink text-white' : 'border border-ink/15 hover:bg-ink hover:text-white');
+  document.getElementById('tabSuggBtn').className = 'btn px-4 py-2 ' + (!reportOn ? 'bg-ink text-white' : 'border border-ink/15 hover:bg-ink hover:text-white');
+  if (!reportOn) loadSuggestions();
+}
+
+async function loadSuggestions() {
+  const list = document.getElementById('suggList');
+  list.innerHTML = '<div class="text-sm opacity-50">불러오는 중…</div>';
+  try {
+    const rows = await API.suggestions(adminPin);
+    if (!rows.length) { list.innerHTML = '<div class="text-sm opacity-50">접수된 의견이 없습니다.</div>'; return; }
+    list.innerHTML = rows.map((s) =>
+      '<div class="bg-white rounded-2xl border border-ink/5 shadow p-4">' +
+      '<div class="flex items-center gap-2 mb-1.5"><span class="text-[11px] bg-beige border border-ink/5 rounded-full px-2 py-0.5">' + escapeHtml(s.type) + '</span>' +
+      (s.company ? '<span class="text-[11px] opacity-60">' + escapeHtml(s.company) + '</span>' : '') +
+      '<span class="text-[11px] opacity-40 ml-auto">' + escapeHtml(s.created_at) + '</span></div>' +
+      '<div class="text-sm whitespace-pre-wrap">' + escapeHtml(s.content) + '</div>' +
+      '<div class="text-xs opacity-50 mt-1.5">' + escapeHtml([s.team, s.name].filter(Boolean).join(' · ')) + '</div></div>'
+    ).join('');
+  } catch (e) {
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
+    list.innerHTML = '<div class="text-sm text-red-500">불러오기 실패: ' + (e.status || e.message) + '</div>';
   }
 }
 

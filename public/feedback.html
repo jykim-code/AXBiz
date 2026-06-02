@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>의견 보내기 — AX Biz Radar</title>
+<link rel="icon" type="image/png" href="/assets/hancom_favicon.png" />
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+    fontFamily: { sans: ['Inter','ui-sans-serif','system-ui','sans-serif'], display: ['"Space Grotesk"','ui-sans-serif','system-ui','sans-serif'] },
+  }}};
+</script>
+<style>
+  body { background:#f7f5f0; color:#111; font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family:'Space Grotesk',sans-serif; }
+  ::selection { background:#c8f200; color:#111; }
+  .field{width:100%;border:1px solid rgba(17,17,17,.12);border-radius:12px;padding:.6rem .8rem;font-size:.9rem;background:#fff}
+  .field:focus{outline:none;border-color:#c8f200;box-shadow:0 0 0 3px rgba(200,242,0,.35)}
+  .label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#7ba500;margin-bottom:.3rem}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body class="min-h-screen bg-beige">
+  <header class="h-20 bg-lime/90 backdrop-blur-md border-b border-ink/5 sticky top-0 z-20 flex items-center gap-3 px-5 sm:px-8">
+    <button data-sb-open aria-label="메뉴 열기" class="-ml-1 p-1 rounded-lg hover:bg-ink/10"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    <img src="/assets/HANCOM.png" alt="HANCOM" class="h-6 w-auto" />
+    <span class="hidden sm:inline w-px h-5 bg-ink/20"></span>
+    <span class="font-display font-semibold text-sm">의견 보내기</span>
+  </header>
+
+  <main class="max-w-[640px] w-full mx-auto px-5 sm:px-8 py-8">
+    <div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6 sm:p-8">
+      <h2 class="font-display font-bold text-2xl tracking-tight">의견 보내기</h2>
+      <p class="text-sm opacity-60 mt-1.5">추적했으면 하는 기업, 보완할 내용, 오류 등을 자유롭게 제안해 주세요. 관리자 검토 후 반영됩니다.</p>
+
+      <form id="fbForm" class="space-y-4 mt-6">
+        <div><div class="label">유형</div>
+          <select id="f-type" class="field"><option>기업 추가 요청</option><option>내용 추가/수정</option><option>오류 제보</option><option>기타</option></select></div>
+        <div><div class="label">관련 기업명 (선택)</div><input id="f-company" class="field" placeholder="예: 클로바엑스랩" /></div>
+        <div><div class="label">내용</div><textarea id="f-content" rows="5" class="field" placeholder="제안 내용을 적어주세요"></textarea></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><div class="label">소속 팀</div><input id="f-team" class="field" placeholder="예: AX사업팀" /></div>
+          <div><div class="label">이름</div><input id="f-name" class="field" placeholder="예: 홍길동" /></div>
+        </div>
+        <input class="hp" id="f-hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+        <button id="fbSubmit" type="submit" class="w-full bg-ink text-white rounded-full py-3 font-semibold hover:bg-lime hover:text-ink transition-colors">제출</button>
+        <div id="fbStatus" class="text-sm"></div>
+      </form>
+
+      <div class="bg-beige border border-ink/5 rounded-2xl p-4 mt-6">
+        <div class="label mb-2">작성 예시 — 기업 추가</div>
+        <ul class="text-sm opacity-75 space-y-1">
+          <li>· <b>유형</b>: 기업 추가 요청</li>
+          <li>· <b>관련 기업명</b>: 클로바엑스랩</li>
+          <li>· <b>내용</b>: 최근 의료 특화 LLM 출시로 헬스케어 AX 경쟁사로 부상. 추적 대상 추가 요청.</li>
+          <li>· <b>소속 팀 / 이름</b>: AX사업팀 / 김OO</li>
+        </ul>
+      </div>
+
+      <div class="border-t border-ink/10 mt-6 pt-5">
+        <div class="label mb-2">문의 채널</div>
+        <div class="flex flex-col gap-1.5 text-sm">
+          <a href="mailto:jeongyeonkim@hancom.com" class="hover:text-lime-600">김정연 · jeongyeonkim@hancom.com</a>
+          <a href="mailto:yarong09@hancom.com" class="hover:text-lime-600">손아영 · yarong09@hancom.com</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-ink text-white text-sm px-5 py-3 rounded-full shadow-xl opacity-0 pointer-events-none transition-opacity z-50"></div>
+
+<script src="/assets/js/util.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/feedback.js"></script>
+<script src="/assets/js/sidebar.js"></script>
+</body>
+</html>

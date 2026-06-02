@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>기업 — AX Biz Radar</title>
+<link rel="icon" type="image/png" href="/assets/hancom_favicon.png" />
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+    fontFamily: { sans: ['Inter','ui-sans-serif','system-ui','sans-serif'], display: ['"Space Grotesk"','ui-sans-serif','system-ui','sans-serif'] },
+  }}};
+</script>
+<style>
+  body { background:#f7f5f0; color:#111; font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family:'Space Grotesk',sans-serif; }
+  ::selection { background:#c8f200; color:#111; }
+</style>
+</head>
+<body class="min-h-screen bg-beige">
+  <header class="h-20 bg-lime/90 backdrop-blur-md border-b border-ink/5 sticky top-0 z-20 flex items-center gap-3 px-5 sm:px-8">
+    <button data-sb-open aria-label="메뉴 열기" class="-ml-1 p-1 rounded-lg hover:bg-ink/10"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    <img src="/assets/HANCOM.png" alt="HANCOM" class="h-6 w-auto" />
+    <span class="hidden sm:inline w-px h-5 bg-ink/20"></span>
+    <span class="font-display font-semibold text-sm">기업</span>
+  </header>
+
+  <main class="max-w-[1000px] w-full mx-auto px-5 sm:px-8 py-6">
+    <div class="flex flex-wrap gap-2 mb-5" id="compList"></div>
+    <div id="compDetail"></div>
+  </main>
+
+<script src="/assets/js/util.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/ontology.js"></script>
+<script src="/assets/js/company.js"></script>
+<script src="/assets/js/sidebar.js"></script>
+</body>
+</html>

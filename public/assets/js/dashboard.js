@@ -379,12 +379,13 @@ async function init() {
   setupReveal();
   setupCardInteractions();
 
-  // 그래프/통계: 전체 누적
+  // 그래프/통계: 전체 누적 — graph.js(Cytoscape)가 담당, 미로드 시 buildGraph(SVG) 폴백
+  const render = typeof initGraph === 'function' ? initGraph : buildGraph;
   try {
     const reports = await API.all();
-    buildGraph(reports);
+    render(reports);
   } catch {
-    buildGraph([]);
+    render([]);
   }
 
   // 날짜 목록 → 최신 기본값

@@ -9,3 +9,15 @@ CREATE TABLE IF NOT EXISTS reports (
   companies  TEXT NOT NULL DEFAULT '[]',       -- JSON 직렬화된 companies 배열
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- 조회자 의견(제안) 접수함. 공개 POST 로 적재, 관리자(PIN)가 GET 으로 열람.
+CREATE TABLE IF NOT EXISTS suggestions (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  type       TEXT NOT NULL,                    -- 기업 추가 요청 / 내용 추가·수정 / 오류 제보 / 기타
+  company    TEXT,                             -- 관련 기업명(선택)
+  content    TEXT NOT NULL,                    -- 의견 내용
+  team       TEXT,                             -- 소속 팀(선택)
+  name       TEXT,                             -- 작성자 이름(선택)
+  status     TEXT NOT NULL DEFAULT 'new'       -- new / handled
+);
