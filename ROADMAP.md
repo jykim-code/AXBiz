@@ -15,23 +15,29 @@ _(없음)_
 
 ## ⬜ 예정
 
-### E1. 탐색(Explore) 페이지 — 검색 + 태그 상세  ⬜
-홈(날짜별 대시보드)과 별개로 전체 기간 데이터를 태그·키워드로 탐색하는 페이지.
-- [ ] `public/explore.html` 신규(검색창 + 태그 필터 + 결과 리스트)
-- [ ] `public/assets/js/explore.js` — `/api/reports/all` 재사용, 전체 필드 검색, `?tag=` 처리
-- [ ] 홈 그래프 태그 노드 클릭 → `explore.html?tag=<태그>` (dashboard.js)
-- [ ] 홈 nav에 "탐색" 링크(index.html) — `/admin` 링크는 계속 미노출
-- 결정 완료: 별도 페이지 1개 / 클라이언트 `/api/reports/all` 재사용 / 전체 필드 검색
-- 서버 코드 변경 없음. (상세: `.omc/plans/ax-biz-radar-explore-plan.md` — 로컬 전용)
+## 🧱 에픽: 사이드바 IA 개편 + 탐색/기업상세/의견폼
+> 상세 기획: `.omc/plans/ax-biz-radar-sidebar-epic-plan.md` (로컬 전용)
+> 확정: 멀티페이지 + 공유 사이드바(JS 주입) / 상시 좌측 사이드바 + 모바일 드로어 / 데이터는 `/api/reports/all` 재사용
+> 사이드바 항목: 대시보드·탐색·기업·태그·의견 보내기 (+하단 요약통계·About). **관리자(/admin) 미포함(하드 규칙)**
 
-### E3. 의견 제출 폼  ⬜
-조회자가 "이 업체 추가해달라 / 이런 내용 추가해달라" 등 의견을 남기는 폼.
-- 결정 완료: **(A) D1 테이블 + 관리자 검토** 방식 (현 스택과 일관, 데이터 내부 보관)
-- [ ] 신규 D1 테이블 `suggestions`(schema.sql) + 로컬·원격 적용
-- [ ] `POST /api/suggestions`(공개) — 입력 검증·길이 제한·허니팟
-- [ ] 의견 폼 UI(유형 선택 + 내용 + 선택 연락처) — 진입점/위치 결정(홈 nav 또는 모달)
-- [ ] `/admin`에서 접수 의견 열람(`GET /api/suggestions`, PIN 보호)
-- [ ] 스팸 방지: 허니팟 + 길이 제한 + (권장) Cloudflare Turnstile
+### P1. 사이드바 셸 + 탐색(Explore)  ⬜
+- [ ] `public/assets/js/sidebar.js` — 공유 사이드바 주입 + 활성 표시 + 모바일 드로어
+- [ ] 로고를 사이드바 상단으로 이동(E2 계승), 각 페이지 레이아웃 래퍼 조정
+- [ ] `public/explore.html` + `public/assets/js/explore.js` — 전체 필드 검색 + 태그 필터(`?tag=`)
+- [ ] 홈 그래프 태그 노드 클릭 → `explore.html?tag=<태그>` (dashboard.js)
+
+### P2. 기업 상세(Company)  ⬜
+- [ ] `public/company.html` + `public/assets/js/company.js` — 기업 목록 + `?name=` 상세(날짜별 타임라인)
+- [ ] 홈 그래프 회사 노드 클릭 / 카드 기업명 클릭 → `company.html?name=<기업명>`
+- [ ] (선택) 연관 기업(태그 공유) 링크
+
+### P3. 의견 제출 폼  ⬜
+- 결정 완료: **D1 테이블 + 관리자 검토** + 진입점 **모달**(사이드바 "의견 보내기")
+- [ ] D1 `suggestions` 테이블(schema.sql) + 로컬·원격 적용
+- [ ] `functions/api/suggestions.js` — POST(공개, 허니팟·검증·길이상한) / GET(PIN)
+- [ ] `public/assets/js/feedback.js` — 의견 모달(유형·내용·기업·연락처)
+- [ ] `/admin` "의견함" 탭 — `GET /api/suggestions`(PIN) 목록
+- [ ] 스팸 방지: 허니팟 + 길이 제한 + (후속) Cloudflare Turnstile
 
 ### (이후 아이디어 적재용)
 - [ ] …
