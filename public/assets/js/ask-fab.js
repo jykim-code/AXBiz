@@ -17,7 +17,7 @@
       '</div>' +
       '<div class="p-4 border-b border-ink/5">' +
         '<form id="af-form" class="flex items-center gap-2">' +
-          '<textarea id="af-q" rows="1" maxlength="500" placeholder="예) 최근 AI 동향은?" class="flex-1 resize-none overflow-hidden border border-ink/10 rounded-full px-4 py-2.5 text-sm leading-snug focus:outline-none focus:border-lime"></textarea>' +
+          '<textarea id="af-q" rows="1" maxlength="500" placeholder="예) OO기업 최신 AX 동향은?" class="flex-1 resize-none overflow-hidden border border-ink/10 rounded-full px-4 py-2.5 text-sm leading-snug focus:outline-none focus:border-lime"></textarea>' +
           '<button type="submit" id="af-btn" class="flex-none bg-ink text-lime font-semibold text-sm rounded-full px-4 py-2.5 hover:opacity-90 disabled:opacity-40 transition">검색</button>' +
         '</form>' +
       '</div>' +
