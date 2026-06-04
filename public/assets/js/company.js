@@ -48,17 +48,29 @@ function renderGrid() {
   el('compGrid').innerHTML = rows.map(cardHTML).join('') || '<div class="text-sm text-ink/75 p-4">결과 없음</div>';
 }
 
-function cardHTML(c) {
+// Template index.html 의 에디토리얼 카드 스타일. 첫 카드는 다크 featured(light+dark 페어링).
+const ARROW = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>';
+
+function cardHTML(c, i) {
+  const dark = i === 0; // 최신순 첫 기업을 다크 카드로 강조
   const tags = [...c.tags].slice(0, 3);
-  return '<a href="/company?name=' + encodeURIComponent(c.name) + '" class="block bg-white rounded-[18px] border border-ink/5 shadow-lg shadow-ink/5 p-4 hover:-translate-y-0.5 transition-transform">' +
-    '<div class="flex items-center gap-2 mb-1">' +
-    '<span class="font-display font-bold tracking-tight">' + escapeHtml(c.name) + '</span>' +
-    '<span class="text-[10px] bg-beige border border-ink/5 rounded-full px-2 py-0.5 text-ink/80">' + escapeHtml(c.category || '') + '</span>' +
-    '<span class="text-[10px] text-ink/60 ml-auto">' + escapeHtml(c.latestDate || '') + '</span></div>' +
-    '<p class="text-sm text-ink/80 leading-snug line-clamp-2">' + escapeHtml(c.latest || '') + '</p>' +
-    '<div class="flex flex-wrap items-center gap-1.5 mt-2">' +
-    tags.map((t) => '<span class="text-[11px] text-ink/70 bg-beige border border-ink/5 rounded-full px-2 py-0.5">#' + escapeHtml(t) + '</span>').join('') +
-    '<span class="text-[11px] text-ink/60 ml-auto">' + c.count + '회 등장</span>' +
+  const cardCls = dark
+    ? 'bg-ink text-white hover:shadow-xl hover:shadow-ink/20'
+    : 'bg-white border border-ink/5 hover:shadow-xl hover:shadow-ink/5';
+  const eyebrow = dark ? 'text-lime' : 'text-lime-600';
+  const sub = dark ? 'text-white/60' : 'text-ink/55';
+  const body = dark ? 'text-white/70' : 'text-ink/70';
+  const chip = dark ? 'text-white/70 bg-white/10 border-white/10' : 'text-ink/70 bg-beige border-ink/5';
+  const arrowWrap = dark ? 'bg-white/10 group-hover:bg-lime group-hover:text-ink' : 'bg-beige group-hover:bg-lime';
+  return '<a href="/company?name=' + encodeURIComponent(c.name) + '" class="group block p-7 sm:p-9 rounded-[28px] transition-all duration-300 ' + cardCls + '">' +
+    '<div class="flex items-center gap-2 mb-4">' +
+    '<span class="text-sm font-bold uppercase tracking-widest ' + eyebrow + '">' + escapeHtml(c.category || '') + '</span>' +
+    '<span class="text-xs ' + sub + ' ml-auto">' + escapeHtml(c.latestDate || '') + (c.count ? ' · ' + c.count + '회' : '') + '</span></div>' +
+    '<h3 class="text-2xl sm:text-3xl font-display font-bold tracking-tight mb-3">' + escapeHtml(c.name) + '</h3>' +
+    '<p class="' + body + ' leading-relaxed mb-6 line-clamp-3">' + escapeHtml(c.latest || '') + '</p>' +
+    '<div class="flex items-center gap-2 flex-wrap">' +
+    tags.map((t) => '<span class="text-[11px] rounded-full px-2.5 py-0.5 border ' + chip + '">#' + escapeHtml(t) + '</span>').join('') +
+    '<span class="ml-auto w-10 h-10 rounded-full flex items-center justify-center transition-colors ' + arrowWrap + '">' + ARROW + '</span>' +
     '</div></a>';
 }
 
