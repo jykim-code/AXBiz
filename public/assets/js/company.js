@@ -16,17 +16,17 @@ function renderList() {
   const sorted = ONT.companies.slice().sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   document.getElementById('compList').innerHTML = sorted.map((c) =>
     '<a href="/company?name=' + encodeURIComponent(c.name) + '" class="text-sm rounded-full px-4 py-2 border bg-white border-ink/10 hover:border-lime">' +
-    escapeHtml(c.name) + ' <span class="opacity-40">' + c.count + '</span></a>').join('');
+    escapeHtml(c.name) + ' <span class="opacity-75">' + c.count + '</span></a>').join('');
 }
 
 function renderEmpty() {
   document.getElementById('compDetail').innerHTML =
-    '<div class="text-sm opacity-50 mt-4">위에서 기업을 선택하면 날짜별 동향을 모아 봅니다.' + (ONT.companies.length ? '' : ' (아직 데이터가 없습니다.)') + '</div>';
+    '<div class="text-sm opacity-75 mt-4">위에서 기업을 선택하면 날짜별 동향을 모아 봅니다.' + (ONT.companies.length ? '' : ' (아직 데이터가 없습니다.)') + '</div>';
 }
 
 const sec = (t, a) => (a && a.length)
   ? '<div class="mt-2"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-1.5">' + t + '</div><ul class="space-y-1.5">' +
-    a.map((x) => '<li class="text-sm opacity-70 pl-3 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-ink/30">' + escapeHtml(x) + '</li>').join('') + '</ul></div>'
+    a.map((x) => '<li class="text-sm opacity-80 pl-3 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-ink/30">' + escapeHtml(x) + '</li>').join('') + '</ul></div>'
   : '';
 
 function renderDetail(name) {
@@ -53,8 +53,8 @@ function renderDetail(name) {
 
   document.getElementById('compDetail').innerHTML =
     '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6">' +
-    '<div class="flex items-center gap-3 flex-wrap"><h2 class="font-display font-bold text-3xl tracking-tight">' + escapeHtml(name) + '</h2><span class="text-xs bg-beige border border-ink/5 rounded-full px-3 py-1 opacity-60">' + escapeHtml(cat) + '</span></div>' +
-    '<div class="flex gap-6 mt-2 text-sm opacity-60"><span><b class="font-display text-lg text-ink">' + ap.length + '</b> 회 등장</span><span>최근 <b class="text-ink">' + escapeHtml(ap[0] ? ap[0].date : '-') + '</b></span><span><b class="font-display text-lg text-ink">' + tags.length + '</b> 태그</span></div>' +
+    '<div class="flex items-center gap-3 flex-wrap"><h2 class="font-display font-bold text-3xl tracking-tight">' + escapeHtml(name) + '</h2><span class="text-xs bg-beige border border-ink/5 rounded-full px-3 py-1 opacity-80">' + escapeHtml(cat) + '</span></div>' +
+    '<div class="flex gap-6 mt-2 text-sm opacity-80"><span><b class="font-display text-lg text-ink">' + ap.length + '</b> 회 등장</span><span>최근 <b class="text-ink">' + escapeHtml(ap[0] ? ap[0].date : '-') + '</b></span><span><b class="font-display text-lg text-ink">' + tags.length + '</b> 태그</span></div>' +
     '<div class="flex flex-wrap gap-1.5 mt-3">' + tags.map((t) => '<a href="/explore?tag=' + encodeURIComponent(t) + '" class="text-xs bg-beige border border-ink/5 rounded-full px-2.5 py-1 hover:border-lime">#' + escapeHtml(t) + '</a>').join('') + '</div>' +
     '<div class="mt-6 space-y-5 border-l-2 border-lime/40 pl-5">' + timeline + '</div>' +
     (related.length ? '<div class="mt-6 pt-4 border-t border-ink/10"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">연관 기업 (태그 공유)</div><div class="flex flex-wrap gap-2">' + related.map((n) => '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-sm rounded-full px-3 py-1.5 border bg-white border-ink/10 hover:border-lime">' + escapeHtml(n) + '</a>').join('') + '</div></div>' : '') +

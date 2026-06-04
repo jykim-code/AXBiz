@@ -48,7 +48,7 @@ function buildGraph(reports) {
   const graphEl = document.getElementById('graph');
   if (!companies.length) {
     graphEl.innerHTML =
-      '<div class="h-full flex items-center justify-center text-sm opacity-40">표시할 관계망 데이터가 없습니다</div>';
+      '<div class="h-full flex items-center justify-center text-sm opacity-75">표시할 관계망 데이터가 없습니다</div>';
     return;
   }
 
@@ -146,7 +146,7 @@ const bullets = (a) =>
   a
     .map(
       (x) =>
-        '<li class="text-sm leading-relaxed opacity-70 pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-ink/30">' +
+        '<li class="text-sm leading-relaxed opacity-80 pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-ink/30">' +
         escapeHtml(x) +
         '</li>'
     )
@@ -163,11 +163,11 @@ function cardHTML(c) {
   h +=
     '<div class="flex-1 min-w-0"><h4 class="font-display font-bold text-lg tracking-tight">' +
     escapeHtml(c.name) +
-    '</h4><p class="text-sm opacity-60 mt-1.5 leading-snug">' +
+    '</h4><p class="text-sm opacity-80 mt-1.5 leading-snug">' +
     escapeHtml(sum) +
     '</p></div>';
   h +=
-    '<span class="chev flex-none mt-1 opacity-40 transition-transform duration-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m6 9 6 6 6-6"/></svg></span>';
+    '<span class="chev flex-none mt-1 opacity-75 transition-transform duration-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m6 9 6 6 6-6"/></svg></span>';
   h += '</div>';
   h += '<div class="card-body"><div class="px-6 pb-6 space-y-5">';
   if (c.keyPoints && c.keyPoints.length)
@@ -214,7 +214,7 @@ function cardHTML(c) {
       c.tags
         .map(
           (t) =>
-            '<span class="text-xs opacity-60 bg-beige border border-ink/5 rounded-full px-3 py-1">#' +
+            '<span class="text-xs opacity-80 bg-beige border border-ink/5 rounded-full px-3 py-1">#' +
             escapeHtml(t) +
             '</span>'
         )
@@ -245,7 +245,7 @@ function updateBrief(date, cols, companies) {
   tagsEl.innerHTML = top
     .map(
       (t) =>
-        '<span class="text-[11px] opacity-60 bg-beige border border-ink/5 rounded-full px-2.5 py-0.5">#' +
+        '<span class="text-[11px] opacity-80 bg-beige border border-ink/5 rounded-full px-2.5 py-0.5">#' +
         escapeHtml(t) +
         '</span>'
     )
@@ -278,7 +278,7 @@ async function renderDate(date) {
     const el = document.getElementById('col-' + k);
     el.innerHTML =
       cols[k].map(cardHTML).join('') ||
-      '<div class="text-sm opacity-40 px-2 py-3">해당 분류 데이터 없음</div>';
+      '<div class="text-sm opacity-75 px-2 py-3">해당 분류 데이터 없음</div>';
     document.getElementById('cnt-' + k).textContent = cols[k].length;
   }
 
@@ -293,7 +293,7 @@ function renderCal() {
   let h = dows
     .map(
       (d) =>
-        '<div class="text-[10px] font-semibold uppercase tracking-wider opacity-40 text-center">' +
+        '<div class="text-[10px] font-semibold uppercase tracking-wider opacity-75 text-center">' +
         d +
         '</div>'
     )

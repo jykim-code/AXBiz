@@ -8,7 +8,7 @@ function initGraph(reports) {
   const el = document.getElementById('graph');
   if (!el) return;
   if (!ont.companies.length) {
-    el.innerHTML = '<div class="h-full flex items-center justify-center text-sm opacity-40">표시할 관계망 데이터가 없습니다</div>';
+    el.innerHTML = '<div class="h-full flex items-center justify-center text-sm opacity-75">표시할 관계망 데이터가 없습니다</div>';
     return;
   }
   if (typeof cytoscape === 'undefined') {

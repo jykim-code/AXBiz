@@ -43,7 +43,7 @@ async function onAsk(e) {
   const card = el('answerCard');
   const btn = el('askBtn');
   card.classList.remove('hidden');
-  card.innerHTML = '<div class="flex items-center gap-2 text-sm opacity-60"><span class="inline-block w-4 h-4 border-2 border-ink/20 border-t-ink rounded-full animate-spin"></span>자료를 검색하고 답변을 작성하는 중…</div>';
+  card.innerHTML = '<div class="flex items-center gap-2 text-sm opacity-80"><span class="inline-block w-4 h-4 border-2 border-ink/20 border-t-ink rounded-full animate-spin"></span>자료를 검색하고 답변을 작성하는 중…</div>';
   btn.disabled = true;
 
   try {
@@ -85,7 +85,7 @@ function sourceHTML(s) {
         '<summary class="cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden flex items-center gap-1 text-[11px] font-semibold text-lime-600">' +
           '근거 <span class="transition-transform group-open:rotate-180">▾</span>' +
         '</summary>' +
-        '<ul class="mt-1.5 space-y-1 text-xs opacity-70 list-disc pl-4">' +
+        '<ul class="mt-1.5 space-y-1 text-xs opacity-80 list-disc pl-4">' +
           kps.map((k) => '<li>' + escapeHtml(k) + '</li>').join('') +
         '</ul>' +
       '</details>'
@@ -94,8 +94,8 @@ function sourceHTML(s) {
     '<div class="flex items-center gap-2 mb-1">' +
     '<span class="text-[10px] font-bold text-lime-600">[' + s.n + ']</span>' +
     '<a href="/company?name=' + encodeURIComponent(s.name) + '" class="font-display font-semibold text-sm tracking-tight hover:text-lime-600">' + escapeHtml(s.name) + '</a>' +
-    '<span class="text-[10px] opacity-40 ml-auto">' + escapeHtml(s.date) + '</span></div>' +
-    '<div class="flex items-center gap-2 text-xs opacity-60">' +
+    '<span class="text-[10px] opacity-75 ml-auto">' + escapeHtml(s.date) + '</span></div>' +
+    '<div class="flex items-center gap-2 text-xs opacity-80">' +
     '<span>' + escapeHtml(s.category || '') + '</span>' +
     (links.length ? '<span class="ml-auto flex gap-2">' + links.join('') + '</span>' : '') +
     '</div>' + evidence + '</div>';
@@ -116,12 +116,12 @@ function render() {
   if (q) rows = rows.filter((r) =>
     (r.name + ' ' + (r.keyPoints || []).join(' ') + ' ' + (r.implications || []).join(' ') + ' ' + (r.hancomInsight || []).join(' ') + ' ' + (r.tags || []).join(' ')).toLowerCase().includes(q));
   el('expCount').textContent = rows.length + '건' + (activeTag ? ' · #' + activeTag : '');
-  el('expResults').innerHTML = rows.map(cardHTML).join('') || '<div class="opacity-40 text-sm p-4">결과 없음</div>';
+  el('expResults').innerHTML = rows.map(cardHTML).join('') || '<div class="opacity-75 text-sm p-4">결과 없음</div>';
 }
 
 function renderTags() {
   el('tagcloud').innerHTML = allTags.map((t) =>
-    '<button class="tagchip text-xs rounded-full px-3 py-1.5 border ' + (t === activeTag ? 'bg-lime border-lime text-ink font-semibold' : 'bg-beige border-ink/5 opacity-70 hover:border-lime') + '" data-t="' + escapeHtml(t) + '">#' + escapeHtml(t) + '</button>').join('');
+    '<button class="tagchip text-xs rounded-full px-3 py-1.5 border ' + (t === activeTag ? 'bg-lime border-lime text-ink font-semibold' : 'bg-beige border-ink/5 opacity-80 hover:border-lime') + '" data-t="' + escapeHtml(t) + '">#' + escapeHtml(t) + '</button>').join('');
   document.querySelectorAll('.tagchip').forEach((elm) => elm.onclick = () => {
     activeTag = activeTag === elm.dataset.t ? null : elm.dataset.t;
     const u = new URL(location.href);
@@ -134,10 +134,10 @@ function renderTags() {
 function cardHTML(r) {
   return '<div class="bg-white rounded-[18px] border border-ink/5 shadow-lg shadow-ink/5 p-4">' +
     '<div class="flex items-center gap-2 mb-1"><a href="/company?name=' + encodeURIComponent(r.name) + '" class="font-display font-bold tracking-tight hover:text-lime-600">' + escapeHtml(r.name) + '</a>' +
-    '<span class="text-[10px] bg-beige border border-ink/5 rounded-full px-2 py-0.5 opacity-60">' + escapeHtml(r.category) + '</span>' +
-    '<span class="text-[10px] opacity-40 ml-auto">' + escapeHtml(r.date) + '</span></div>' +
-    '<p class="text-sm opacity-70">' + escapeHtml((r.keyPoints || [])[0] || '') + '</p>' +
-    '<div class="flex flex-wrap gap-1.5 mt-2">' + (r.tags || []).map((t) => '<span class="text-[11px] opacity-60 bg-beige border border-ink/5 rounded-full px-2 py-0.5">#' + escapeHtml(t) + '</span>').join('') + '</div></div>';
+    '<span class="text-[10px] bg-beige border border-ink/5 rounded-full px-2 py-0.5 opacity-80">' + escapeHtml(r.category) + '</span>' +
+    '<span class="text-[10px] opacity-75 ml-auto">' + escapeHtml(r.date) + '</span></div>' +
+    '<p class="text-sm opacity-80">' + escapeHtml((r.keyPoints || [])[0] || '') + '</p>' +
+    '<div class="flex flex-wrap gap-1.5 mt-2">' + (r.tags || []).map((t) => '<span class="text-[11px] opacity-80 bg-beige border border-ink/5 rounded-full px-2 py-0.5">#' + escapeHtml(t) + '</span>').join('') + '</div></div>';
 }
 
 document.addEventListener('DOMContentLoaded', init);
