@@ -153,5 +153,23 @@ export async function onRequestPost({ request, env }) {
     return timingError(502, 'LLM_FAILED');
   }
 
-  return Response.json({ answer, sources });
+  // 답변에 실제 인용된 [n]만 출처로 노출(나머지 검색결과는 근거가 아니므로 제외).
+  // 인용 등장 순서대로 [1],[2]… 재번호하고 답변 본문의 번호도 함께 갱신한다.
+  const cited = [];
+  for (const m of answer.matchAll(/\[(\d+)\]/g)) {
+    const k = parseInt(m[1], 10);
+    if (!cited.includes(k) && sources.some((s) => s.n === k)) cited.push(k);
+  }
+  if (cited.length) {
+    const remap = new Map(cited.map((k, i) => [k, i + 1]));
+    answer = answer.replace(/\[(\d+)\]/g, (full, d) => {
+      const nn = remap.get(parseInt(d, 10));
+      return nn ? `[${nn}]` : ''; // 매핑 없는(미존재/환각) 인용은 제거
+    });
+    const finalSources = cited.map((k, i) => ({ ...sources.find((s) => s.n === k), n: i + 1 }));
+    return Response.json({ answer, sources: finalSources });
+  }
+
+  // 인용이 하나도 없으면(드묾) 출처를 특정할 수 없으므로 빈 출처로 답변만 반환.
+  return Response.json({ answer, sources: [] });
 }
