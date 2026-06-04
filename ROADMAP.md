@@ -40,6 +40,15 @@
 
 ## ✅ 완료
 
+### 기업 회사정보 + 재무 (DART 연동)  ✅  _(2026-06-04)_
+> 출처: Open DART. 기업 상세 2단(좌 주요동향 / 우 위 회사정보 · 우 아래 재무).
+- [x] `functions/_dart.js`: 회사개황 + 연도 요약(3개년+전년비 YoY) + 분기 추이(누적 차분 4분기) + D1 7일 캐시 + **User-Agent 필수**(CF Workers fetch 시 DART 비-JSON 방지)
+- [x] `GET /api/company-profile?name=` : `company_meta.corp_code` → DART → 캐시. 미매핑/해외/비상장 우아한 폴백
+- [x] `company_meta`(이름→corp_code 수동 매핑) + `company_profile` 캐시 테이블 / 시드: 네이버(00266961)·플래티어(01454341)·업스테이지(01786541)
+- [x] 기업 상세 UI: 회사 정보 카드 + 재무 카드(연도 요약 행 + 매출·영업이익 묶음 막대그래프, 인라인 SVG)
+- [ ] (남은 부분) **관리자 corp_code 입력 UI** — 신규 기업 매핑을 /admin에서 직접 지정 (현재는 D1 시드)
+- [ ] (후속) 업계평균 대비, 해외 기업 재무(SEC 등)
+
 ### 기업 페이지 카드 그리드 (Phase 1)  ✅  _(2026-06-04)_
 > 플랜: `.omc/plans/company-page-and-temporal-data-plan.md` (로컬 전용)
 - [x] 첫 화면 버튼 목록 → **카드 그리드**(이름·카테고리·최신 분석일·대표태그·최신 요약·등장N)
