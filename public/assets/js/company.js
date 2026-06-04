@@ -1,27 +1,65 @@
-/* 기업 — 목록(?name 없음) + 상세(?name=)  /api/reports/all 재사용 */
+/* 기업 — 카드 그리드(검색·카테고리 필터·정렬) + 상세(?name=)  /api/reports/all 재사용 */
 let REPORTS = [], ONT = null;
+let cq = '', activeCat = null, sortBy = 'latest'; // 'latest'(최신 분석일) | 'count'(등장 횟수)
+const CATS = ['대기업', '중견기업', '스타트업·중소'];
 
 function getParam(k) { return new URLSearchParams(location.search).get(k); }
+function el(id) { return document.getElementById(id); }
 
 async function init() {
   try { REPORTS = await API.all(); } catch { REPORTS = []; }
   ONT = buildOntology(REPORTS);
-  renderList();
+
   const name = getParam('name');
-  if (name && ONT.companies.some((c) => c.name === name)) renderDetail(name);
-  else renderEmpty();
+  if (name && ONT.companies.some((c) => c.name === name)) {
+    el('compBrowse').classList.add('hidden'); // 상세 진입 시 그리드 숨김
+    renderDetail(name);
+    return;
+  }
+
+  el('cq').addEventListener('input', (e) => { cq = e.target.value.trim().toLowerCase(); renderGrid(); });
+  el('sortToggle').addEventListener('click', () => { sortBy = sortBy === 'latest' ? 'count' : 'latest'; renderGrid(); });
+  renderCatFilter();
+  renderGrid();
 }
 
-function renderList() {
-  const sorted = ONT.companies.slice().sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  document.getElementById('compList').innerHTML = sorted.map((c) =>
-    '<a href="/company?name=' + encodeURIComponent(c.name) + '" class="text-sm rounded-full px-4 py-2 border bg-white border-ink/10 hover:border-lime">' +
-    escapeHtml(c.name) + ' <span class="opacity-75">' + c.count + '</span></a>').join('');
+function renderCatFilter() {
+  const chip = (label, val) =>
+    '<button class="catchip text-xs rounded-full px-3 py-1.5 border ' +
+    (activeCat === val ? 'bg-lime border-lime text-ink font-semibold' : 'bg-beige border-ink/5 text-ink/80 hover:border-lime') +
+    '" data-c="' + (val === null ? '' : escapeHtml(val)) + '">' + label + '</button>';
+  el('catFilter').innerHTML = chip('전체', null) + CATS.map((c) => chip(c, c)).join('');
+  el('catFilter').querySelectorAll('.catchip').forEach((b) => b.onclick = () => {
+    activeCat = b.dataset.c || null;
+    renderCatFilter();
+    renderGrid();
+  });
 }
 
-function renderEmpty() {
-  document.getElementById('compDetail').innerHTML =
-    '<div class="text-sm opacity-75 mt-4">위에서 기업을 선택하면 날짜별 동향을 모아 봅니다.' + (ONT.companies.length ? '' : ' (아직 데이터가 없습니다.)') + '</div>';
+function renderGrid() {
+  let rows = ONT.companies.slice();
+  if (activeCat) rows = rows.filter((c) => c.category === activeCat);
+  if (cq) rows = rows.filter((c) => (c.name + ' ' + [...c.tags].join(' ') + ' ' + (c.latest || '')).toLowerCase().includes(cq));
+  rows.sort((a, b) => sortBy === 'latest'
+    ? (b.latestDate || '').localeCompare(a.latestDate || '') || b.count - a.count
+    : b.count - a.count || (b.latestDate || '').localeCompare(a.latestDate || ''));
+  el('compCount').textContent = rows.length + '개 기업' + (activeCat ? ' · ' + activeCat : '');
+  el('sortToggle').textContent = '정렬: ' + (sortBy === 'latest' ? '최신순' : '등장순');
+  el('compGrid').innerHTML = rows.map(cardHTML).join('') || '<div class="text-sm text-ink/75 p-4">결과 없음</div>';
+}
+
+function cardHTML(c) {
+  const tags = [...c.tags].slice(0, 3);
+  return '<a href="/company?name=' + encodeURIComponent(c.name) + '" class="block bg-white rounded-[18px] border border-ink/5 shadow-lg shadow-ink/5 p-4 hover:-translate-y-0.5 transition-transform">' +
+    '<div class="flex items-center gap-2 mb-1">' +
+    '<span class="font-display font-bold tracking-tight">' + escapeHtml(c.name) + '</span>' +
+    '<span class="text-[10px] bg-beige border border-ink/5 rounded-full px-2 py-0.5 text-ink/80">' + escapeHtml(c.category || '') + '</span>' +
+    '<span class="text-[10px] text-ink/60 ml-auto">' + escapeHtml(c.latestDate || '') + '</span></div>' +
+    '<p class="text-sm text-ink/80 leading-snug line-clamp-2">' + escapeHtml(c.latest || '') + '</p>' +
+    '<div class="flex flex-wrap items-center gap-1.5 mt-2">' +
+    tags.map((t) => '<span class="text-[11px] text-ink/70 bg-beige border border-ink/5 rounded-full px-2 py-0.5">#' + escapeHtml(t) + '</span>').join('') +
+    '<span class="text-[11px] text-ink/60 ml-auto">' + c.count + '회 등장</span>' +
+    '</div></a>';
 }
 
 const sec = (t, a) => (a && a.length)
