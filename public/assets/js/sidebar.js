@@ -5,7 +5,6 @@
     { href: '/', label: '대시보드' },
     { href: '/explore', label: '탐색' },
     { href: '/company', label: '기업' },
-    { href: '/explore', label: '태그' },
     { href: '/feedback', label: '의견 보내기' },
   ];
   let path = location.pathname;
@@ -14,7 +13,7 @@
     const p = href.split('?')[0];
     return p === '/' ? path === '/' : path === p;
   }
-  // 첫 매칭만 활성(탐색/태그 중복 방지)
+  // 첫 매칭만 활성(중복 하이라이트 방지)
   let activated = false;
   const items = NAV.map((n) => {
     const on = !activated && active(n.href);

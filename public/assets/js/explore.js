@@ -23,6 +23,11 @@ async function init() {
   if (preset) { el('question').value = preset; el('qLen').textContent = preset.length; onAsk(); }
 
   render();
+
+  // ?tag= 로 들어오면(그래프·기업상세 등) 태그 결과가 질문 박스 아래 묻히지 않도록 브라우즈 섹션으로 스크롤
+  if (activeTag) {
+    el('browse').scrollIntoView({ behavior: REDUCED_MOTION ? 'auto' : 'smooth', block: 'start' });
+  }
 }
 
 /* ---------- 자연어 질문(RAG) ---------- */
