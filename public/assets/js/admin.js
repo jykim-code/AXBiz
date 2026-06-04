@@ -241,7 +241,9 @@ function init() {
   // 탭: 보고서 입력 / 의견함
   document.getElementById('tabReportBtn').addEventListener('click', () => showTab('report'));
   document.getElementById('tabSuggBtn').addEventListener('click', () => showTab('sugg'));
+  document.getElementById('tabDartBtn').addEventListener('click', () => showTab('dart'));
   document.getElementById('suggRefresh').addEventListener('click', loadSuggestions);
+  document.getElementById('dartRefresh').addEventListener('click', loadDartMappings);
 
   // 세션에 PIN이 있으면 바로 에디터로 (편의용; 서버 검증은 저장 시)
   const saved = sessionStorage.getItem('adminPin');
@@ -253,14 +255,16 @@ function init() {
   }
 }
 
-/* ===== 의견함 탭 ===== */
+/* ===== 탭 전환 (보고서 / 의견함 / DART 연결) ===== */
 function showTab(which) {
-  const reportOn = which === 'report';
-  document.getElementById('tab-report').classList.toggle('hidden', !reportOn);
-  document.getElementById('tab-suggestions').classList.toggle('hidden', reportOn);
-  document.getElementById('tabReportBtn').className = 'btn px-4 py-2 ' + (reportOn ? 'bg-ink text-white' : 'border border-ink/15 hover:bg-ink hover:text-white');
-  document.getElementById('tabSuggBtn').className = 'btn px-4 py-2 ' + (!reportOn ? 'bg-ink text-white' : 'border border-ink/15 hover:bg-ink hover:text-white');
-  if (!reportOn) loadSuggestions();
+  const tabs = { report: 'tab-report', sugg: 'tab-suggestions', dart: 'tab-dart' };
+  const btns = { report: 'tabReportBtn', sugg: 'tabSuggBtn', dart: 'tabDartBtn' };
+  for (const k in tabs) {
+    document.getElementById(tabs[k]).classList.toggle('hidden', k !== which);
+    document.getElementById(btns[k]).className = 'btn px-4 py-2 ' + (k === which ? 'bg-ink text-white' : 'border border-ink/15 hover:bg-ink hover:text-white');
+  }
+  if (which === 'sugg') loadSuggestions();
+  if (which === 'dart') loadDartMappings();
 }
 
 async function loadSuggestions() {
@@ -281,6 +285,116 @@ async function loadSuggestions() {
     if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
     list.innerHTML = '<div class="text-sm text-red-500">불러오기 실패: ' + (e.status || e.message) + '</div>';
   }
+}
+
+/* ===== DART 연결 탭 ===== */
+let DART_CORPS = null; // [{code,name,stock}]
+async function loadCorps() {
+  if (DART_CORPS) return DART_CORPS;
+  const txt = await (await fetch('/assets/dart-corps.txt')).text();
+  DART_CORPS = txt.split('\n').filter(Boolean).map((l) => {
+    const i = l.indexOf('\t'), j = l.indexOf('\t', i + 1);
+    return { code: l.slice(0, i), name: l.slice(i + 1, j), stock: l.slice(j + 1) };
+  });
+  return DART_CORPS;
+}
+function searchCorps(q) {
+  q = (q || '').trim().toLowerCase();
+  if (q.length < 2) return [];
+  const exact = [], starts = [], contains = [];
+  for (const c of DART_CORPS) {
+    const n = c.name.toLowerCase();
+    if (n === q) exact.push(c);
+    else if (n.startsWith(q)) starts.push(c);
+    else if (n.includes(q) || (c.stock && c.stock === q)) contains.push(c);
+  }
+  // 상장(stock 보유) 우선 정렬 보정
+  const rank = (arr) => arr.sort((a, b) => (b.stock ? 1 : 0) - (a.stock ? 1 : 0));
+  return exact.concat(rank(starts), rank(contains)).slice(0, 12);
+}
+
+async function loadDartMappings() {
+  const list = document.getElementById('dartList');
+  list.innerHTML = '<div class="text-sm opacity-50">불러오는 중…</div>';
+  try {
+    await loadCorps();
+    const [reports, metaRows] = await Promise.all([API.all().catch(() => []), API.companyMetaList(adminPin)]);
+    const names = [...new Set(reports.flatMap((r) => (r.companies || []).map((c) => c.name)))].sort((a, b) => a.localeCompare(b));
+    const metaMap = {};
+    (metaRows || []).forEach((m) => (metaMap[m.name] = m));
+    if (!names.length) { list.innerHTML = '<div class="text-sm opacity-50">등록된 기업이 없습니다.</div>'; return; }
+    list.innerHTML = '';
+    names.forEach((n) => list.appendChild(dartRow(n, metaMap[n])));
+  } catch (e) {
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
+    list.innerHTML = '<div class="text-sm text-red-500">불러오기 실패: ' + (e.status || e.message) + '</div>';
+  }
+}
+
+function dartRow(name, meta) {
+  let ovCeo = '';
+  if (meta && meta.overrides) { try { ovCeo = JSON.parse(meta.overrides).ceo || ''; } catch { /* skip */ } }
+  const search = el('input', { class: 'field dart-search', type: 'text', placeholder: 'DART 기업 검색 (이름/종목코드)…', autocomplete: 'off' });
+  const dropdown = el('div', { class: 'dart-dd hidden absolute z-10 left-0 right-0 mt-1 bg-white border border-ink/10 rounded-xl shadow-xl max-h-56 overflow-auto' });
+  const current = el('div', { class: 'text-xs mt-1' });
+  const ceo = el('input', { class: 'field dart-ceo', type: 'text', placeholder: '대표자 보정(선택)', value: ovCeo });
+  const status = el('span', { class: 'text-xs ml-1' });
+  const saveBtn = el('button', { type: 'button', class: 'btn flex-none bg-ink text-white px-4 py-2 hover:bg-lime hover:text-ink', text: '저장' });
+
+  const row = el('div', { class: 'bg-white rounded-2xl border border-ink/5 shadow p-4' }, [
+    el('div', { class: 'font-display font-semibold mb-1', text: name }),
+    current,
+    el('div', { class: 'relative mt-2' }, [search, dropdown]),
+    el('div', { class: 'flex items-center gap-2 mt-2' }, [ceo, saveBtn, status]),
+  ]);
+  row.dataset.corp = meta && meta.corp_code ? meta.corp_code : '';
+
+  function renderCurrent() {
+    const c = row.dataset.corp;
+    if (c) {
+      const hit = DART_CORPS.find((x) => x.code === c);
+      current.innerHTML = '연결됨: <b>' + escapeHtml(hit ? hit.name : '') + '</b> <span class="opacity-50">' + escapeHtml(c) + (hit && hit.stock ? ' · ' + escapeHtml(hit.stock) : '') + '</span> <button type="button" class="dart-clear text-red-500 ml-1">해제</button>';
+      const clr = current.querySelector('.dart-clear');
+      if (clr) clr.onclick = () => { row.dataset.corp = ''; renderCurrent(); };
+    } else {
+      current.innerHTML = '<span class="opacity-50">미연결 — DART 정보 미표시</span>';
+    }
+  }
+  renderCurrent();
+
+  let t;
+  search.addEventListener('input', () => {
+    clearTimeout(t);
+    t = setTimeout(() => {
+      const res = searchCorps(search.value);
+      if (!res.length) { dropdown.classList.add('hidden'); dropdown.innerHTML = ''; return; }
+      dropdown.innerHTML = '';
+      res.forEach((c) => {
+        const item = el('button', { type: 'button', class: 'block w-full text-left px-3 py-2 text-sm hover:bg-beige' });
+        item.innerHTML = escapeHtml(c.name) + ' <span class="opacity-50 text-xs">' + escapeHtml(c.code) + (c.stock ? ' · ' + escapeHtml(c.stock) : '') + '</span>';
+        item.onclick = () => { row.dataset.corp = c.code; search.value = ''; dropdown.classList.add('hidden'); renderCurrent(); };
+        dropdown.appendChild(item);
+      });
+      dropdown.classList.remove('hidden');
+    }, 180);
+  });
+  search.addEventListener('blur', () => setTimeout(() => dropdown.classList.add('hidden'), 200));
+
+  saveBtn.onclick = async () => {
+    status.style.color = '#111';
+    status.textContent = '저장 중…';
+    try {
+      await API.saveCompanyMeta({ name, corpCode: row.dataset.corp || '', overrides: { ceo: ceo.value.trim() } }, adminPin);
+      status.style.color = '#7ba500';
+      status.textContent = '저장됨';
+      toast(name + ' 연결 저장', true);
+    } catch (e) {
+      if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
+      status.style.color = '#dc2626';
+      status.textContent = '실패: ' + ((e.data && e.data.error) || e.status || e.message);
+    }
+  };
+  return row;
 }
 
 document.addEventListener('DOMContentLoaded', init);
