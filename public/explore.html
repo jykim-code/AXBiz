@@ -40,14 +40,14 @@
     <!-- 자연어 질문(RAG) -->
     <div class="bg-white rounded-[28px] border border-ink/5 shadow-xl shadow-ink/5 p-6 sm:p-8 mb-8">
       <form id="askForm">
-        <textarea id="question" rows="2" maxlength="500"
-          placeholder="예) 최근 AI 에이전트를 도입한 대기업은? · 한컴이 주목할 만한 스타트업 동향은?"
-          class="w-full resize-none border border-ink/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime"></textarea>
-        <div class="flex items-center justify-between mt-3">
-          <span class="text-xs text-ink/60"><span id="qLen">0</span>/500 · 수집된 자료를 근거로 답합니다</span>
+        <div class="flex items-center gap-2">
+          <textarea id="question" rows="1" maxlength="500"
+            placeholder="예) 최근 AI 에이전트를 도입한 대기업은? · 한컴이 주목할 만한 스타트업 동향은?"
+            class="flex-1 resize-none overflow-hidden border border-ink/10 rounded-full px-5 py-3 text-sm leading-snug focus:outline-none focus:border-lime"></textarea>
           <button type="submit" id="askBtn"
-            class="bg-ink text-lime font-semibold text-sm rounded-full px-5 py-2.5 hover:opacity-90 disabled:opacity-40 transition">질문</button>
+            class="flex-none bg-ink text-lime font-semibold text-sm rounded-full px-6 py-3 hover:opacity-90 disabled:opacity-40 transition">검색</button>
         </div>
+        <div class="mt-2 text-xs text-ink/60"><span id="qLen">0</span>/500 · 수집된 자료를 근거로 답합니다</div>
       </form>
       <!-- 답변·출처 -->
       <div id="answerCard" class="hidden mt-5 pt-5 border-t border-ink/5"></div>
