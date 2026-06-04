@@ -21,3 +21,19 @@ CREATE TABLE IF NOT EXISTS suggestions (
   name       TEXT,                             -- 작성자 이름(선택)
   status     TEXT NOT NULL DEFAULT 'new'       -- new / handled
 );
+
+-- 기업 ↔ DART corp_code 매핑(수동 진실원). 표시 기업명 기준.
+--  - corp_code 없으면(해외/미지정) 회사정보·재무 미제공.
+CREATE TABLE IF NOT EXISTS company_meta (
+  name       TEXT PRIMARY KEY,                 -- reports.companies[].name 과 매칭
+  corp_code  TEXT,                             -- DART corp_code (8자리), NULL=미지정
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- DART 응답 캐시(회사개황+재무). corp_code 기준. 재무는 분기 갱신이라 공격적 캐시.
+CREATE TABLE IF NOT EXISTS company_profile (
+  corp_code  TEXT PRIMARY KEY,
+  profile    TEXT,                             -- JSON: 회사개황
+  financials TEXT,                             -- JSON: 주요 재무
+  fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

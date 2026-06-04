@@ -101,14 +101,113 @@ function renderDetail(name) {
       '</div>';
   }).join('');
 
+  const tagsHTML = tags.map((t) => '<a href="/explore?tag=' + encodeURIComponent(t) + '" class="text-xs bg-white border border-ink/5 rounded-full px-2.5 py-1 hover:border-lime">#' + escapeHtml(t) + '</a>').join('');
   document.getElementById('compDetail').innerHTML =
-    '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6">' +
-    '<div class="flex items-center gap-3 flex-wrap"><h2 class="font-display font-bold text-3xl tracking-tight">' + escapeHtml(name) + '</h2><span class="text-xs bg-beige border border-ink/5 rounded-full px-3 py-1 opacity-80">' + escapeHtml(cat) + '</span></div>' +
-    '<div class="flex items-baseline gap-6 mt-2 text-sm opacity-80"><span><b class="font-display text-lg text-ink">' + ap.length + '</b> 회 등장</span><span>최근 <b class="text-ink">' + escapeHtml(ap[0] ? ap[0].date : '-') + '</b></span><span><b class="font-display text-lg text-ink">' + tags.length + '</b> 태그</span></div>' +
-    '<div class="flex flex-wrap gap-1.5 mt-3">' + tags.map((t) => '<a href="/explore?tag=' + encodeURIComponent(t) + '" class="text-xs bg-beige border border-ink/5 rounded-full px-2.5 py-1 hover:border-lime">#' + escapeHtml(t) + '</a>').join('') + '</div>' +
-    '<div class="mt-6 space-y-5 border-l-2 border-lime/40 pl-5">' + timeline + '</div>' +
-    (related.length ? '<div class="mt-6 pt-4 border-t border-ink/10"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">연관 기업 (태그 공유)</div><div class="flex flex-wrap gap-2">' + related.map((n) => '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-sm rounded-full px-3 py-1.5 border bg-white border-ink/10 hover:border-lime">' + escapeHtml(n) + '</a>').join('') + '</div></div>' : '') +
-    '</div>';
+    // 헤더 (전체 폭)
+    '<div class="mb-6">' +
+      '<div class="flex items-center gap-3 flex-wrap"><h2 class="font-display font-bold text-3xl tracking-tight">' + escapeHtml(name) + '</h2><span class="text-xs bg-white border border-ink/5 rounded-full px-3 py-1 text-ink/70">' + escapeHtml(cat) + '</span></div>' +
+      '<div class="flex items-baseline gap-6 mt-2 text-sm text-ink/80"><span><b class="font-display text-lg text-ink">' + ap.length + '</b> 회 등장</span><span>최근 <b class="text-ink">' + escapeHtml(ap[0] ? ap[0].date : '-') + '</b></span><span><b class="font-display text-lg text-ink">' + tags.length + '</b> 태그</span></div>' +
+      '<div class="flex flex-wrap gap-1.5 mt-3">' + tagsHTML + '</div>' +
+    '</div>' +
+    // 2단: 좌(주요 동향 2/3) · 우(회사정보+재무, 비동기 로드)
+    '<div class="grid lg:grid-cols-3 gap-6 items-start">' +
+      '<div id="detailMain" class="lg:col-span-2 bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6">' +
+        '<div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-3">주요 동향</div>' +
+        '<div class="space-y-5 border-l-2 border-lime/40 pl-5">' + timeline + '</div>' +
+      '</div>' +
+      '<div id="compProfile" class="space-y-6"></div>' +
+    '</div>' +
+    // 연관 기업 (전체 폭)
+    (related.length ? '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6 mt-6"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">연관 기업 (태그 공유)</div><div class="flex flex-wrap gap-2">' + related.map((n) => '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-sm rounded-full px-3 py-1.5 border bg-white border-ink/10 hover:border-lime">' + escapeHtml(n) + '</a>').join('') + '</div></div>' : '');
+  loadProfile(name);
+}
+
+/* ===== 회사정보 + 재무(DART) — 우측 컬럼 ===== */
+function fmtKRW(n) {
+  if (n == null) return '-';
+  const neg = n < 0, a = Math.abs(n);
+  let s;
+  if (a >= 1e12) s = (a / 1e12).toFixed(a / 1e12 >= 10 ? 0 : 1) + '조';
+  else if (a >= 1e8) s = Math.round(a / 1e8).toLocaleString() + '억';
+  else s = Math.round(a).toLocaleString();
+  return (neg ? '-' : '') + s;
+}
+function yoyBadge(y) {
+  if (y == null) return '';
+  const up = y >= 0, cls = up ? 'text-lime-600' : 'text-rose-500', ar = up ? '▲' : '▼';
+  return '<span class="text-xs font-semibold ' + cls + '">' + ar + ' ' + (Math.abs(y) * 100).toFixed(1) + '% <span class="text-ink/45 font-normal">전년比</span></span>';
+}
+function metricRow(label, series, yoy) {
+  if (!series || !series.length) return '';
+  const latest = series[series.length - 1];
+  return '<div class="flex items-baseline gap-3 py-2.5 border-b border-ink/5 last:border-0">' +
+    '<span class="text-sm text-ink/60 w-16 flex-none">' + label + '</span>' +
+    '<span class="font-display font-bold text-xl tracking-tight">' + fmtKRW(latest.value) + '</span>' +
+    '<span class="text-[11px] text-ink/45">' + latest.year + '년</span>' +
+    '<span class="ml-auto">' + yoyBadge(yoy) + '</span></div>';
+}
+// 매출액·영업이익 분기별 묶음 막대 + 범례
+function groupedBarChart(pts) {
+  const flat = pts.flatMap((p) => [p.revenue, p.operatingProfit]).filter((v) => v != null);
+  if (!flat.length) return '';
+  const W = 400, H = 190, padT = 36, padB = 26, padX = 12, ph = H - padT - padB, pw = W - padX * 2;
+  const maxPos = Math.max(0, ...flat), maxNeg = Math.max(0, ...flat.map((v) => -v)), span = (maxPos + maxNeg) || 1, scale = ph / span, zeroY = padT + maxPos * scale;
+  const n = pts.length, slot = pw / n, bw = Math.min(18, slot * 0.3), gap = 5;
+  let g = '';
+  g += '<rect x="' + padX + '" y="12" width="11" height="11" rx="2" fill="#c8f200"/><text x="' + (padX + 16) + '" y="21" font-size="11" fill="#111">매출액</text>';
+  g += '<rect x="' + (padX + 72) + '" y="12" width="11" height="11" rx="2" fill="#111"/><text x="' + (padX + 88) + '" y="21" font-size="11" fill="#111">영업이익</text>';
+  pts.forEach((p, i) => {
+    const cx = padX + slot * i + slot / 2;
+    [['revenue', '#c8f200', -(bw + gap / 2)], ['operatingProfit', '#111', gap / 2]].forEach(([key, color, off]) => {
+      const v = p[key];
+      if (v == null) return;
+      const x = cx + off, h = Math.max(1, Math.abs(v) * scale), y = v >= 0 ? zeroY - h : zeroY;
+      g += '<rect x="' + x + '" y="' + y + '" width="' + bw + '" height="' + h + '" rx="2" fill="' + color + '"/>';
+      const ly = v >= 0 ? y - 4 : y + h + 10;
+      g += '<text x="' + (x + bw / 2) + '" y="' + ly + '" text-anchor="middle" font-size="8.5" font-weight="700" fill="#111">' + fmtKRW(v) + '</text>';
+    });
+    g += '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10" fill="#888">' + escapeHtml(p.period) + '</text>';
+  });
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="w-full" preserveAspectRatio="xMidYMid meet">' + g + '</svg>';
+}
+function companyCard(c) {
+  const rows = [];
+  if (c.ceo) rows.push(['대표자', escapeHtml(c.ceo)]);
+  if (c.established) rows.push(['설립일', escapeHtml(c.established)]);
+  if (c.corpClass || c.stockCode) rows.push(['상장', escapeHtml([c.corpClass, c.stockCode].filter(Boolean).join(' · '))]);
+  if (c.industryCode) rows.push(['업종코드', escapeHtml(c.industryCode)]);
+  if (c.address) rows.push(['주소', escapeHtml(c.address)]);
+  if (c.homepage) { const u = safeUrl(c.homepage); if (u) rows.push(['홈페이지', '<a href="' + u + '" target="_blank" rel="noopener" class="text-lime-600 hover:underline">' + escapeHtml(c.homepage.replace(/^https?:\/\//, '')) + '</a>']); }
+  if (!rows.length) return '';
+  return '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-5">' +
+    '<div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-3">회사 정보</div>' +
+    '<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">' +
+    rows.map(([k, v]) => '<dt class="text-ink/55">' + k + '</dt><dd class="text-ink/90 break-all">' + v + '</dd>').join('') +
+    '</dl></div>';
+}
+function financeCard(f) {
+  if (!f) return '';
+  const a = f.annual, q = f.quarterly;
+  if (!a && !(q && q.length)) return '';
+  let html = '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-5">' +
+    '<div class="flex items-center gap-2 mb-2"><div class="text-xs font-bold uppercase tracking-widest text-lime-600">재무</div><span class="text-[10px] text-ink/45 ml-auto">출처: DART' + (a && a.fs ? ' · ' + a.fs : '') + ' · 단위 원</span></div>';
+  if (a) html += '<div>' + metricRow('매출액', a.revenue, a.revenueYoY) + metricRow('영업이익', a.operatingProfit, a.operatingProfitYoY) + '</div>';
+  if (q && q.length) html += '<div class="border-t border-ink/5 pt-3 mt-3"><div class="text-[11px] font-semibold text-ink/55 mb-1">분기 추이 (최신 4분기)</div>' + groupedBarChart(q) + '</div>';
+  return html + '</div>';
+}
+async function loadProfile(name) {
+  const right = document.getElementById('compProfile');
+  if (!right) return;
+  let d = null;
+  try { d = await API.companyProfile(name); } catch { d = null; }
+  if (d && d.available) {
+    const html = (d.company ? companyCard(d.company) : '') + (d.financials ? financeCard(d.financials) : '');
+    if (html.trim()) { right.innerHTML = html; return; }
+  }
+  // 데이터 없음(해외·미매핑) → 우측 제거, 좌측 전체폭
+  right.remove();
+  const main = document.getElementById('detailMain');
+  if (main) { main.classList.remove('lg:col-span-2'); main.classList.add('lg:col-span-3'); }
 }
 
 document.addEventListener('DOMContentLoaded', init);

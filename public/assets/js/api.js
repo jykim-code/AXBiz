@@ -63,6 +63,10 @@ const API = {
     }
     return data;
   },
+  // 기업 회사정보+재무 (공개). { available, company?, financials? }
+  companyProfile(name) {
+    return getJSON('/api/company-profile?name=' + encodeURIComponent(name));
+  },
   // 의견 제출 (공개)
   async sendSuggestion(payload) {
     const res = await fetch('/api/suggestions', {
