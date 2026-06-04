@@ -9,7 +9,16 @@
 ---
 
 ## 🟡 진행 중
-_(없음)_
+
+### 🕒 에픽: 1년치 데이터 + 최신/히스토리 정확성 (Phase 2)  🟡
+> 플랜: `.omc/plans/company-page-and-temporal-data-plan.md` (로컬 전용)
+> 증분(뉴스) 모델에서 기업의 "현재 상태"를 정확히 — **타임라인 인지(timeline-aware) RAG** + 파생 테이블.
+- [ ] `company_entries(company,date,category,data)` 파생 테이블 + 인덱스 (스키마·로컬/원격 적용)
+- [ ] `reports` POST/`reindex`에서 `company_entries` 동기화(날짜별 delete→insert)
+- [ ] `/api/ask` 타임라인 인지로 재작성: 매칭 기업의 dated 타임라인을 D1에서 날짜순 조회 → "현재 상태/변화 이력" 분리, 최신 우선, 현재 날짜 주입
+- [ ] 모순 픽스처(과거 없음→현재 있음)로 정확성 회귀 검증
+- [ ] (선택) `GET /api/companies`로 그리드 데이터 서버화
+- [ ] **1년치 데이터 본삽입** (데이터 제공 필요) — ⚠️ 삽입 전 Vectorize 무료 한도(≈벡터 4,880개) 점검
 
 ---
 
@@ -31,6 +40,19 @@ _(없음)_
 
 ## ✅ 완료
 
+### 기업 페이지 카드 그리드 (Phase 1)  ✅  _(2026-06-04)_
+> 플랜: `.omc/plans/company-page-and-temporal-data-plan.md` (로컬 전용)
+- [x] 첫 화면 버튼 목록 → **카드 그리드**(이름·카테고리·최신 분석일·대표태그·최신 요약·등장N)
+- [x] 검색(이름·태그·요약) + 카테고리 필터 + 정렬(최신순 기본/등장순), 클릭→기존 상세 타임라인
+- [x] `buildOntology`에 기업별 `latestDate`/최신 요약 집계 추가(기존 그래프·탐색 호환)
+
+### UI/UX·내비 다듬기 묶음  ✅  _(2026-06-04)_
+- [x] 사이드바 **라임 틴트 글래스모피즘**(`bg-lime/20 backdrop-blur`), 구성 동일·오버레이 블러
+- [x] 사이드바 중복 "태그" 메뉴 제거(전용 태그 페이지 폐기) + `?tag=` 진입 시 결과 섹션 자동 스크롤
+- [x] 헤더 Hancom 로고 클릭 → 홈(대시보드) 이동 (index/explore/company/feedback)
+- [x] `/explore`: 검색 전 결과 숨김 + 질문칸 **Enter 즉시 제출**(Shift+Enter 줄바꿈, 한글 IME 조합 Enter 무시)
+- [x] 대시보드·기업·탐색 흐릿한 텍스트 가독성 상향(opacity 40/50→75, 60/70→80; 장식·상태값 보존)
+
 ### 🔎 에픽: RAG 시맨틱 검색 (탐색 고도화)  ✅  _(2026-06-04)_
 > 검색=Cloudflare Vectorize(`ax-biz-radar-idx`, 1024d/cosine) / 임베딩=Workers AI `@cf/baai/bge-m3`(1024d) /
 > 생성=OpenRouter `deepseek/deepseek-v4-flash` / `/explore` 자연어 질문 + **키워드 폴백·태그 목록 유지**.
@@ -40,7 +62,8 @@ _(없음)_
 - [x] RAG-3 질의: `POST /api/ask` — 질문 임베딩→Vectorize 검색(cosine≥0.35)→D1 원본 재조회→OpenRouter 생성→`{answer, sources[]}`, `[n]` 인용·인젝션 방지
 - [x] RAG-4 프론트: `/explore` 자연어 질문 + 답변/출처 카드(→`/company`·원문), 인용 칩, 로딩/빈/오류, 키워드 폴백, `API.ask()`
 - [x] RAG-5 운영: 질문 ≤500자 + KV 고정 윈도우 Rate Limiting(IP/분 10, Pages가 ratelimit 바인딩 미지원이라 KV로 구현)
-- [ ] (남은 1스텝) **운영(main) 배포** — 운영 시크릿·인덱스는 준비됨, 코드 머지만 하면 라이브 동작
+- [x] 운영(main) 배포 + 라이브 검증 — 운영 시크릿·인덱스 준비, node(UTF-8) 끝단 질의 확인
+- [x] (후속 개선) 출처를 **답변에 실제 인용된 `[n]`만** 반환(+순차 재번호) / 출처 카드에 **근거(주요내용) 접이식** 표시
 
 ### 사이드바 IA + 탐색/기업상세/의견폼 + 지식그래프  ✅  _(2026-06-02)_
 - [x] 공유 사이드바(`sidebar.js`): 기본 닫힘 드로어, 이모지 없음, `/admin` 미노출
