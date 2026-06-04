@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>탐색 — AX Biz Radar</title>
+<title>검색 — AX Biz Radar</title>
 <link rel="icon" type="image/png" href="/assets/hancom_favicon.png" />
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -27,7 +27,7 @@
     <button data-sb-open aria-label="메뉴 열기" class="-ml-1 p-1 rounded-lg hover:bg-ink/10"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
     <a href="/" aria-label="홈(대시보드)으로" class="flex-none hover:opacity-80 transition"><img src="/assets/HANCOM.png" alt="HANCOM" class="h-6 w-auto" /></a>
     <span class="hidden sm:inline w-px h-5 bg-ink/20"></span>
-    <span class="font-display font-semibold text-sm">탐색</span>
+    <span class="font-display font-semibold text-sm">검색</span>
   </header>
 
   <main class="max-w-[1100px] w-full mx-auto px-5 sm:px-8 py-6">
@@ -48,7 +48,7 @@
           <button type="submit" id="askBtn"
             class="flex-none bg-ink text-lime font-semibold text-sm rounded-full px-6 py-3 hover:opacity-90 disabled:opacity-40 transition">검색</button>
         </div>
-        <div class="mt-2 text-xs text-ink/60"><span id="qLen">0</span>/500 · 수집된 자료를 근거로 답합니다</div>
+        <div class="mt-2 text-xs text-ink/60"><span id="qLen">0</span>/500 · RAG 검색 · 수집된 자료를 근거로 <b class="font-semibold text-ink/75">DeepSeek V4 Flash</b>가 답합니다</div>
       </form>
       <!-- 답변·출처 -->
       <div id="answerCard" class="hidden mt-5 pt-5 border-t border-ink/5"></div>
@@ -56,7 +56,7 @@
 
     <!-- 태그·키워드로 탐색(브라우즈 / 폴백) -->
     <div id="browse" class="scroll-mt-24 mb-5">
-      <p class="text-sm font-bold uppercase tracking-widest text-lime-600 mb-3">또는 태그·키워드로 탐색</p>
+      <p class="text-sm font-bold uppercase tracking-widest text-lime-600 mb-3">또는 태그·키워드로 검색</p>
       <input id="q" placeholder="기업명·주요내용·시사점·한컴인사이트·태그 전체 검색…" class="w-full bg-white border border-ink/10 rounded-full px-5 py-3 text-sm focus:outline-none focus:border-lime" />
       <div class="flex flex-wrap gap-2 mt-3" id="tagcloud"></div>
       <div class="text-xs text-ink/60 mt-3" id="expCount"></div>

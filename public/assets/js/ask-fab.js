@@ -87,7 +87,7 @@
         const data = await API.ask(question);
         ans.innerHTML = answerHTML(data);
       } catch (err) {
-        ans.innerHTML = '<div class="text-sm bg-beige border border-ink/5 rounded-xl p-3">답변을 가져오지 못했어요. 잠시 후 다시 시도하거나 <a href="/explore" class="text-lime-600 hover:underline">탐색</a>에서 검색해 주세요.</div>';
+        ans.innerHTML = '<div class="text-sm bg-beige border border-ink/5 rounded-xl p-3">답변을 가져오지 못했어요. 잠시 후 다시 시도하거나 <a href="/explore" class="text-lime-600 hover:underline">검색</a> 페이지에서 다시 시도해 주세요.</div>';
       } finally {
         submitBtn.disabled = false;
       }

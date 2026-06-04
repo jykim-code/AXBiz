@@ -3,7 +3,7 @@
 (function () {
   const NAV = [
     { href: '/', label: '대시보드' },
-    { href: '/explore', label: '탐색' },
+    { href: '/explore', label: '검색' },
     { href: '/company', label: '기업' },
     { href: '/feedback', label: '의견 보내기' },
   ];
