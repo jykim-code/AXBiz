@@ -34,19 +34,22 @@
     <span class="font-display font-semibold text-sm">의견 보내기</span>
   </header>
 
-  <main class="max-w-[640px] w-full mx-auto px-5 sm:px-8 py-8">
-    <div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6 sm:p-8">
-      <h2 class="font-display font-bold text-2xl tracking-tight">의견 보내기</h2>
-      <p class="text-sm opacity-60 mt-1.5">추적했으면 하는 기업, 보완할 내용, 오류 등을 자유롭게 제안해 주세요. 관리자 검토 후 반영됩니다.</p>
-
-      <form id="fbForm" class="space-y-4 mt-6">
+  <main class="max-w-[640px] w-full mx-auto px-5 sm:px-8 py-8 sm:py-10">
+    <!-- 에디토리얼 헤딩 (기업·탐색 페이지와 동일 톤) -->
+    <div class="mb-8">
+      <p class="text-sm font-bold uppercase tracking-widest text-lime-600 mb-3">Feedback</p>
+      <h1 class="text-3xl md:text-4xl lg:text-5xl font-display font-bold tracking-tight mb-4">의견을 보내주세요.</h1>
+      <p class="text-lg sm:text-xl text-ink/70">추적했으면 하는 기업, 보완할 내용, 오류 등을 자유롭게 제안해 주세요. 관리자 검토 후 반영됩니다:)</p>
+    </div>
+    <div class="bg-white rounded-[28px] border border-ink/5 shadow-xl shadow-ink/5 p-6 sm:p-8">
+      <form id="fbForm" class="space-y-4">
         <div><div class="label">유형</div>
           <select id="f-type" class="field"><option>기업 추가 요청</option><option>내용 추가/수정</option><option>오류 제보</option><option>기타</option></select></div>
-        <div><div class="label">관련 기업명 (선택)</div><input id="f-company" class="field" placeholder="예: 클로바엑스랩" /></div>
+        <div><div class="label">관련 기업명 (선택)</div><input id="f-company" class="field" placeholder="예: AX랩" /></div>
         <div><div class="label">내용</div><textarea id="f-content" rows="5" class="field" placeholder="제안 내용을 적어주세요"></textarea></div>
         <div class="grid grid-cols-2 gap-3">
           <div><div class="label">소속 팀</div><input id="f-team" class="field" placeholder="예: AX사업팀" /></div>
-          <div><div class="label">이름</div><input id="f-name" class="field" placeholder="예: 홍길동" /></div>
+          <div><div class="label">이름</div><input id="f-name" class="field" placeholder="예: 김한컴" /></div>
         </div>
         <input class="hp" id="f-hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
         <button id="fbSubmit" type="submit" class="w-full bg-ink text-white rounded-full py-3 font-semibold hover:bg-lime hover:text-ink transition-colors">제출</button>
@@ -54,12 +57,12 @@
       </form>
 
       <div class="bg-beige border border-ink/5 rounded-2xl p-4 mt-6">
-        <div class="label mb-2">작성 예시 — 기업 추가</div>
-        <ul class="text-sm opacity-75 space-y-1">
+        <div class="label mb-2">[작성 예시] 기업 추가</div>
+        <ul class="text-sm text-ink/70 space-y-1">
           <li>· <b>유형</b>: 기업 추가 요청</li>
-          <li>· <b>관련 기업명</b>: 클로바엑스랩</li>
-          <li>· <b>내용</b>: 최근 의료 특화 LLM 출시로 헬스케어 AX 경쟁사로 부상. 추적 대상 추가 요청.</li>
-          <li>· <b>소속 팀 / 이름</b>: AX사업팀 / 김OO</li>
+          <li>· <b>관련 기업명</b>: AX랩</li>
+          <li>· <b>내용</b>: 최근 의료 특화 AX 플랫폼 출시로 경쟁사로 부상. 추적 대상 추가 요청</li>
+          <li>· <b>소속 팀 / 이름</b>: AX사업팀 / 김한컴</li>
         </ul>
       </div>
 
