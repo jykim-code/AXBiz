@@ -100,7 +100,7 @@ function buildGraph(reports) {
     nodes += '<circle cx="' + p.x + '" cy="' + p.y + '" r="3.4" fill="#ffffff" fill-opacity=".5"/>';
     nodes +=
       '<text x="' + (p.x + dx) + '" y="' + (p.y + 3) + '" text-anchor="' + anc +
-      '" font-size="9" fill="#ffffff" fill-opacity=".42" font-family="Inter">#' +
+      '" font-size="9" fill="#ffffff" fill-opacity=".42" font-family="Inter, Pretendard">#' +
       escapeHtml(t) + '</text>';
   });
   companies.forEach((c) => {
@@ -110,7 +110,7 @@ function buildGraph(reports) {
     nodes += '<circle cx="' + p.x + '" cy="' + p.y + '" r="6.5" fill="#c8f200"/>';
     nodes +=
       '<text x="' + (p.x + dx) + '" y="' + (p.y + 4) + '" text-anchor="' + anc +
-      '" font-size="11.5" fill="#ffffff" font-weight="600" font-family="Space Grotesk">' +
+      '" font-size="11.5" fill="#ffffff" font-weight="600" font-family="Space Grotesk, Pretendard">' +
       escapeHtml(c.name) + '</text>';
   });
   // 중앙 허브 (reduced-motion이면 펄스 애니메이션 생략)

@@ -9,14 +9,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
 <script>
   tailwind.config = {
     theme: {
       extend: {
         colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
         fontFamily: {
-          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-          display: ['"Space Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          sans: ['Inter', 'Pretendard', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          display: ['"Space Grotesk"', 'Pretendard', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         },
       },
     },
@@ -24,8 +25,8 @@
 </script>
 <style>
   html { scroll-behavior: smooth; }
-  body { background-color: #f7f5f0; color: #111; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
-  h1,h2,h3,h4,h5,h6 { font-family: 'Space Grotesk', sans-serif; }
+  body { background-color: #f7f5f0; color: #111; font-family: 'Inter', 'Pretendard', sans-serif; -webkit-font-smoothing: antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family: 'Space Grotesk', 'Pretendard', sans-serif; }
   ::selection { background: #c8f200; color: #111; }
   .sn-reveal { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
   .sn-reveal.sn-visible { opacity: 1; transform: translateY(0); }

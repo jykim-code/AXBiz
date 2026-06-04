@@ -28,7 +28,7 @@ function initGraph(reports) {
     container: el,
     elements: els,
     style: [
-      { selector: 'node', css: { label: 'data(label)', color: '#fff', 'font-size': 9, 'font-family': 'Inter', 'text-valign': 'center', 'text-halign': 'right', 'text-margin-x': 3 } },
+      { selector: 'node', css: { label: 'data(label)', color: '#fff', 'font-size': 9, 'font-family': 'Inter, Pretendard', 'text-valign': 'center', 'text-halign': 'right', 'text-margin-x': 3 } },
       { selector: 'node[type="ax"]', css: { 'background-color': '#c8f200', width: 22, height: 22, label: 'AX', color: '#111', 'text-halign': 'center', 'font-weight': 'bold' } },
       { selector: 'node[type="company"]', css: { 'background-color': '#c8f200', width: 'mapData(deg,0,5,12,24)', height: 'mapData(deg,0,5,12,24)', 'font-weight': 600, 'font-size': 10 } },
       { selector: 'node[type="tag"]', css: { 'background-color': '#ffffff', 'background-opacity': 0.55, width: 7, height: 7, opacity: 0.7 } },
