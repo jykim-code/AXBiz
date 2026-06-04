@@ -105,6 +105,7 @@ export async function onRequestPost({ request, env }) {
       category: c.category || '',
       sourceUrl: c.sourceUrl || '',
       confluenceUrl: c.confluenceUrl || '',
+      keyPoints: (c.keyPoints || []).slice(0, 6), // 근거 표시용 주요내용 불릿
     });
     blocks.push(
       `[${n}] ${c.name || ''} (${c.category || ''}, ${date})\n` +

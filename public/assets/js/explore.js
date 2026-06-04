@@ -79,6 +79,17 @@ function sourceHTML(s) {
   const links = [];
   if (s.sourceUrl) links.push('<a href="' + safeUrl(s.sourceUrl) + '" target="_blank" rel="noopener" class="text-lime-600 hover:underline">원문</a>');
   if (s.confluenceUrl) links.push('<a href="' + safeUrl(s.confluenceUrl) + '" target="_blank" rel="noopener" class="text-lime-600 hover:underline">상세</a>');
+  const kps = s.keyPoints || [];
+  const evidence = kps.length
+    ? '<details class="mt-2 group">' +
+        '<summary class="cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden flex items-center gap-1 text-[11px] font-semibold text-lime-600">' +
+          '근거 <span class="transition-transform group-open:rotate-180">▾</span>' +
+        '</summary>' +
+        '<ul class="mt-1.5 space-y-1 text-xs opacity-70 list-disc pl-4">' +
+          kps.map((k) => '<li>' + escapeHtml(k) + '</li>').join('') +
+        '</ul>' +
+      '</details>'
+    : '';
   return '<div class="bg-beige border border-ink/5 rounded-[14px] p-3">' +
     '<div class="flex items-center gap-2 mb-1">' +
     '<span class="text-[10px] font-bold text-lime-600">[' + s.n + ']</span>' +
@@ -87,7 +98,7 @@ function sourceHTML(s) {
     '<div class="flex items-center gap-2 text-xs opacity-60">' +
     '<span>' + escapeHtml(s.category || '') + '</span>' +
     (links.length ? '<span class="ml-auto flex gap-2">' + links.join('') + '</span>' : '') +
-    '</div></div>';
+    '</div>' + evidence + '</div>';
 }
 
 /* ---------- 태그·키워드 브라우즈(기존 동작 유지) ---------- */
