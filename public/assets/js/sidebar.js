@@ -18,20 +18,21 @@
   const items = NAV.map((n) => {
     const on = !activated && active(n.href);
     if (on) activated = true;
-    return '<a href="' + n.href + '" class="block px-4 py-2.5 rounded-xl hover:bg-ink/5 text-sm ' + (on ? 'bg-lime/20 font-semibold' : '') + '">' + n.label + '</a>';
+    const cls = on ? 'bg-white/60 text-ink font-semibold ring-1 ring-ink/10' : 'text-ink/80 hover:bg-white/40';
+    return '<a href="' + n.href + '" class="block px-4 py-2.5 rounded-xl text-sm transition-colors ' + cls + '">' + n.label + '</a>';
   }).join('');
 
   const closeIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M6 18L18 6"/></svg>';
   const html =
-    '<aside id="app-sb" class="fixed z-40 top-0 left-0 h-full w-64 bg-white border-r border-ink/10 flex flex-col -translate-x-full transition-transform duration-300">' +
-      '<div class="h-20 flex items-center justify-between px-5 border-b border-ink/5">' +
+    '<aside id="app-sb" class="fixed z-40 top-0 left-0 h-full w-64 bg-lime/20 backdrop-blur-2xl border-r border-lime/40 shadow-2xl shadow-lime-600/10 flex flex-col -translate-x-full transition-transform duration-300">' +
+      '<div class="h-20 flex items-center justify-between px-5 border-b border-ink/10">' +
         '<div class="flex items-center gap-2"><img src="/assets/HANCOM.png" alt="HANCOM" class="h-6 w-auto"/><span class="font-display font-semibold text-sm">AX Biz Radar</span></div>' +
         '<button data-sb-close aria-label="사이드바 닫기" class="opacity-50 hover:opacity-100">' + closeIcon + '</button>' +
       '</div>' +
       '<nav class="flex-1 overflow-y-auto p-3 space-y-1">' + items + '</nav>' +
-      '<div class="p-4 border-t border-ink/5 text-[11px] opacity-40">시장 동향 포착에서 인사이트까지</div>' +
+      '<div class="p-4 border-t border-ink/10 text-[11px] opacity-70">시장 동향 포착에서 인사이트까지</div>' +
     '</aside>' +
-    '<div data-sb-overlay class="fixed inset-0 bg-ink/40 z-30 hidden"></div>';
+    '<div data-sb-overlay class="fixed inset-0 bg-ink/15 backdrop-blur-[2px] z-30 hidden"></div>';
 
   function mount() {
     const tmp = document.createElement('div');
