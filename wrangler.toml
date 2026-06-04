@@ -14,6 +14,23 @@ binding = "DB"
 database_name = "ax-biz-radar"
 database_id = "9bcb9772-4e79-4eba-9afa-763c3dce65af"
 
+# Workers AI: 임베딩(@cf/baai/bge-m3) 호출용. 코드에서 env.AI. 키 불필요(바인딩).
+[ai]
+binding = "AI"
+
+# Vectorize: RAG 검색 인덱스(1024d/cosine). 코드에서 env.VECTORIZE.
+# 로컬 에뮬레이션 없음 → 검증은 프리뷰/원격 배포에서.
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "ax-biz-radar-idx"
+
+# Rate Limiting(KV 기반): 공개 /api/ask 남용 방지(IP/분 10회). 코드에서 env.RL.
+# Pages 는 ratelimit 바인딩 미지원이라 KV 고정 윈도우 카운터로 best-effort 제한.
+# id 는 `npx wrangler kv namespace create RL` 출력값으로 교체.
+[[kv_namespaces]]
+binding = "RL"
+id = "feab5994160544568c7bbac7c347a51b"
+
 # ADMIN_PIN 은 시크릿이므로 여기 두지 않는다.
 #  - 로컬:  .dev.vars 의 ADMIN_PIN
 #  - 운영:  Cloudflare Pages > Settings > Environment variables 에 ADMIN_PIN 등록

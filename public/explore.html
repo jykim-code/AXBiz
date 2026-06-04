@@ -30,7 +30,27 @@
   </header>
 
   <main class="max-w-[1100px] w-full mx-auto px-5 sm:px-8 py-6">
+    <!-- 자연어 질문(RAG) -->
+    <div class="bg-white rounded-[20px] border border-ink/5 shadow-xl shadow-ink/5 p-5 sm:p-6 mb-5">
+      <p class="text-[11px] font-semibold tracking-[0.18em] text-lime-600 uppercase mb-1">Ask</p>
+      <h1 class="font-display font-bold tracking-tight text-xl sm:text-2xl mb-3">무엇이든 물어보세요</h1>
+      <form id="askForm">
+        <textarea id="question" rows="2" maxlength="500"
+          placeholder="예) 최근 AI 에이전트를 도입한 대기업은? · 한컴이 주목할 만한 스타트업 동향은?"
+          class="w-full resize-none border border-ink/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime"></textarea>
+        <div class="flex items-center justify-between mt-3">
+          <span class="text-xs opacity-40"><span id="qLen">0</span>/500 · 수집된 자료를 근거로 답합니다</span>
+          <button type="submit" id="askBtn"
+            class="bg-ink text-lime font-semibold text-sm rounded-full px-5 py-2.5 hover:opacity-90 disabled:opacity-40 transition">질문</button>
+        </div>
+      </form>
+      <!-- 답변·출처 -->
+      <div id="answerCard" class="hidden mt-5 pt-5 border-t border-ink/5"></div>
+    </div>
+
+    <!-- 태그·키워드로 탐색(브라우즈 / 폴백) -->
     <div class="bg-white rounded-[20px] border border-ink/5 shadow-xl shadow-ink/5 p-5 mb-5">
+      <p class="text-[11px] font-semibold tracking-[0.18em] text-lime-600 uppercase mb-3">또는 태그·키워드로 탐색</p>
       <input id="q" placeholder="기업명·주요내용·시사점·한컴인사이트·태그 전체 검색…" class="w-full border border-ink/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime" />
       <div class="flex flex-wrap gap-2 mt-3" id="tagcloud"></div>
       <div class="text-xs opacity-50 mt-3" id="expCount"></div>

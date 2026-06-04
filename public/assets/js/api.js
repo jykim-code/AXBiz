@@ -47,6 +47,22 @@ const API = {
     }
     return data;
   },
+  // 자연어 질문 RAG (공개). { answer, sources[] } 반환. 실패 시 status 를 가진 Error throw.
+  async ask(question) {
+    const res = await fetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+    let data = {};
+    try { data = await res.json(); } catch { /* no body */ }
+    if (!res.ok) {
+      const err = new Error(data.error || 'REQUEST_FAILED');
+      err.status = res.status; err.data = data;
+      throw err;
+    }
+    return data;
+  },
   // 의견 제출 (공개)
   async sendSuggestion(payload) {
     const res = await fetch('/api/suggestions', {

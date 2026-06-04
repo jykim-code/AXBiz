@@ -1,6 +1,9 @@
 // /api/reports
 //   GET  ?date=YYYY-MM-DD  → 해당 날짜 companies 배열(없으면 [])  (공개)
 //   POST                   → upsert. 헤더 x-admin-pin 서버 검증 (자동화 진입점)
+//                            저장 성공 후 Vectorize 증분 재색인(old 삭제→new upsert).
+
+import { reindexDate } from '../_rag.js';
 
 const CATEGORIES = ['대기업', '중견기업', '스타트업·중소'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -118,6 +121,21 @@ export async function onRequestPost({ request, env }) {
   const companies = body.companies.map(sanitizeCompany).filter(Boolean);
   const json = JSON.stringify(companies);
 
+  // 증분 재색인을 위해, 덮어쓰기 전 그 날짜의 기존 기업 수를 읽어 둔다.
+  let oldCount = 0;
+  try {
+    const prev = await env.DB
+      .prepare('SELECT companies FROM reports WHERE date = ?')
+      .bind(date)
+      .first();
+    if (prev) {
+      const arr = JSON.parse(prev.companies || '[]');
+      if (Array.isArray(arr)) oldCount = arr.length;
+    }
+  } catch {
+    oldCount = 0; // 실패해도 저장은 진행(색인은 best-effort)
+  }
+
   try {
     await env.DB
       .prepare(
@@ -129,9 +147,22 @@ export async function onRequestPost({ request, env }) {
       )
       .bind(date, json)
       .run();
-    return Response.json({ ok: true, date, count: companies.length });
   } catch (err) {
     console.error('POST /api/reports', err);
     return Response.json({ error: 'DB_ERROR' }, { status: 500 });
   }
+
+  // D1(원본)은 저장됐다. Vectorize 증분 재색인은 best-effort —
+  // 실패해도 저장 자체는 성공으로 보고하되 indexWarning 으로 알린다.
+  let indexWarning;
+  if (env.AI && env.VECTORIZE) {
+    try {
+      await reindexDate(env, date, oldCount, companies);
+    } catch (err) {
+      console.error('POST /api/reports: reindex', err);
+      indexWarning = String((err && err.message) || err);
+    }
+  }
+
+  return Response.json({ ok: true, date, count: companies.length, ...(indexWarning ? { indexWarning } : {}) });
 }
