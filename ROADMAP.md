@@ -45,6 +45,7 @@
 - [x] 첫 화면 버튼 목록 → **카드 그리드**(이름·카테고리·최신 분석일·대표태그·최신 요약·등장N)
 - [x] 검색(이름·태그·요약) + 카테고리 필터 + 정렬(최신순 기본/등장순), 클릭→기존 상세 타임라인
 - [x] `buildOntology`에 기업별 `latestDate`/최신 요약 집계 추가(기존 그래프·탐색 호환)
+- [x] 에디토리얼 카드 디자인(Template 톤): `rounded-[28px]`·라임 eyebrow·대형 기업명·화살표 원·첫 카드 다크 + 대형 헤딩
 
 ### UI/UX·내비 다듬기 묶음  ✅  _(2026-06-04)_
 - [x] 사이드바 **라임 틴트 글래스모피즘**(`bg-lime/20 backdrop-blur`), 구성 동일·오버레이 블러
@@ -52,6 +53,11 @@
 - [x] 헤더 Hancom 로고 클릭 → 홈(대시보드) 이동 (index/explore/company/feedback)
 - [x] `/explore`: 검색 전 결과 숨김 + 질문칸 **Enter 즉시 제출**(Shift+Enter 줄바꿈, 한글 IME 조합 Enter 무시)
 - [x] 대시보드·기업·탐색 흐릿한 텍스트 가독성 상향(opacity 40/50→75, 60/70→80; 장식·상태값 보존)
+- [x] 기업·탐색·의견 페이지 **에디토리얼 디자인 통일**(eyebrow + 대형 헤딩 + rounded-28 카드), 탐색 질문창 한 줄 검색바(버튼 "검색")
+- [x] **한글 웹폰트 Pretendard** 적용(라틴은 Space Grotesk/Inter 유지, 한글만 폴백; CSP에 jsdelivr 허용; 그래프 라벨 포함)
+- [x] 사이드바 상단 CI 클릭 시 닫기
+- [x] 지식그래프 라벨(텍스트) 클릭도 노드와 동일 선택·이동(`text-events`)
+- [x] **플로팅 질의응답(FAB)** 우하단 버튼 — RAG 질의 패널(`ask-fab.js`, feedback·admin 제외)
 
 ### 🔎 에픽: RAG 시맨틱 검색 (탐색 고도화)  ✅  _(2026-06-04)_
 > 검색=Cloudflare Vectorize(`ax-biz-radar-idx`, 1024d/cosine) / 임베딩=Workers AI `@cf/baai/bge-m3`(1024d) /
