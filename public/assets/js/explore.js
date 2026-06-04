@@ -17,6 +17,10 @@ async function init() {
   el('q').addEventListener('input', render);
   el('askForm').addEventListener('submit', onAsk);
   el('question').addEventListener('input', (e) => { el('qLen').textContent = e.target.value.length; });
+  // Enter 로 바로 질문(Shift+Enter 는 줄바꿈). 한글 IME 조합 확정 Enter 는 무시(e.isComposing).
+  el('question').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); onAsk(); }
+  });
 
   // ?q= 로 들어오면 자동 질문
   const preset = getParam('q');
@@ -90,6 +94,12 @@ function sourceHTML(s) {
 function render() {
   renderTags();
   const q = el('q').value.trim().toLowerCase();
+  // 검색어도 태그도 없으면 결과를 표시하지 않는다(탐색 페이지: 검색 결과만 노출).
+  if (!q && !activeTag) {
+    el('expCount').textContent = '';
+    el('expResults').innerHTML = '';
+    return;
+  }
   let rows = entries;
   if (activeTag) rows = rows.filter((r) => (r.tags || []).includes(activeTag));
   if (q) rows = rows.filter((r) =>
