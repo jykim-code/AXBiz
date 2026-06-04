@@ -16,8 +16,9 @@ function num(s) {
 
 async function dartJson(env, path, params) {
   const qs = new URLSearchParams({ crtfc_key: env.DART_API_KEY, ...params });
-  const r = await fetch(`${DART}/${path}?${qs}`);
-  return r.json();
+  const r = await fetch(`${DART}/${path}?${qs}`, { headers: { 'User-Agent': 'AXBizRadar/1.0', Accept: 'application/json' } });
+  const t = await r.text();
+  try { return JSON.parse(t); } catch { throw new Error('DART_NON_JSON ' + r.status + ' ' + t.slice(0, 60)); }
 }
 
 // 회사개황. status!=='000'(데이터 없음/오류)면 null.
