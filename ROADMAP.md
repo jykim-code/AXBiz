@@ -46,7 +46,8 @@
 - [x] `GET /api/company-profile?name=` : `company_meta.corp_code` → DART → 캐시. 미매핑/해외/비상장 우아한 폴백
 - [x] `company_meta`(이름→corp_code 수동 매핑) + `company_profile` 캐시 테이블 / 시드: 네이버(00266961)·플래티어(01454341)·업스테이지(01786541)
 - [x] 기업 상세 UI: 회사 정보 카드 + 재무 카드(연도 요약 행 + 매출·영업이익 묶음 막대그래프, 인라인 SVG)
-- [ ] (남은 부분) **관리자 corp_code 입력 UI** — 신규 기업 매핑을 /admin에서 직접 지정 (현재는 D1 시드)
+- [x] **관리자 'DART 연결' 탭** — 검색→선택 자동완성(전체 11.8만 정적목록 `dart-corps.txt` 클라이언트 검색)으로 기업↔corp_code 매핑 + 대표자 등 overrides 보정. `/api/company-meta`(PIN)
+- [ ] (유지보수) `dart-corps.txt` 정기 갱신(신규 등록 법인 반영) — 현재 스냅샷
 - [ ] (후속) 업계평균 대비, 해외 기업 재무(SEC 등)
 
 ### 기업 페이지 카드 그리드 (Phase 1)  ✅  _(2026-06-04)_
