@@ -26,7 +26,7 @@
   const html =
     '<aside id="app-sb" class="fixed z-40 top-0 left-0 h-full w-64 bg-lime/20 backdrop-blur-2xl border-r border-lime/40 shadow-2xl shadow-lime-600/10 flex flex-col -translate-x-full transition-transform duration-300">' +
       '<div class="h-20 flex items-center justify-between px-5 border-b border-ink/10">' +
-        '<div class="flex items-center gap-2"><img src="/assets/HANCOM.png" alt="HANCOM" class="h-6 w-auto"/><span class="font-display font-semibold text-sm">AX Biz Radar</span></div>' +
+        '<div data-sb-close role="button" tabindex="0" aria-label="사이드바 닫기" class="flex items-center gap-2 cursor-pointer"><img src="/assets/HANCOM.png" alt="HANCOM" class="h-6 w-auto"/><span class="font-display font-semibold text-sm">AX Biz Radar</span></div>' +
         '<button data-sb-close aria-label="사이드바 닫기" class="opacity-50 hover:opacity-100">' + closeIcon + '</button>' +
       '</div>' +
       '<nav class="flex-1 overflow-y-auto p-3 space-y-1">' + items + '</nav>' +
@@ -43,7 +43,10 @@
     const open = () => { sb.classList.remove('-translate-x-full'); ov.classList.remove('hidden'); };
     const close = () => { sb.classList.add('-translate-x-full'); ov.classList.add('hidden'); };
     document.querySelectorAll('[data-sb-open]').forEach((b) => b.addEventListener('click', open));
-    sb.querySelector('[data-sb-close]').addEventListener('click', close);
+    sb.querySelectorAll('[data-sb-close]').forEach((b) => {
+      b.addEventListener('click', close);
+      b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); close(); } });
+    });
     ov.addEventListener('click', close);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
   }
