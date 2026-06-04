@@ -9,9 +9,11 @@ export async function onRequestGet({ request, env }) {
   if (!name) return Response.json({ error: 'INVALID_NAME' }, { status: 400 });
 
   let corpCode = null;
+  let overrides = null; // company_meta.overrides: DART 오류·관리자 수정 보정(JSON)
   try {
-    const row = await env.DB.prepare('SELECT corp_code FROM company_meta WHERE name = ?').bind(name).first();
+    const row = await env.DB.prepare('SELECT corp_code, overrides FROM company_meta WHERE name = ?').bind(name).first();
     corpCode = row && row.corp_code ? String(row.corp_code).trim() : null;
+    if (row && row.overrides) { try { overrides = JSON.parse(row.overrides); } catch { /* 무시 */ } }
   } catch (err) {
     console.error('/api/company-profile: meta', err);
   }
@@ -19,10 +21,12 @@ export async function onRequestGet({ request, env }) {
 
   try {
     const data = await getCompanyData(env, corpCode);
-    if (!data.company && !data.financials) {
+    let company = data.company;
+    if (company && overrides && typeof overrides === 'object') company = { ...company, ...overrides };
+    if (!company && !data.financials) {
       return Response.json({ available: false, reason: 'NO_DATA', corpCode });
     }
-    return Response.json({ available: true, corpCode, company: data.company, financials: data.financials });
+    return Response.json({ available: true, corpCode, company, financials: data.financials });
   } catch (err) {
     console.error('/api/company-profile', err);
     return Response.json({ available: false, reason: 'ERROR' }, { status: 502 });

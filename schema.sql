@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS suggestions (
 CREATE TABLE IF NOT EXISTS company_meta (
   name       TEXT PRIMARY KEY,                 -- reports.companies[].name 과 매칭
   corp_code  TEXT,                             -- DART corp_code (8자리), NULL=미지정
+  overrides  TEXT,                             -- 회사정보 보정 JSON(예: {"ceo":"..."}) — DART 오류·관리자 수정용
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
