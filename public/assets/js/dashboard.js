@@ -278,7 +278,7 @@ async function renderDate(date) {
     const el = document.getElementById('col-' + k);
     el.innerHTML =
       cols[k].map(cardHTML).join('') ||
-      '<div class="text-sm text-ink/55 px-2 py-3">이 날짜엔 동향이 없어요</div>';
+      '<div class="text-sm text-ink/55 px-2 py-3">해당 날짜 동향 없음</div>';
     document.getElementById('cnt-' + k).textContent = cols[k].length;
   }
 
