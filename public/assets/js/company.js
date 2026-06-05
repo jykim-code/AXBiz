@@ -146,27 +146,48 @@ function metricRow(label, series, yoy) {
     '<span class="text-[11px] text-ink/45">' + latest.year + '년</span>' +
     '<span class="ml-auto">' + yoyBadge(yoy) + '</span></div>';
 }
-// 매출액·영업이익 분기별 묶음 막대 + 범례
+// 매출액·영업이익 분기별 묶음 막대 + 범례.
+// 값 범위가 억~조 단위로 크고 음수도 있어 √(제곱근) 스케일 + 0 기준선(가운데 선) 사용.
+// 막대 높이는 √보정(크기 순서 유지·시인성 확보), 정확한 값은 라벨로 표기.
 function groupedBarChart(pts) {
   const flat = pts.flatMap((p) => [p.revenue, p.operatingProfit]).filter((v) => v != null);
   if (!flat.length) return '';
-  const W = 400, H = 190, padT = 36, padB = 26, padX = 12, ph = H - padT - padB, pw = W - padX * 2;
-  const maxPos = Math.max(0, ...flat), maxNeg = Math.max(0, ...flat.map((v) => -v)), span = (maxPos + maxNeg) || 1, scale = ph / span, zeroY = padT + maxPos * scale;
-  const n = pts.length, slot = pw / n, bw = Math.min(18, slot * 0.3), gap = 5;
+  const W = 400, H = 210, padT = 34, padB = 30, padX = 12, ph = H - padT - padB, pw = W - padX * 2;
+  const mag = (v) => Math.sqrt(Math.abs(v)); // √ 스케일: 큰 값 압축, 작은 값 가시화
+  const maxPosS = Math.max(0, ...flat.map((v) => (v > 0 ? mag(v) : 0)));
+  const maxNegS = Math.max(0, ...flat.map((v) => (v < 0 ? mag(v) : 0)));
+  const span = (maxPosS + maxNegS) || 1, scale = ph / span, zeroY = padT + maxPosS * scale;
+  const n = pts.length, slot = pw / n, bw = Math.min(20, slot * 0.3), gap = 6;
   let g = '';
-  g += '<rect x="' + padX + '" y="12" width="11" height="11" rx="2" fill="#c8f200"/><text x="' + (padX + 16) + '" y="21" font-size="11" fill="#111">매출액</text>';
-  g += '<rect x="' + (padX + 72) + '" y="12" width="11" height="11" rx="2" fill="#111"/><text x="' + (padX + 88) + '" y="21" font-size="11" fill="#111">영업이익</text>';
+  // 범례
+  g += '<rect x="' + padX + '" y="10" width="11" height="11" rx="2" fill="#c8f200"/><text x="' + (padX + 16) + '" y="19" font-size="11" fill="#111">매출액</text>';
+  g += '<rect x="' + (padX + 72) + '" y="10" width="11" height="11" rx="2" fill="#111"/><text x="' + (padX + 88) + '" y="19" font-size="11" fill="#111">영업이익</text>';
+  // 0 기준선(가운데 선)
+  g += '<line x1="' + padX + '" y1="' + zeroY + '" x2="' + (W - padX) + '" y2="' + zeroY + '" stroke="#111" stroke-opacity=".18" stroke-width="1"/>';
   pts.forEach((p, i) => {
     const cx = padX + slot * i + slot / 2;
+    const labels = [];
     [['revenue', '#c8f200', -(bw + gap / 2)], ['operatingProfit', '#111', gap / 2]].forEach(([key, color, off]) => {
       const v = p[key];
-      if (v == null) return;
-      const x = cx + off, h = Math.max(1, Math.abs(v) * scale), y = v >= 0 ? zeroY - h : zeroY;
+      if (v == null) { labels.push(null); return; }
+      const x = cx + off, h = Math.max(2, mag(v) * scale);
+      const y = v >= 0 ? zeroY - h : zeroY;
       g += '<rect x="' + x + '" y="' + y + '" width="' + bw + '" height="' + h + '" rx="2" fill="' + color + '"/>';
-      const ly = v >= 0 ? y - 4 : y + h + 10;
-      g += '<text x="' + (x + bw / 2) + '" y="' + ly + '" text-anchor="middle" font-size="8.5" font-weight="700" fill="#111">' + fmtKRW(v) + '</text>';
+      let ly = v >= 0 ? y - 5 : zeroY + h + 11;
+      labels.push({ x: x + bw / 2, ly, v });
     });
-    g += '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10" fill="#888">' + escapeHtml(p.period) + '</text>';
+    // 같은 방향(위/아래) 라벨이 겹치면 9px 간격으로 분리
+    const [a, b] = labels;
+    if (a && b && (a.v >= 0) === (b.v >= 0) && Math.abs(a.ly - b.ly) < 9) {
+      if (a.v >= 0) { if (a.ly <= b.ly) a.ly = b.ly - 9; else b.ly = a.ly - 9; }
+      else { if (a.ly >= b.ly) a.ly = b.ly + 9; else b.ly = a.ly + 9; }
+    }
+    labels.forEach((L) => {
+      if (!L) return;
+      const ly = Math.max(10, Math.min(H - 20, L.ly)); // 상단/분기라벨과 충돌 방지
+      g += '<text x="' + L.x + '" y="' + ly + '" text-anchor="middle" font-size="8.5" font-weight="700" fill="#111">' + fmtKRW(L.v) + '</text>';
+    });
+    g += '<text x="' + cx + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="#888">' + escapeHtml(p.period) + '</text>';
   });
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="w-full" preserveAspectRatio="xMidYMid meet">' + g + '</svg>';
 }
