@@ -31,6 +31,13 @@ CREATE TABLE IF NOT EXISTS company_meta (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- 전역 설정 (key-value). 예: pinned_tags = 지식그래프 고정 핀 태그 JSON 배열
+CREATE TABLE IF NOT EXISTS settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- DART 응답 캐시(회사개황+재무). corp_code 기준. 재무는 분기 갱신이라 공격적 캐시.
 CREATE TABLE IF NOT EXISTS company_profile (
   corp_code  TEXT PRIMARY KEY,

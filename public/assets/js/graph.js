@@ -2,7 +2,7 @@
    - Company 노드 클릭 → /company?name=
    - Tag 노드 클릭 → /explore?tag=
    - Cytoscape 미로드(CDN 차단 등) 시 dashboard.js 의 buildGraph(SVG) 로 폴백 */
-function initGraph(reports) {
+async function initGraph(reports) {
   const ont = buildOntology(reports);
   if (typeof setStats === 'function') setStats(ont.stats.total, ont.stats.companies, ont.stats.dates, ont.stats.tags);
   const el = document.getElementById('graph');
@@ -17,14 +17,28 @@ function initGraph(reports) {
   }
   el.innerHTML = '';
 
-  // 태그가 늘면 fit 으로 전체가 짓눌리므로, 빈도(연결 기업 수) 상위 30개만 노드로 표시.
+  // 표시 태그 = 핀(관리자 지정) ∪ 공유 태그(2개 기업 이상) ∪ 기업별 대표 상위 3(그 기업 항목 내 등장 횟수).
   // 전체 태그는 탐색(/explore) 태그 목록에 그대로 보존된다.
-  const TOP_TAGS = 30;
-  const tags = ont.tags
-    .slice()
-    .sort((a, b) => ont.tagMap[b].size - ont.tagMap[a].size || a.localeCompare(b))
-    .slice(0, TOP_TAGS);
-  const tagSet = new Set(tags);
+  let pinned = [];
+  try { const r = await fetch('/api/pinned-tags'); if (r.ok) pinned = await r.json(); } catch { /* 핀 없이 진행 */ }
+  if (!Array.isArray(pinned)) pinned = [];
+
+  // 기업별 태그 등장 횟수(항목 단위)
+  const perCo = {};
+  (reports || []).forEach((r) => (r.companies || []).forEach((c) => {
+    if (!c || !c.name) return;
+    const m = (perCo[c.name] = perCo[c.name] || {});
+    (c.tags || []).forEach((t) => (m[t] = (m[t] || 0) + 1));
+  }));
+
+  const TOP_PER_COMPANY = 3;
+  const tagSet = new Set();
+  pinned.forEach((t) => { if (ont.tagMap[t]) tagSet.add(t); }); // 데이터에 존재하는 핀만
+  ont.tags.forEach((t) => { if (ont.tagMap[t].size >= 2) tagSet.add(t); });
+  Object.values(perCo).forEach((m) => {
+    Object.keys(m).sort((a, b) => m[b] - m[a] || a.localeCompare(b)).slice(0, TOP_PER_COMPANY).forEach((t) => tagSet.add(t));
+  });
+  const tags = [...tagSet];
 
   const els = [{ data: { id: 'AX', label: 'AX', type: 'ax', level: 0 } }];
   ont.companies.forEach((c) => els.push({ data: { id: 'company:' + c.name, label: c.name, type: 'company', level: 1, deg: [...c.tags].filter((t) => tagSet.has(t)).length } }));

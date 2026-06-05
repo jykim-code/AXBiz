@@ -99,6 +99,22 @@ const API = {
     if (!res.ok) { const err = new Error('REQUEST_FAILED'); err.status = res.status; throw err; }
     return res.json();
   },
+  // 지식그래프 핀 태그 (GET 공개)
+  pinnedTags() {
+    return getJSON('/api/pinned-tags');
+  },
+  // 지식그래프 핀 태그 저장 (관리자, PIN)
+  async savePinnedTags(tags, pin) {
+    const res = await fetch('/api/pinned-tags', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-pin': pin || '' },
+      body: JSON.stringify({ tags }),
+    });
+    let data = {};
+    try { data = await res.json(); } catch { /* no body */ }
+    if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; err.data = data; throw err; }
+    return data;
+  },
   // 기업 DART 매핑/보정 저장 (관리자, PIN)
   async saveCompanyMeta(payload, pin) {
     const res = await fetch('/api/company-meta', {

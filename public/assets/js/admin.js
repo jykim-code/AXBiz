@@ -253,8 +253,10 @@ function init() {
   document.getElementById('tabReportBtn').addEventListener('click', () => showTab('report'));
   document.getElementById('tabSuggBtn').addEventListener('click', () => showTab('sugg'));
   document.getElementById('tabDartBtn').addEventListener('click', () => showTab('dart'));
+  document.getElementById('tabSetBtn').addEventListener('click', () => showTab('set'));
   document.getElementById('suggRefresh').addEventListener('click', loadSuggestions);
   document.getElementById('dartRefresh').addEventListener('click', loadDartMappings);
+  document.getElementById('pinSave').addEventListener('click', savePinned);
 
   // 세션에 PIN이 있으면 바로 에디터로 (편의용; 서버 검증은 저장 시)
   const saved = sessionStorage.getItem('adminPin');
@@ -268,14 +270,15 @@ function init() {
 
 /* ===== 탭 전환 (보고서 / 의견함 / DART 연결) ===== */
 function showTab(which) {
-  const tabs = { report: 'tab-report', sugg: 'tab-suggestions', dart: 'tab-dart' };
-  const btns = { report: 'tabReportBtn', sugg: 'tabSuggBtn', dart: 'tabDartBtn' };
+  const tabs = { report: 'tab-report', sugg: 'tab-suggestions', dart: 'tab-dart', set: 'tab-settings' };
+  const btns = { report: 'tabReportBtn', sugg: 'tabSuggBtn', dart: 'tabDartBtn', set: 'tabSetBtn' };
   for (const k in tabs) {
     document.getElementById(tabs[k]).classList.toggle('hidden', k !== which);
     document.getElementById(btns[k]).className = 'btn px-4 py-2 ' + (k === which ? 'bg-ink text-white' : 'border border-ink/15 hover:bg-ink hover:text-white');
   }
   if (which === 'sugg') loadSuggestions();
   if (which === 'dart') loadDartMappings();
+  if (which === 'set') loadPinned();
 }
 
 async function loadSuggestions() {
@@ -406,6 +409,39 @@ function dartRow(name, meta) {
     }
   };
   return row;
+}
+
+/* ===== 설정 탭 (그래프 핀 태그) ===== */
+async function loadPinned() {
+  const input = document.getElementById('pinTags');
+  const status = document.getElementById('pinStatus');
+  status.textContent = '';
+  try {
+    const tags = await API.pinnedTags();
+    input.value = (Array.isArray(tags) ? tags : []).join(', ');
+  } catch {
+    status.textContent = '핀 목록을 불러오지 못했습니다.';
+    status.style.color = '#dc2626';
+  }
+}
+
+async function savePinned() {
+  const input = document.getElementById('pinTags');
+  const status = document.getElementById('pinStatus');
+  const tags = input.value.split(',').map((t) => t.trim()).filter(Boolean);
+  status.style.color = '#111';
+  status.textContent = '저장 중…';
+  try {
+    const res = await API.savePinnedTags(tags, adminPin);
+    input.value = (res.tags || []).join(', ');
+    status.style.color = '#7ba500';
+    status.textContent = '저장됨 (' + (res.tags || []).length + '개)';
+    toast('핀 태그 저장 — 홈 그래프에 즉시 반영', true);
+  } catch (e) {
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
+    status.style.color = '#dc2626';
+    status.textContent = '저장 실패: ' + ((e.data && e.data.error) || e.status || e.message);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
