@@ -11,7 +11,10 @@ async function init() {
   let reports = [];
   try { reports = await API.all(); } catch { reports = []; }
   entries = reports.flatMap((r) => (r.companies || []).map((c) => ({ date: r.date, ...c }))).sort((a, b) => b.date.localeCompare(a.date));
-  allTags = buildOntology(reports).tags.sort();
+  // 태그 목록 = 지식그래프와 동일한 큐레이션(핀 ∪ 공유 ∪ 기업별 대표 3), 중요도순
+  let pinned = [];
+  try { pinned = await API.pinnedTags(); } catch { pinned = []; }
+  allTags = selectCuratedTags(reports, buildOntology(reports), pinned, 3);
   activeTag = getParam('tag');
 
   el('q').addEventListener('input', render);
@@ -120,7 +123,9 @@ function render() {
 }
 
 function renderTags() {
-  el('tagcloud').innerHTML = allTags.map((t) =>
+  // ?tag= 딥링크가 큐레이션 목록 밖 태그여도 활성 칩은 표시
+  const list = activeTag && !allTags.includes(activeTag) ? [activeTag].concat(allTags) : allTags;
+  el('tagcloud').innerHTML = list.map((t) =>
     '<button class="tagchip text-xs rounded-full px-3 py-1.5 border ' + (t === activeTag ? 'bg-lime border-lime text-ink font-semibold' : 'bg-beige border-ink/5 opacity-80 hover:border-lime') + '" data-t="' + escapeHtml(t) + '">#' + escapeHtml(t) + '</button>').join('');
   document.querySelectorAll('.tagchip').forEach((elm) => elm.onclick = () => {
     activeTag = activeTag === elm.dataset.t ? null : elm.dataset.t;

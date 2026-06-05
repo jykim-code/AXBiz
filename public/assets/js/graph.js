@@ -17,28 +17,11 @@ async function initGraph(reports) {
   }
   el.innerHTML = '';
 
-  // 표시 태그 = 핀(관리자 지정) ∪ 공유 태그(2개 기업 이상) ∪ 기업별 대표 상위 3(그 기업 항목 내 등장 횟수).
-  // 전체 태그는 탐색(/explore) 태그 목록에 그대로 보존된다.
+  // 표시 태그 = 핀 ∪ 공유(2개 기업 이상) ∪ 기업별 대표 상위 3 — 선정·중요도 정렬은 ontology.js 공용(selectCuratedTags)
   let pinned = [];
   try { const r = await fetch('/api/pinned-tags'); if (r.ok) pinned = await r.json(); } catch { /* 핀 없이 진행 */ }
-  if (!Array.isArray(pinned)) pinned = [];
-
-  // 기업별 태그 등장 횟수(항목 단위)
-  const perCo = {};
-  (reports || []).forEach((r) => (r.companies || []).forEach((c) => {
-    if (!c || !c.name) return;
-    const m = (perCo[c.name] = perCo[c.name] || {});
-    (c.tags || []).forEach((t) => (m[t] = (m[t] || 0) + 1));
-  }));
-
-  const TOP_PER_COMPANY = 3;
-  const tagSet = new Set();
-  pinned.forEach((t) => { if (ont.tagMap[t]) tagSet.add(t); }); // 데이터에 존재하는 핀만
-  ont.tags.forEach((t) => { if (ont.tagMap[t].size >= 2) tagSet.add(t); });
-  Object.values(perCo).forEach((m) => {
-    Object.keys(m).sort((a, b) => m[b] - m[a] || a.localeCompare(b)).slice(0, TOP_PER_COMPANY).forEach((t) => tagSet.add(t));
-  });
-  const tags = [...tagSet];
+  const tags = selectCuratedTags(reports, ont, pinned, 3);
+  const tagSet = new Set(tags);
 
   const els = [{ data: { id: 'AX', label: 'AX', type: 'ax', level: 0 } }];
   ont.companies.forEach((c) => els.push({ data: { id: 'company:' + c.name, label: c.name, type: 'company', level: 1, deg: [...c.tags].filter((t) => tagSet.has(t)).length } }));

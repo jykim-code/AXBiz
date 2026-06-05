@@ -33,3 +33,25 @@ function buildOntology(reports) {
     stats: { total: total, companies: companies.length, dates: (reports || []).length, tags: tags.length },
   };
 }
+
+/* 큐레이션 태그 목록 (지식그래프·탐색 공용)
+   선정 = 핀(관리자 지정) ∪ 공유 태그(2개 기업 이상) ∪ 기업별 대표 상위 K(항목 내 등장 횟수)
+   정렬(중요도순) = 연결 기업 수 desc → 총 등장 횟수 desc → 가나다 */
+function selectCuratedTags(reports, ont, pinned, topPerCompany) {
+  const K = topPerCompany || 3;
+  const perCo = {}; // name -> {tag: count}
+  const totals = {}; // tag -> 총 등장 횟수
+  (reports || []).forEach((r) => (r.companies || []).forEach((c) => {
+    if (!c || !c.name) return;
+    const m = (perCo[c.name] = perCo[c.name] || {});
+    (c.tags || []).forEach((t) => { m[t] = (m[t] || 0) + 1; totals[t] = (totals[t] || 0) + 1; });
+  }));
+  const set = new Set();
+  (Array.isArray(pinned) ? pinned : []).forEach((t) => { if (ont.tagMap[t]) set.add(t); }); // 데이터에 존재하는 핀만
+  ont.tags.forEach((t) => { if (ont.tagMap[t].size >= 2) set.add(t); });
+  Object.values(perCo).forEach((m) => {
+    Object.keys(m).sort((a, b) => m[b] - m[a] || a.localeCompare(b)).slice(0, K).forEach((t) => set.add(t));
+  });
+  return [...set].sort((a, b) =>
+    ont.tagMap[b].size - ont.tagMap[a].size || (totals[b] || 0) - (totals[a] || 0) || a.localeCompare(b));
+}
