@@ -2,6 +2,9 @@
 let REPORTS = [], ONT = null;
 let cq = '', activeCat = null, sortBy = 'latest'; // 'latest'(최신 분석일) | 'count'(등장 횟수)
 const CATS = ['대기업', '중견기업', '스타트업·중소'];
+// 국내 기업 우선 고정 순서(대기업→중견→스타트업·중소). 목록 외 기업은 선택한 정렬로 뒤에 배치.
+const PRIORITY = ['삼성SDS', 'SK텔레콤', 'LG유플러스', '네이버', 'LG CNS', 'KT DS', '현대오토에버', '야놀자', '이스트소프트', '업스테이지'];
+const priorityIdx = (n) => { const i = PRIORITY.indexOf(n); return i === -1 ? PRIORITY.length : i; };
 
 function getParam(k) { return new URLSearchParams(location.search).get(k); }
 function el(id) { return document.getElementById(id); }
@@ -40,9 +43,11 @@ function renderGrid() {
   let rows = ONT.companies.slice();
   if (activeCat) rows = rows.filter((c) => c.category === activeCat);
   if (cq) rows = rows.filter((c) => (c.name + ' ' + [...c.tags].join(' ') + ' ' + (c.latest || '')).toLowerCase().includes(cq));
-  rows.sort((a, b) => sortBy === 'latest'
-    ? (b.latestDate || '').localeCompare(a.latestDate || '') || b.count - a.count
-    : b.count - a.count || (b.latestDate || '').localeCompare(a.latestDate || ''));
+  rows.sort((a, b) =>
+    priorityIdx(a.name) - priorityIdx(b.name) // 국내 지정 순서 우선
+    || (sortBy === 'latest'
+      ? (b.latestDate || '').localeCompare(a.latestDate || '') || b.count - a.count
+      : b.count - a.count || (b.latestDate || '').localeCompare(a.latestDate || '')));
   el('compCount').textContent = rows.length + '개 기업' + (activeCat ? ' · ' + activeCat : '');
   el('sortToggle').textContent = '정렬: ' + (sortBy === 'latest' ? '최신순' : '등장순');
   el('compGrid').innerHTML = rows.map(cardHTML).join('') || '<div class="text-sm text-ink/75 p-4">결과 없음</div>';
