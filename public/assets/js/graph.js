@@ -17,11 +17,20 @@ function initGraph(reports) {
   }
   el.innerHTML = '';
 
+  // 태그가 늘면 fit 으로 전체가 짓눌리므로, 빈도(연결 기업 수) 상위 30개만 노드로 표시.
+  // 전체 태그는 탐색(/explore) 태그 목록에 그대로 보존된다.
+  const TOP_TAGS = 30;
+  const tags = ont.tags
+    .slice()
+    .sort((a, b) => ont.tagMap[b].size - ont.tagMap[a].size || a.localeCompare(b))
+    .slice(0, TOP_TAGS);
+  const tagSet = new Set(tags);
+
   const els = [{ data: { id: 'AX', label: 'AX', type: 'ax', level: 0 } }];
-  ont.companies.forEach((c) => els.push({ data: { id: 'company:' + c.name, label: c.name, type: 'company', level: 1, deg: c.tags.size } }));
-  ont.tags.forEach((t) => els.push({ data: { id: 'tag:' + t, label: '#' + t, type: 'tag', level: 2 } }));
+  ont.companies.forEach((c) => els.push({ data: { id: 'company:' + c.name, label: c.name, type: 'company', level: 1, deg: [...c.tags].filter((t) => tagSet.has(t)).length } }));
+  tags.forEach((t) => els.push({ data: { id: 'tag:' + t, label: '#' + t, type: 'tag', level: 2 } }));
   ont.companies.forEach((c) => els.push({ data: { id: 'eax:' + c.name, source: 'AX', target: 'company:' + c.name, kind: 'hub' } }));
-  ont.tags.forEach((t) => ont.tagMap[t].forEach((n) => els.push({ data: { id: 'et:' + n + '::' + t, source: 'company:' + n, target: 'tag:' + t, kind: 'tag' } })));
+  tags.forEach((t) => ont.tagMap[t].forEach((n) => els.push({ data: { id: 'et:' + n + '::' + t, source: 'company:' + n, target: 'tag:' + t, kind: 'tag' } })));
 
   const reduce = typeof REDUCED_MOTION !== 'undefined' && REDUCED_MOTION;
   const cy = cytoscape({

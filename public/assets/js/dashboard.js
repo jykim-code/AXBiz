@@ -41,9 +41,12 @@ function buildGraph(reports) {
   });
   const tagMap = {};
   companies.forEach((c) => c.tags.forEach((t) => (tagMap[t] = tagMap[t] || []).push(c.name)));
-  const tags = Object.keys(tagMap);
+  const allTags = Object.keys(tagMap);
 
-  setStats(all.length, companies.length, (reports || []).length, tags.length);
+  setStats(all.length, companies.length, (reports || []).length, allTags.length);
+
+  // 그래프 가독성: 빈도(연결 기업 수) 상위 30개 태그만 표시 (통계는 전체 기준)
+  const tags = allTags.sort((a, b) => tagMap[b].length - tagMap[a].length || a.localeCompare(b)).slice(0, 30);
 
   const graphEl = document.getElementById('graph');
   if (!companies.length) {
