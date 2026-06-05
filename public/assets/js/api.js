@@ -67,6 +67,10 @@ const API = {
   companyProfile(name) {
     return getJSON('/api/company-profile?name=' + encodeURIComponent(name));
   },
+  // 기업 AI 요약 (공개). { available, flow[], insight[], dataDate }
+  companySummary(name) {
+    return getJSON('/api/company-summary?name=' + encodeURIComponent(name));
+  },
   // 의견 제출 (공개)
   async sendSuggestion(payload) {
     const res = await fetch('/api/suggestions', {

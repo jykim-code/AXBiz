@@ -109,6 +109,8 @@ function renderDetail(name) {
       '<div class="flex items-baseline gap-6 mt-2 text-sm text-ink/80"><span><b class="font-display text-lg text-ink">' + ap.length + '</b> 회 등장</span><span>최근 <b class="text-ink">' + escapeHtml(ap[0] ? ap[0].date : '-') + '</b></span><span><b class="font-display text-lg text-ink">' + tags.length + '</b> 태그</span></div>' +
       '<div class="flex flex-wrap gap-1.5 mt-3">' + tagsHTML + '</div>' +
     '</div>' +
+    // AI 요약 밴드 (핵심 흐름 + 종합 한컴 인사이트, 비동기 로드)
+    '<div id="compSummary" class="mb-6 hidden"></div>' +
     // 2단: 좌(주요 동향 2/3) · 우(회사정보+재무, 비동기 로드)
     '<div class="grid lg:grid-cols-3 gap-6 items-start">' +
       '<div id="detailMain" class="lg:col-span-2 bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6">' +
@@ -120,6 +122,33 @@ function renderDetail(name) {
     // 연관 기업 (전체 폭)
     (related.length ? '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6 mt-6"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">연관 기업 (태그 공유)</div><div class="flex flex-wrap gap-2">' + related.map((n) => '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-sm rounded-full px-3 py-1.5 border bg-white border-ink/10 hover:border-lime">' + escapeHtml(n) + '</a>').join('') + '</div></div>' : '');
   loadProfile(name);
+  loadSummary(name);
+}
+
+/* ===== AI 요약 (핵심 흐름 + 종합 한컴 인사이트) ===== */
+async function loadSummary(name) {
+  const box = document.getElementById('compSummary');
+  if (!box) return;
+  box.classList.remove('hidden'); // 첫 생성은 수 초 걸릴 수 있어 로딩 표시
+  box.innerHTML = '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-5 text-sm text-ink/55 flex items-center gap-2"><span class="inline-block w-4 h-4 border-2 border-ink/20 border-t-ink rounded-full animate-spin"></span>AI 요약 생성 중…</div>';
+  let d = null;
+  try { d = await API.companySummary(name); } catch { d = null; }
+  if (!d || !d.available || !Array.isArray(d.flow) || !d.flow.length) { box.remove(); return; }
+  const flow = d.flow.map((f) =>
+    '<li class="flex gap-2.5 text-sm text-ink/85 leading-relaxed">' +
+    (f.period ? '<span class="flex-none text-[10px] font-bold bg-beige border border-ink/5 rounded-full px-2 py-0.5 mt-0.5">' + escapeHtml(f.period) + '</span>' : '') +
+    '<span>' + escapeHtml(f.text) + '</span></li>').join('');
+  const ins = (d.insight || []).map((t) =>
+    '<li class="text-sm text-white/85 leading-relaxed pl-3.5 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime">' + escapeHtml(t) + '</li>').join('');
+  box.innerHTML =
+    '<div class="grid lg:grid-cols-2 gap-6">' +
+      '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6">' +
+        '<div class="flex items-center gap-2 mb-3"><div class="text-xs font-bold uppercase tracking-widest text-lime-600">핵심 흐름 요약</div><span class="text-[10px] text-ink/45 ml-auto">AI 요약 · ' + escapeHtml(d.dataDate || '') + ' 데이터 기준</span></div>' +
+        '<ul class="space-y-2.5">' + flow + '</ul></div>' +
+      (ins ? '<div class="bg-ink text-white rounded-[24px] shadow-xl shadow-ink/20 p-6">' +
+        '<div class="flex items-center gap-2 mb-3"><div class="text-xs font-bold uppercase tracking-widest text-lime">종합 한컴 인사이트</div><span class="text-[10px] text-white/40 ml-auto">AI 요약</span></div>' +
+        '<ul class="space-y-2.5">' + ins + '</ul></div>' : '') +
+    '</div>';
 }
 
 /* ===== 회사정보 + 재무(DART) — 우측 컬럼 ===== */

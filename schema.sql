@@ -38,6 +38,15 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- 기업별 AI 요약 캐시(핵심 흐름 + 종합 한컴 인사이트). source_hash 로 데이터 변경 감지 → lazy 재생성.
+CREATE TABLE IF NOT EXISTS company_summary (
+  name        TEXT PRIMARY KEY,                -- 기업 표시명
+  flow        TEXT,                            -- JSON [{period,text}]
+  insight     TEXT,                            -- JSON [text]
+  source_hash TEXT,                            -- hash(프롬프트버전 + 그 기업 전체 항목)
+  generated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- DART 응답 캐시(회사개황+재무). corp_code 기준. 재무는 분기 갱신이라 공격적 캐시.
 CREATE TABLE IF NOT EXISTS company_profile (
   corp_code  TEXT PRIMARY KEY,
