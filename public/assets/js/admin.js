@@ -223,10 +223,21 @@ function showEditor() {
 
 function init() {
   // 게이트: 입력 → 메모리/세션 보관 후 에디터 노출 (검증은 저장 시 서버에서)
-  document.getElementById('gateForm').addEventListener('submit', (e) => {
+  document.getElementById('gateForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const pin = document.getElementById('pinInput').value.trim();
     if (!pin) return;
+    const btn = e.target.querySelector('button[type="submit"]');
+    if (btn) btn.disabled = true;
+    // PIN 즉시 검증(PIN 보호 엔드포인트 호출) — 403이면 게이트 유지
+    try {
+      await API.companyMetaList(pin);
+    } catch (err) {
+      if (btn) btn.disabled = false;
+      if (err.status === 403) { showGate(true); return; }
+      // 기타(일시 오류 등)는 막지 않고 통과
+    }
+    if (btn) btn.disabled = false;
     adminPin = pin;
     sessionStorage.setItem('adminPin', pin);
     showEditor();
