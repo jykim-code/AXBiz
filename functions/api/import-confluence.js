@@ -37,10 +37,12 @@ async function resolvePageId(url, auth) {
   if (m) return m[1];
   m = s.match(/\/wiki\/x\/([A-Za-z0-9_-]+)/);
   if (m) {
-    const r = await fetch(`${CONF_BASE}/x/${m[1]}`, { redirect: 'manual', headers: { Authorization: auth } });
-    const loc = r.headers.get('location') || '';
-    const m2 = loc.match(/\/pages\/(\d+)/);
-    if (m2) return m2[1];
+    // 리다이렉트를 따라가 최종 URL 에서 pageId 추출 (manual+Location 방식은 환경에 따라 미동작)
+    try {
+      const r = await fetch(`${CONF_BASE}/x/${m[1]}`, { headers: { Authorization: auth } });
+      const m2 = String(r.url || '').match(/\/pages\/(\d+)/);
+      if (m2) return m2[1];
+    } catch { /* 아래 null */ }
   }
   return null;
 }
