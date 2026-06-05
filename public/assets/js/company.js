@@ -129,11 +129,11 @@ function renderDetail(name) {
 async function loadSummary(name) {
   const box = document.getElementById('compSummary');
   if (!box) return;
-  box.classList.remove('hidden'); // 첫 생성은 수 초 걸릴 수 있어 로딩 표시
-  box.innerHTML = '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-5 text-sm text-ink/55 flex items-center gap-2"><span class="inline-block w-4 h-4 border-2 border-ink/20 border-t-ink rounded-full animate-spin"></span>AI 요약 생성 중…</div>';
+  // 저장본만 즉시 조회(LLM 호출 없음). 없으면 섹션 미표시 — 생성은 관리자 저장 시 백그라운드.
   let d = null;
   try { d = await API.companySummary(name); } catch { d = null; }
   if (!d || !d.available || !Array.isArray(d.flow) || !d.flow.length) { box.remove(); return; }
+  box.classList.remove('hidden');
   const flow = d.flow.map((f) =>
     '<li class="flex gap-2.5 text-sm text-ink/85 leading-relaxed">' +
     (f.period ? '<span class="flex-none text-[10px] font-bold bg-beige border border-ink/5 rounded-full px-2 py-0.5 mt-0.5">' + escapeHtml(f.period) + '</span>' : '') +

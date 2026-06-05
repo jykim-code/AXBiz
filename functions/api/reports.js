@@ -4,6 +4,7 @@
 //                            저장 성공 후 Vectorize 증분 재색인(old 삭제→new upsert).
 
 import { reindexDate } from '../_rag.js';
+import { generateAndStore } from '../_summary.js';
 
 const CATEGORIES = ['대기업', '중견기업', '스타트업·중소'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -87,7 +88,7 @@ export async function onRequestGet({ request, env }) {
   }
 }
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, waitUntil }) {
   const pin = request.headers.get('x-admin-pin') || '';
   if (!env.ADMIN_PIN || !timingSafeEqual(pin, env.ADMIN_PIN)) {
     // 무차별 대입 완화(best-effort). 운영에서는 Cloudflare Rate Limiting 규칙 병행 권장.
@@ -162,6 +163,15 @@ export async function onRequestPost({ request, env }) {
       console.error('POST /api/reports: reindex', err);
       indexWarning = String((err && err.message) || err);
     }
+  }
+
+  // 저장된 기업들의 AI 요약(핵심 흐름·인사이트)을 백그라운드 재생성 — 쓰기 시점 생성으로 읽기 경로엔 LLM 없음
+  if (env.OPENROUTER_API_KEY && companies.length && typeof waitUntil === 'function') {
+    waitUntil((async () => {
+      for (const c of companies) {
+        try { await generateAndStore(env, c.name); } catch { /* 한 기업 실패해도 계속 */ }
+      }
+    })());
   }
 
   return Response.json({ ok: true, date, count: companies.length, ...(indexWarning ? { indexWarning } : {}) });
