@@ -6,6 +6,7 @@
 //   시크릿: CONFLUENCE_EMAIL, CONFLUENCE_API_TOKEN (Atlassian API 토큰)
 import { reindexDate } from '../_rag.js';
 import { generateAndStore } from '../_summary.js';
+import { syncCompanyEntries } from '../_entries.js';
 
 const CONF_BASE = 'https://hancom.atlassian.net/wiki';
 // 컨플 영문 표기 → 서비스 한글 표기 통일 (기존 데이터·DART 매핑 유지)
@@ -163,6 +164,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
         .prepare(`INSERT INTO reports (date, companies, updated_at) VALUES (?, ?, datetime('now'))
                   ON CONFLICT(date) DO UPDATE SET companies = excluded.companies, updated_at = datetime('now')`)
         .bind(d, JSON.stringify(companies)).run();
+      try { await syncCompanyEntries(env, d, companies); } catch (err) { console.error('import: entries', d, err); }
       if (env.AI && env.VECTORIZE) {
         try { await reindexDate(env, d, oldCount, companies); } catch (err) { console.error('import: reindex', d, err); }
       }

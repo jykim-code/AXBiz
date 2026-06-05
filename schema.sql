@@ -38,6 +38,18 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- 기업별 타임라인 파생 테이블 (Phase 2: 타임라인 인지 RAG).
+--   reports(원본)에서 파생 — 기업 한 곳의 dated 항목을 인덱스로 빠르게 조회.
+--   동기화: reports 저장(/api/reports POST)·컨플 가져오기 시. 재구축: scripts 백필.
+CREATE TABLE IF NOT EXISTS company_entries (
+  company  TEXT NOT NULL,                      -- 기업 표시명
+  date     TEXT NOT NULL,                      -- 'YYYY-MM-DD'
+  category TEXT,
+  data     TEXT NOT NULL,                      -- 그 (기업×날짜) 항목 JSON
+  PRIMARY KEY (company, date)
+);
+CREATE INDEX IF NOT EXISTS idx_company_entries_company_date ON company_entries(company, date DESC);
+
 -- 기업별 AI 요약 캐시(핵심 흐름 + 종합 한컴 인사이트). source_hash 로 데이터 변경 감지 → lazy 재생성.
 CREATE TABLE IF NOT EXISTS company_summary (
   name        TEXT PRIMARY KEY,                -- 기업 표시명

@@ -5,6 +5,7 @@
 
 import { reindexDate } from '../_rag.js';
 import { generateAndStore } from '../_summary.js';
+import { syncCompanyEntries } from '../_entries.js';
 
 const CATEGORIES = ['대기업', '중견기업', '스타트업·중소'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -152,6 +153,9 @@ export async function onRequestPost({ request, env, waitUntil }) {
     console.error('POST /api/reports', err);
     return Response.json({ error: 'DB_ERROR' }, { status: 500 });
   }
+
+  // 기업별 타임라인 파생 테이블 동기화 (best-effort)
+  try { await syncCompanyEntries(env, date, companies); } catch (err) { console.error('POST /api/reports: entries', err); }
 
   // D1(원본)은 저장됐다. Vectorize 증분 재색인은 best-effort —
   // 실패해도 저장 자체는 성공으로 보고하되 indexWarning 으로 알린다.

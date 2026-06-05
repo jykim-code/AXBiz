@@ -13,10 +13,10 @@
 ### 🕒 에픽: 1년치 데이터 + 최신/히스토리 정확성 (Phase 2)  🟡
 > 플랜: `.omc/plans/company-page-and-temporal-data-plan.md` (로컬 전용)
 > 증분(뉴스) 모델에서 기업의 "현재 상태"를 정확히 — **타임라인 인지(timeline-aware) RAG** + 파생 테이블.
-- [ ] `company_entries(company,date,category,data)` 파생 테이블 + 인덱스 (스키마·로컬/원격 적용)
-- [ ] `reports` POST/`reindex`에서 `company_entries` 동기화(날짜별 delete→insert)
-- [ ] `/api/ask` 타임라인 인지로 재작성: 매칭 기업의 dated 타임라인을 D1에서 날짜순 조회 → "현재 상태/변화 이력" 분리, 최신 우선, 현재 날짜 주입
-- [ ] 모순 픽스처(과거 없음→현재 있음)로 정확성 회귀 검증
+- [x] `company_entries(company,date,category,data)` 파생 테이블 + 인덱스 — 원격 D1 생성 + 전체 백필(36개 날짜 재저장 → 50행)
+- [x] `reports` POST·컨플 가져오기에서 `company_entries` 동기화(`_entries.js`, 날짜별 delete→insert, best-effort)
+- [x] `/api/ask` 타임라인 인지로 재작성 — 벡터 매치는 **기업 식별용**(점수순 상위 3곳), 컨텍스트는 `company_entries`에서 기업당 최근 6건 연대기 조회. 시스템 프롬프트에 "최신=현재 상태·과거는 변화 이력" 규칙 + 오늘 날짜 주입, 인용 필터링·폴백(미구축 시 기존 방식) 유지, max_tokens 800→1200(잘림 해결)
+- [x] 실데이터 모순 검증 — "LG CNS AX 플랫폼 있어?" → 최신(5/25 에이전틱웍스) 기준 "있음"[5/25·5/27 인용] / "삼성SDS 패브릭스 최신 동향" → 5/29 패브릭스 2.0 중심 + 1월 자료는 "과거 OpenAI 리셀러 → 멀티LLM 플랫폼 진화" **변화 이력으로 구분 서술** ✓
 - [ ] (선택) `GET /api/companies`로 그리드 데이터 서버화
 - [x] **히스토리 데이터 본삽입** — 컨플 "AX 동향 히스토리(기업별·2026)" 국내 10곳 **42건(2026-01~05, 32개 날짜)** 자동 ingest 완료(이름 한글 통일·날짜 정규화·병합 업서트, RAG 색인 자동). 해외 5곳(Anthropic·MS·OpenAI·Salesforce·Cohere)은 보류. Vectorize ~52/4,880 여유
 - [x] **컨플 동기화 자동화 2단계** — admin **"컨플 가져오기" 탭**: 링크 붙여넣기→미리보기(기업명·분류 수정 가능)→실행. `POST /api/import-confluence`(PIN, Confluence REST + API 토큰 시크릿), 단축링크 해석·엔티티 디코드·한글명 매핑·유형태그 제외·병합 업서트·재색인·AI요약 재생성. 삼성SDS로 끝단 검증
