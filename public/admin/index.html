@@ -71,6 +71,7 @@
       <button id="tabReportBtn" class="btn px-4 py-2 bg-ink text-white">보고서 입력</button>
       <button id="tabSuggBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">의견함</button>
       <button id="tabDartBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">DART 연결</button>
+      <button id="tabConfBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">컨플 가져오기</button>
       <button id="tabSetBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">설정</button>
     </div>
 
@@ -112,6 +113,32 @@
       </div>
       <p class="text-sm opacity-60 mb-4">기업을 DART 법인과 연결하면 기업 상세에 회사정보·재무가 자동 표시됩니다. 이름으로 검색해 선택하세요. 해외/미연결은 비워두면 표시되지 않습니다.</p>
       <div id="dartList" class="space-y-3"></div>
+    </div>
+
+    <div id="tab-conf" class="hidden">
+      <h2 class="font-display font-bold text-xl tracking-tight mb-2">컨플 히스토리 가져오기</h2>
+      <p class="text-sm opacity-60 mb-4">"AX 동향 히스토리 - 기업 (연도)" 형식의 컨플 페이지 링크를 붙여넣으면 타임라인 표를 자동으로 가져와 저장합니다. 같은 (날짜·기업) 항목은 컨플 내용으로 덮어씁니다(컨플=진실원).</p>
+      <div class="bg-white rounded-2xl border border-ink/5 shadow p-5 max-w-[760px]">
+        <div class="label mb-1.5">컨플 페이지 URL</div>
+        <div class="flex gap-2">
+          <input id="confUrl" class="field" placeholder="https://hancom.atlassian.net/wiki/spaces/…/pages/…  또는  /wiki/x/단축링크" />
+          <button id="confPreview" class="btn flex-none border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">미리보기</button>
+        </div>
+        <div id="confStatus" class="text-sm mt-2"></div>
+
+        <div id="confBox" class="hidden mt-4 pt-4 border-t border-ink/10">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><div class="label mb-1.5">기업명 (수정 가능)</div><input id="confName" class="field" /></div>
+            <div><div class="label mb-1.5">분류</div>
+              <select id="confCat" class="field"><option>대기업</option><option>중견기업</option><option>스타트업·중소</option></select></div>
+          </div>
+          <div id="confInfo" class="text-sm mt-3"></div>
+          <div class="flex items-center gap-3 mt-4">
+            <button id="confRun" class="btn bg-ink text-white px-6 py-2.5 hover:bg-lime hover:text-ink">가져오기 실행</button>
+            <span id="confRunStatus" class="text-sm"></span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="tab-settings" class="hidden">

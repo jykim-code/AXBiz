@@ -253,7 +253,10 @@ function init() {
   document.getElementById('tabReportBtn').addEventListener('click', () => showTab('report'));
   document.getElementById('tabSuggBtn').addEventListener('click', () => showTab('sugg'));
   document.getElementById('tabDartBtn').addEventListener('click', () => showTab('dart'));
+  document.getElementById('tabConfBtn').addEventListener('click', () => showTab('conf'));
   document.getElementById('tabSetBtn').addEventListener('click', () => showTab('set'));
+  document.getElementById('confPreview').addEventListener('click', confPreview);
+  document.getElementById('confRun').addEventListener('click', confRun);
   document.getElementById('suggRefresh').addEventListener('click', loadSuggestions);
   document.getElementById('dartRefresh').addEventListener('click', loadDartMappings);
   document.getElementById('pinSave').addEventListener('click', savePinned);
@@ -273,8 +276,8 @@ function init() {
 
 /* ===== 탭 전환 (보고서 / 의견함 / DART 연결) ===== */
 function showTab(which) {
-  const tabs = { report: 'tab-report', sugg: 'tab-suggestions', dart: 'tab-dart', set: 'tab-settings' };
-  const btns = { report: 'tabReportBtn', sugg: 'tabSuggBtn', dart: 'tabDartBtn', set: 'tabSetBtn' };
+  const tabs = { report: 'tab-report', sugg: 'tab-suggestions', dart: 'tab-dart', conf: 'tab-conf', set: 'tab-settings' };
+  const btns = { report: 'tabReportBtn', sugg: 'tabSuggBtn', dart: 'tabDartBtn', conf: 'tabConfBtn', set: 'tabSetBtn' };
   for (const k in tabs) {
     document.getElementById(tabs[k]).classList.toggle('hidden', k !== which);
     document.getElementById(btns[k]).className = 'btn px-4 py-2 ' + (k === which ? 'bg-ink text-white' : 'border border-ink/15 hover:bg-ink hover:text-white');
@@ -548,6 +551,57 @@ async function deleteTagsGlobal() {
     if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
     status.style.color = '#dc2626';
     status.textContent = '실패: ' + ((e.data && e.data.error) || e.status || e.message);
+  }
+}
+
+/* ===== 컨플 가져오기 탭 ===== */
+async function confPreview() {
+  const url = document.getElementById('confUrl').value.trim();
+  const status = document.getElementById('confStatus');
+  const box = document.getElementById('confBox');
+  if (!url) { status.textContent = 'URL을 입력하세요.'; return; }
+  status.style.color = '#111';
+  status.textContent = '컨플 페이지 읽는 중…';
+  box.classList.add('hidden');
+  try {
+    const d = await API.importConfluence({ url, dryRun: true }, adminPin);
+    document.getElementById('confName').value = d.name || '';
+    document.getElementById('confCat').value = d.category || '대기업';
+    document.getElementById('confInfo').innerHTML =
+      '<div class="text-ink/80"><b>' + escapeHtml(d.pageTitle || '') + '</b> — <b>' + d.count + '건</b></div>' +
+      '<div class="text-xs text-ink/55 mt-1">날짜: ' + (d.dates || []).map(escapeHtml).join(', ') + '</div>' +
+      (d.sample ? '<div class="text-xs text-ink/55 mt-1">샘플: [' + escapeHtml(d.sample.date) + '] ' + escapeHtml(d.sample.keyPoint) + '…</div>' : '');
+    document.getElementById('confRunStatus').textContent = '';
+    box.classList.remove('hidden');
+    status.textContent = '';
+  } catch (e) {
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
+    status.style.color = '#dc2626';
+    status.textContent = '실패: ' + ((e.data && (e.data.hint || e.data.error)) || e.status || e.message);
+  }
+}
+
+async function confRun() {
+  const url = document.getElementById('confUrl').value.trim();
+  const status = document.getElementById('confRunStatus');
+  const btn = document.getElementById('confRun');
+  const nameOverride = document.getElementById('confName').value.trim();
+  const categoryOverride = document.getElementById('confCat').value;
+  btn.disabled = true;
+  status.style.color = '#111';
+  status.textContent = '가져오는 중… (수십 초 걸릴 수 있음)';
+  try {
+    const d = await API.importConfluence({ url, nameOverride, categoryOverride }, adminPin);
+    status.style.color = '#7ba500';
+    status.textContent = '완료: ' + escapeHtml(d.name) + ' ' + d.count + '건, ' + (d.savedDates || []).length + '개 날짜 저장' +
+      ((d.failedDates || []).length ? ' (실패: ' + d.failedDates.join(', ') + ')' : '');
+    toast(d.name + ' 가져오기 완료 — 대시보드·검색에 반영됨', true);
+  } catch (e) {
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
+    status.style.color = '#dc2626';
+    status.textContent = '실패: ' + ((e.data && (e.data.hint || e.data.error)) || e.status || e.message);
+  } finally {
+    btn.disabled = false;
   }
 }
 

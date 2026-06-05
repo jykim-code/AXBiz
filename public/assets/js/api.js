@@ -103,6 +103,18 @@ const API = {
     if (!res.ok) { const err = new Error('REQUEST_FAILED'); err.status = res.status; throw err; }
     return res.json();
   },
+  // 컨플 페이지 가져오기 (관리자, PIN): {url, dryRun?, nameOverride?, categoryOverride?}
+  async importConfluence(payload, pin) {
+    const res = await fetch('/api/import-confluence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-pin': pin || '' },
+      body: JSON.stringify(payload),
+    });
+    let data = {};
+    try { data = await res.json(); } catch { /* no body */ }
+    if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; err.data = data; throw err; }
+    return data;
+  },
   // 태그 데이터 변경 (관리자, PIN): {name?, remove?, add?} → {ok, affectedDates}
   async manageTags(payload, pin) {
     const res = await fetch('/api/tags', {
