@@ -257,6 +257,9 @@ function init() {
   document.getElementById('suggRefresh').addEventListener('click', loadSuggestions);
   document.getElementById('dartRefresh').addEventListener('click', loadDartMappings);
   document.getElementById('pinSave').addEventListener('click', savePinned);
+  document.getElementById('tagCo').addEventListener('change', renderTagChips);
+  document.getElementById('tagSave').addEventListener('click', saveCompanyTags);
+  document.getElementById('tagGlobalBtn').addEventListener('click', deleteTagsGlobal);
 
   // 세션에 PIN이 있으면 바로 에디터로 (편의용; 서버 검증은 저장 시)
   const saved = sessionStorage.getItem('adminPin');
@@ -278,7 +281,7 @@ function showTab(which) {
   }
   if (which === 'sugg') loadSuggestions();
   if (which === 'dart') loadDartMappings();
-  if (which === 'set') loadPinned();
+  if (which === 'set') { loadPinned(); loadTagManager(); }
 }
 
 async function loadSuggestions() {
@@ -441,6 +444,110 @@ async function savePinned() {
     if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
     status.style.color = '#dc2626';
     status.textContent = '저장 실패: ' + ((e.data && e.data.error) || e.status || e.message);
+  }
+}
+
+/* ===== 설정 탭 (기업별/전역 태그 관리) ===== */
+let TAG_UNION = {}; // 기업명 -> 태그 배열(전체 항목 합집합)
+let tagRemoved = new Set(); // 현재 선택 기업에서 삭제 표시된 태그
+
+async function loadTagManager() {
+  const sel = document.getElementById('tagCo');
+  try {
+    const reports = await API.all();
+    TAG_UNION = {};
+    reports.forEach((r) => (r.companies || []).forEach((c) => {
+      if (!c || !c.name) return;
+      const s = (TAG_UNION[c.name] = TAG_UNION[c.name] || new Set());
+      (c.tags || []).forEach((t) => s.add(t));
+    }));
+    const names = Object.keys(TAG_UNION).sort((a, b) => a.localeCompare(b));
+    const cur = sel.value;
+    sel.innerHTML = names.map((n) => '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>').join('');
+    if (cur && names.includes(cur)) sel.value = cur;
+    renderTagChips();
+  } catch {
+    sel.innerHTML = '<option>불러오기 실패</option>';
+  }
+}
+
+function renderTagChips() {
+  tagRemoved = new Set();
+  document.getElementById('tagAdd').value = '';
+  document.getElementById('tagStatus').textContent = '';
+  drawTagChips();
+}
+
+function drawTagChips() {
+  const name = document.getElementById('tagCo').value;
+  const box = document.getElementById('tagChips');
+  const tags = TAG_UNION[name] ? [...TAG_UNION[name]].sort((a, b) => a.localeCompare(b)) : [];
+  if (!tags.length) { box.innerHTML = '<span class="text-xs opacity-50">태그 없음</span>'; return; }
+  box.innerHTML = tags.map((t) => {
+    const off = tagRemoved.has(t);
+    return '<button type="button" data-t="' + escapeHtml(t) + '" class="tagm text-xs rounded-full px-2.5 py-1 border ' +
+      (off ? 'line-through bg-red-50 border-red-300 text-red-500' : 'bg-beige border-ink/5 hover:border-red-300') + '">#' + escapeHtml(t) + (off ? ' ✕' : '') + '</button>';
+  }).join('');
+  box.querySelectorAll('.tagm').forEach((b) => b.onclick = () => {
+    const t = b.dataset.t;
+    if (tagRemoved.has(t)) tagRemoved.delete(t); else tagRemoved.add(t);
+    drawTagChips();
+  });
+}
+
+// 변경된 날짜들을 순차 재색인(기존 저장 API 재사용: GET→그대로 POST)
+async function reindexDates(dates, statusEl) {
+  for (let i = 0; i < dates.length; i++) {
+    statusEl.textContent = '재색인 중 ' + (i + 1) + '/' + dates.length + '…';
+    try {
+      const companies = await API.report(dates[i]);
+      await API.save(dates[i], companies, adminPin);
+    } catch { /* 한 날짜 실패해도 계속 */ }
+  }
+}
+
+async function saveCompanyTags() {
+  const name = document.getElementById('tagCo').value;
+  const status = document.getElementById('tagStatus');
+  const add = document.getElementById('tagAdd').value.split(',').map((t) => t.trim()).filter(Boolean);
+  const remove = [...tagRemoved];
+  if (!name || (!add.length && !remove.length)) { status.textContent = '변경 없음'; return; }
+  status.style.color = '#111';
+  status.textContent = '저장 중…';
+  try {
+    const res = await API.manageTags({ name, remove, add }, adminPin);
+    await reindexDates(res.affectedDates || [], status);
+    status.style.color = '#7ba500';
+    status.textContent = '완료 (' + (res.affectedDates || []).length + '개 날짜 반영)';
+    toast(name + ' 태그 변경 완료', true);
+    await loadTagManager();
+  } catch (e) {
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
+    status.style.color = '#dc2626';
+    status.textContent = '실패: ' + ((e.data && e.data.error) || e.status || e.message);
+  }
+}
+
+async function deleteTagsGlobal() {
+  const input = document.getElementById('tagGlobalDel');
+  const status = document.getElementById('tagGlobalStatus');
+  const remove = input.value.split(',').map((t) => t.trim()).filter(Boolean);
+  if (!remove.length) { status.textContent = '태그를 입력하세요'; return; }
+  if (!confirm('태그 [' + remove.join(', ') + '] 를 모든 기업·날짜 데이터에서 삭제합니다. 계속할까요?')) return;
+  status.style.color = '#111';
+  status.textContent = '삭제 중…';
+  try {
+    const res = await API.manageTags({ remove }, adminPin);
+    await reindexDates(res.affectedDates || [], status);
+    status.style.color = '#7ba500';
+    status.textContent = '완료 (' + (res.affectedDates || []).length + '개 날짜 반영)';
+    input.value = '';
+    toast('태그 전역 삭제 완료', true);
+    await loadTagManager();
+  } catch (e) {
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
+    status.style.color = '#dc2626';
+    status.textContent = '실패: ' + ((e.data && e.data.error) || e.status || e.message);
   }
 }
 

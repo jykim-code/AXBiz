@@ -125,6 +125,28 @@
           <span id="pinStatus" class="text-sm"></span>
         </div>
       </div>
+
+      <div class="bg-white rounded-2xl border border-ink/5 shadow p-5 max-w-[680px] mt-5">
+        <div class="label mb-1.5">기업별 태그 관리</div>
+        <select id="tagCo" class="field"></select>
+        <div id="tagChips" class="flex flex-wrap gap-1.5 mt-3"></div>
+        <input id="tagAdd" class="field mt-3" placeholder="추가할 태그 (쉼표 구분)" />
+        <p class="text-xs opacity-60 mt-2 leading-relaxed">태그를 클릭하면 삭제 표시(취소선)됩니다. 삭제는 그 기업의 모든 날짜 항목에서 제거되고, 추가는 모든 항목에 붙습니다. 저장 시 영향 날짜를 자동 재색인합니다. ※ 컨플 재동기화 시 컨플 내용 기준으로 되돌아갈 수 있습니다.</p>
+        <div class="flex items-center gap-3 mt-3">
+          <button id="tagSave" class="btn bg-ink text-white px-5 py-2.5 hover:bg-lime hover:text-ink">저장</button>
+          <span id="tagStatus" class="text-sm"></span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-ink/5 shadow p-5 max-w-[680px] mt-5">
+        <div class="label mb-1.5">태그 전역 삭제</div>
+        <input id="tagGlobalDel" class="field" placeholder="모든 기업·날짜에서 삭제할 태그 (쉼표 구분, 예: 제품출시, 전략)" />
+        <p class="text-xs opacity-60 mt-2">데이터에서 완전히 제거됩니다. 저장 시 영향 날짜를 자동 재색인합니다.</p>
+        <div class="flex items-center gap-3 mt-3">
+          <button id="tagGlobalBtn" class="btn border border-red-300 text-red-600 px-5 py-2.5 hover:bg-red-500 hover:text-white hover:border-red-500">전체 데이터에서 삭제</button>
+          <span id="tagGlobalStatus" class="text-sm"></span>
+        </div>
+      </div>
     </div>
   </section>
 
