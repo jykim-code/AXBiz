@@ -19,7 +19,8 @@
 - [ ] 모순 픽스처(과거 없음→현재 있음)로 정확성 회귀 검증
 - [ ] (선택) `GET /api/companies`로 그리드 데이터 서버화
 - [x] **히스토리 데이터 본삽입** — 컨플 "AX 동향 히스토리(기업별·2026)" 국내 10곳 **42건(2026-01~05, 32개 날짜)** 자동 ingest 완료(이름 한글 통일·날짜 정규화·병합 업서트, RAG 색인 자동). 해외 5곳(Anthropic·MS·OpenAI·Salesforce·Cohere)은 보류. Vectorize ~52/4,880 여유
-- [ ] **컨플 동기화 자동화 2단계** — `/api/sync-confluence`(PIN, Confluence API 토큰) + 관리자 "컨플 동기화" 버튼, (선택) GitHub Actions cron. 현재는 `.wrangler/ingest.mjs` 재실행으로 수동 동기화 가능
+- [x] **컨플 동기화 자동화 2단계** — admin **"컨플 가져오기" 탭**: 링크 붙여넣기→미리보기(기업명·분류 수정 가능)→실행. `POST /api/import-confluence`(PIN, Confluence REST + API 토큰 시크릿), 단축링크 해석·엔티티 디코드·한글명 매핑·유형태그 제외·병합 업서트·재색인·AI요약 재생성. 삼성SDS로 끝단 검증
+- [ ] (선택) 전체 페이지 일괄 동기화 버튼 / GitHub Actions cron — 필요 시
 
 ---
 
