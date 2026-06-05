@@ -98,10 +98,8 @@ function sourceHTML(s) {
     '<span class="text-[10px] font-bold text-lime-600">[' + s.n + ']</span>' +
     '<a href="/company?name=' + encodeURIComponent(s.name) + '" class="font-display font-semibold text-sm tracking-tight hover:text-lime-600">' + escapeHtml(s.name) + '</a>' +
     '<span class="text-[10px] opacity-75 ml-auto">' + escapeHtml(s.date) + '</span></div>' +
-    '<div class="flex items-center gap-2 text-xs opacity-80">' +
-    '<span>' + escapeHtml(s.category || '') + '</span>' +
-    (links.length ? '<span class="ml-auto flex gap-2">' + links.join('') + '</span>' : '') +
-    '</div>' + evidence + '</div>';
+    (links.length ? '<div class="flex justify-end gap-2 text-xs opacity-80">' + links.join('') + '</div>' : '') +
+    evidence + '</div>';
 }
 
 /* ---------- 태그·키워드 브라우즈(기존 동작 유지) ---------- */
