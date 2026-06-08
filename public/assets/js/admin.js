@@ -100,7 +100,18 @@ function companyBlock(data) {
   const bulletWrap = el('div', { class: 'space-y-4 mb-4' });
   BULLET_FIELDS.forEach((f) => bulletWrap.appendChild(bulletGroup(f, f.label, data[f.key])));
 
-  const tagsWrap = el('div', { class: 'space-y-1.5' }, [el('div', { class: 'label', text: '태그' }), tags]);
+  const sugBox = el('div', { class: 'flex flex-wrap gap-1.5' });
+  const suggestBtn = el('button', {
+    type: 'button',
+    class: 'text-xs font-semibold text-lime-600 hover:text-ink',
+    text: 'AI 태그 추천',
+    onclick: (e) => suggestTagsFor(e.target.closest('.company-block'), tags, sugBox),
+  });
+  const tagsWrap = el('div', { class: 'space-y-1.5' }, [
+    el('div', { class: 'flex items-center gap-3' }, [el('div', { class: 'label', text: '태그' }), suggestBtn]),
+    tags,
+    sugBox,
+  ]);
 
   const block = el('div', { class: 'company-block bg-white rounded-[20px] border border-ink/5 shadow-xl shadow-ink/5 p-6' }, [
     head,
@@ -109,6 +120,40 @@ function companyBlock(data) {
     tagsWrap,
   ]);
   return block;
+}
+
+/* ===== AI 태그 추천 (본문 → LLM 후보, 관리자가 클릭 채택) ===== */
+async function suggestTagsFor(block, tagsInput, sugBox) {
+  if (!block) return;
+  const payload = {
+    name: block.querySelector('.c-name').value.trim(),
+    keyPoints: collectBullets(block, 'keyPoints'),
+    implications: collectBullets(block, 'implications'),
+    hancomInsight: collectBullets(block, 'hancomInsight'),
+  };
+  if (!payload.keyPoints.length && !payload.implications.length && !payload.hancomInsight.length) {
+    sugBox.innerHTML = '<span class="text-xs text-red-500">주요 내용을 먼저 입력하세요</span>';
+    return;
+  }
+  sugBox.innerHTML = '<span class="text-xs opacity-50">추천 생성 중…</span>';
+  try {
+    const { tags } = await API.suggestTags(payload, adminPin);
+    const existing = new Set(tagsInput.value.split(',').map((s) => s.trim()).filter(Boolean));
+    sugBox.innerHTML = '';
+    (tags || []).filter((t) => !existing.has(t)).forEach((t) => {
+      const chip = el('button', { type: 'button', class: 'text-xs rounded-full px-3 py-1 border border-ink/15 bg-beige hover:bg-lime hover:border-lime', text: '+ ' + t });
+      chip.onclick = () => {
+        const cur = tagsInput.value.split(',').map((s) => s.trim()).filter(Boolean);
+        if (!cur.includes(t)) { cur.push(t); tagsInput.value = cur.join(', '); }
+        chip.remove();
+      };
+      sugBox.appendChild(chip);
+    });
+    if (!sugBox.children.length) sugBox.innerHTML = '<span class="text-xs opacity-50">추가할 새 태그가 없습니다</span>';
+  } catch (e) {
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
+    sugBox.innerHTML = '<span class="text-xs text-red-500">추천 실패: ' + ((e.data && e.data.error) || e.status || e.message) + '</span>';
+  }
 }
 
 /* ===== 수집 / 검증 ===== */
