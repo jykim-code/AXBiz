@@ -339,9 +339,12 @@ async function loadDartMappings() {
   try {
     await loadCorps();
     const [reports, metaRows] = await Promise.all([API.all().catch(() => []), API.companyMetaList(adminPin)]);
-    const names = [...new Set(reports.flatMap((r) => (r.companies || []).map((c) => c.name)))].sort((a, b) => a.localeCompare(b));
     const metaMap = {};
     (metaRows || []).forEach((m) => (metaMap[m.name] = m));
+    // 미연결(corp_code 없음) 업체를 위로, 그다음 가나다순
+    const connected = (n) => (metaMap[n] && metaMap[n].corp_code ? 1 : 0);
+    const names = [...new Set(reports.flatMap((r) => (r.companies || []).map((c) => c.name)))]
+      .sort((a, b) => connected(a) - connected(b) || a.localeCompare(b));
     if (!names.length) { list.innerHTML = '<div class="text-sm opacity-50">등록된 기업이 없습니다.</div>'; return; }
     list.innerHTML = '';
     names.forEach((n) => list.appendChild(dartRow(n, metaMap[n])));
