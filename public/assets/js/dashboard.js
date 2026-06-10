@@ -186,7 +186,10 @@ function cardHTML(co) {
   const dateChip = co.date ? '<span class="text-[11px] text-ink/55 font-medium ml-auto flex-none">' + escapeHtml(co.date) + '</span>' : '';
   let h = '<div class="card group bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 hover:-translate-y-1 transition-transform duration-300 cursor-pointer" role="button" tabindex="0" aria-expanded="false" data-company="' + escapeHtml(co.name) + '">';
   h += '<div class="p-6 flex items-start gap-3"><div class="flex-1 min-w-0">' +
-    '<div class="flex items-center gap-2"><h4 class="font-display font-bold text-lg tracking-tight">' + escapeHtml(co.name) + '</h4>' + badge + dateChip + '</div>' +
+    '<div class="flex items-center gap-2">' +
+    '<a href="/company?name=' + encodeURIComponent(co.name) + '" class="font-display font-bold text-lg tracking-tight hover:text-lime-600 inline-flex items-center gap-1" title="기업 상세 보기">' + escapeHtml(co.name) +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>' +
+    badge + dateChip + '</div>' +
     '<p class="text-sm opacity-80 mt-1.5 leading-snug">' + escapeHtml(sum) + '</p></div>' +
     '<span class="chev flex-none mt-1 opacity-75 transition-transform duration-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m6 9 6 6 6-6"/></svg></span></div>';
   h += '<div class="card-body"><div class="px-6 pb-6 space-y-5">';
@@ -315,19 +318,22 @@ function renderCal() {
     .join('');
   const first = new Date(y, m, 1).getDay();
   const days = new Date(y, m + 1, 0).getDate();
-  for (let i = 0; i < first; i++) h += '<div></div>';
+  // 선택 기간을 "연결된 라임 바"로: 가로 gap 제거 + 범위 양끝만 둥글게
+  const inR = (d) => { if (d < 1 || d > days) return false; const ds = ymd(y, m + 1, d); return ds >= ps && ds <= pe; };
+  for (let i = 0; i < first; i++) h += '<div class="h-8"></div>';
   for (let d = 1; d <= days; d++) {
     const ds = ymd(y, m + 1, d);
     const has = state.dateSet.has(ds);
-    const inP = ds >= ps && ds <= pe; // 선택 기간 내
-    let cls = 'relative h-8 rounded-lg flex items-center justify-center text-sm font-display cursor-pointer transition-colors ';
-    if (inP) cls += 'bg-lime text-ink font-bold';
-    else if (has) cls += 'bg-beige border border-ink/5 font-semibold hover:border-lime';
-    else cls += 'opacity-30 hover:bg-beige';
+    const col = (first + d - 1) % 7;
+    const me = inR(d), L = me && col > 0 && inR(d - 1), R = me && col < 6 && inR(d + 1);
+    let cls = 'relative h-8 flex items-center justify-center text-sm font-display cursor-pointer transition-colors ';
+    if (me) cls += 'bg-lime text-ink font-bold ' + (L ? '' : 'rounded-l-lg ') + (R ? '' : 'rounded-r-lg ');
+    else if (has) cls += 'rounded-lg font-semibold hover:bg-beige';
+    else cls += 'rounded-lg opacity-30 hover:bg-beige';
     h +=
       '<div class="' + cls + '" data-date="' + ds + '" role="button" tabindex="0" aria-label="' + ds + '">' +
       d +
-      (has ? '<span class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ' + (inP ? 'bg-ink/60' : 'bg-lime-600') + '"></span>' : '') +
+      (has && !me ? '<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-lime-600"></span>' : '') +
       '</div>';
   }
   const g = document.getElementById('calGrid');
