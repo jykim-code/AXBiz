@@ -331,7 +331,6 @@ function renderPeriod() {
 function renderCal() {
   const a = parseYmd(state.anchor);
   const y = a.getFullYear(), m = a.getMonth();
-  document.getElementById('calMon').textContent = y + ' . ' + pad2(m + 1);
   const [ps, pe] = periodRange();
   let h = DOW
     .map((d) => '<div class="text-[10px] font-semibold uppercase tracking-wider opacity-75 text-center">' + d + '</div>')
