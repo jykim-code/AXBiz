@@ -312,7 +312,9 @@ function updateBrief(items, cols) {
 
 /* ===== 기간 카드 렌더 ===== */
 function renderPeriod() {
-  document.getElementById('selDate').textContent = periodLabel();
+  const label = periodLabel();
+  document.getElementById('selDate').textContent = label;
+  document.getElementById('periodLabel').textContent = label; // 하단 네비 기간 라벨
   const items = aggregate();
   const cols = { large: [], mid: [], startup: [] };
   items.forEach((c) => { const k = CAT[c.category]; if (k) cols[k].push(c); });
