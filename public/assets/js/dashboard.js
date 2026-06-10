@@ -181,7 +181,10 @@ function cardHTML(co) {
   const entries = co.entries || [];
   const latest = entries[0] || co;
   const n = co.count || entries.length || 1;
-  const sum = (latest.keyPoints && latest.keyPoints[0]) || '';
+  // 접힘 줄: 단건=관리자 한 줄 요약(없으면 첫 주요내용) / 다건=기간 종합(렌더 직후 비동기 채움)
+  const sumText = n > 1
+    ? '<span class="opacity-50 font-normal">기간 종합 불러오는 중…</span>'
+    : escapeHtml((latest.summary && String(latest.summary).trim()) || (latest.keyPoints && latest.keyPoints[0]) || '');
   const badge = n > 1 ? '<span class="text-[10px] font-bold text-lime-600 bg-lime/15 rounded-full px-2 py-0.5 flex-none">' + n + '건</span>' : '';
   const dateChip = co.date ? '<span class="text-[11px] text-ink/55 font-medium ml-auto flex-none">' + escapeHtml(co.date) + '</span>' : '';
   let h = '<div class="card group bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 hover:-translate-y-1 transition-transform duration-300 cursor-pointer" role="button" tabindex="0" aria-expanded="false" data-company="' + escapeHtml(co.name) + '">';
@@ -190,14 +193,14 @@ function cardHTML(co) {
     '<a href="/company?name=' + encodeURIComponent(co.name) + '" class="font-display font-bold text-lg tracking-tight hover:text-lime-600 inline-flex items-center gap-1" title="기업 상세 보기">' + escapeHtml(co.name) +
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>' +
     badge + dateChip + '</div>' +
-    '<p class="text-sm opacity-80 mt-1.5 leading-snug">' + escapeHtml(sum) + '</p></div>' +
+    '<p class="card-summary text-sm font-bold text-ink mt-1.5 leading-snug">' + sumText + '</p></div>' +
     '<span class="chev flex-none mt-1 opacity-75 transition-transform duration-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m6 9 6 6 6-6"/></svg></span></div>';
   h += '<div class="card-body"><div class="px-6 pb-6 space-y-5">';
   // 기간 종합(다건일 때, 펼침 시 lazy 로드)
   if (n > 1)
-    h += '<div class="period-summary bg-ink text-white rounded-2xl p-4" data-loaded="0">' +
-      '<div class="text-xs font-bold uppercase tracking-widest text-lime mb-1.5">기간 종합</div>' +
-      '<div class="summary-text text-sm leading-relaxed opacity-90">종합 생성 중…</div></div>';
+    h += '<div class="period-summary">' +
+      '<div class="text-[11px] font-bold uppercase tracking-widest text-lime-600 mb-1">기간 종합</div>' +
+      '<div class="bg-ink rounded-xl p-3"><p class="summary-text text-sm leading-relaxed text-white opacity-90">종합 생성 중…</p></div></div>';
   if (n > 1) {
     // 날짜별 미니 타임라인(최신순)
     h += '<div class="space-y-5 border-l-2 border-lime/40 pl-5">';
@@ -304,6 +307,10 @@ function renderPeriod() {
       cols[k].map(cardHTML).join('') || '<div class="text-sm text-ink/55 px-2 py-3">해당 기간 동향 없음</div>';
     document.getElementById('cnt-' + k).textContent = cols[k].length;
   }
+  // 다건 카드의 기간 종합을 렌더 직후 미리 로드(서버 캐시로 재조회는 즉시) — 접힘 줄·펼침 박스 동시 채움
+  for (const k of ['large', 'mid', 'startup']) {
+    document.getElementById('col-' + k).querySelectorAll('.card').forEach((card) => loadPeriodSummary(card));
+  }
   updateBrief(items, cols);
 }
 
@@ -368,25 +375,34 @@ function onCardActivate(e) {
   if (open) loadPeriodSummary(card);
 }
 
-// 펼칠 때 기간 종합 1줄 lazy 로드(다건 카드만, 1회). 현재 기간의 그 기업 entries로 생성.
+// 다건 카드의 기간 종합 로드(카드당 1회). 접힘 줄(.card-summary)과 펼침 박스(.summary-text)를 동시에 채움.
+// 단건 카드는 종합이 없으므로 일찍 반환(접힘 줄엔 per-entry 요약이 이미 들어가 있음).
 async function loadPeriodSummary(card) {
-  const box = card.querySelector('.period-summary');
-  if (!box || box.dataset.loaded === '1') return;
-  box.dataset.loaded = '1';
+  if (!card || card.dataset.sumLoaded === '1') return;
   const name = card.dataset.company;
   const co = aggregate().find((x) => x.name === name);
-  const textEl = box.querySelector('.summary-text');
-  if (!co || co.entries.length < 2) { box.remove(); return; }
+  if (!co || co.entries.length < 2) return;
+  card.dataset.sumLoaded = '1';
+  const lineEl = card.querySelector('.card-summary');
+  const box = card.querySelector('.period-summary');
+  const textEl = box ? box.querySelector('.summary-text') : null;
+  const fallback = (co.entries[0].summary && String(co.entries[0].summary).trim()) || (co.entries[0].keyPoints || [])[0] || '';
   const [start, end] = periodRange();
   try {
     const { summary } = await API.periodSummary({
       name, start, end,
       entries: co.entries.map((e) => ({ date: e.date, keyPoints: e.keyPoints, implications: e.implications, hancomInsight: e.hancomInsight })),
     });
-    if (summary) { textEl.textContent = summary; textEl.classList.remove('opacity-90'); }
-    else box.remove(); // 종합 실패 → 박스 숨김(타임라인은 그대로)
+    if (summary) {
+      if (lineEl) lineEl.textContent = summary;
+      if (textEl) { textEl.textContent = summary; textEl.classList.remove('opacity-90'); }
+    } else {
+      if (lineEl) lineEl.textContent = fallback; // 종합 실패 → 접힘 줄은 최신 요약으로
+      if (box) box.remove();                     // 펼침 박스는 숨김(타임라인은 그대로)
+    }
   } catch {
-    box.remove();
+    if (lineEl) lineEl.textContent = fallback;
+    if (box) box.remove();
   }
 }
 function setupCardInteractions() {

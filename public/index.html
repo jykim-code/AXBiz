@@ -32,10 +32,9 @@
   .sn-reveal.sn-visible { opacity: 1; transform: translateY(0); }
   .col-scroll::-webkit-scrollbar { width: 8px; }
   .col-scroll::-webkit-scrollbar-thumb { background: rgba(17,17,17,.12); border-radius: 8px; }
-  /* grid-rows 0fr→1fr: 콘텐츠 높이에 맞춰 자동 확장(매직넘버 없이 클리핑 방지) */
-  .card-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s ease; }
-  .card.open .card-body { grid-template-rows: 1fr; }
-  .card-body > div { overflow: hidden; min-height: 0; }
+  /* max-height 컬랩스: 접힘 시 0 + overflow:hidden 으로 본문이 한 px도 새지 않음(grid 0fr의 min-content 누수 방지) */
+  .card-body { max-height: 0; overflow: hidden; transition: max-height .45s ease; }
+  .card.open .card-body { max-height: 4000px; }
   .card.open .chev { transform: rotate(180deg); }
   .card:focus-visible, [data-date]:focus-visible { outline: 2px solid #7ba500; outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) {

@@ -54,6 +54,7 @@ function sanitizeCompany(c) {
   return {
     name: name.slice(0, MAX_NAME),
     category,
+    summary: String(c.summary || '').trim().slice(0, 300), // 접힘 카드용 한 줄 요약(관리자 입력 또는 백필 생성)
     sourceUrl: String(c.sourceUrl || '').trim().slice(0, MAX_URL),
     confluenceUrl: String(c.confluenceUrl || '').trim().slice(0, MAX_URL),
     keyPoints: asStringArray(c.keyPoints),

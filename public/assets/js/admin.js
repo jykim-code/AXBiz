@@ -100,6 +100,13 @@ function companyBlock(data) {
   const bulletWrap = el('div', { class: 'space-y-4 mb-4' });
   BULLET_FIELDS.forEach((f) => bulletWrap.appendChild(bulletGroup(f, f.label, data[f.key])));
 
+  // 접힘 카드용 한 줄 요약 (비우면 대시보드가 첫 주요내용으로 폴백)
+  const summary = el('input', { class: 'field c-summary', type: 'text', placeholder: '한 줄 요약 — 접힘 카드에 표시 (비우면 첫 주요 내용)', value: data.summary || '' });
+  const summaryWrap = el('div', { class: 'space-y-1.5 mb-4' }, [
+    el('div', { class: 'label', text: '한 줄 요약' }),
+    summary,
+  ]);
+
   const sugBox = el('div', { class: 'flex flex-wrap gap-1.5' });
   const suggestBtn = el('button', {
     type: 'button',
@@ -117,6 +124,7 @@ function companyBlock(data) {
     head,
     grid,
     bulletWrap,
+    summaryWrap,
     tagsWrap,
   ]);
   return block;
@@ -173,6 +181,7 @@ function collect() {
     companies.push({
       name,
       category: b.querySelector('.c-category').value,
+      summary: b.querySelector('.c-summary').value.trim(),
       sourceUrl: b.querySelector('.c-source').value.trim(),
       confluenceUrl: b.querySelector('.c-confluence').value.trim(),
       keyPoints: collectBullets(b, 'keyPoints'),
