@@ -59,6 +59,14 @@ CREATE TABLE IF NOT EXISTS company_summary (
   generated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- 기간(주/월) 종합 캐시. 홈 대시보드 카드 펼침 시 LLM 1~2문장 종합.
+--  ck = 기업명|시작|끝|항목sig (항목 변경 시 자동 갱신)
+CREATE TABLE IF NOT EXISTS period_summary (
+  ck         TEXT PRIMARY KEY,
+  summary    TEXT,
+  fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- DART 응답 캐시(회사개황+재무). corp_code 기준. 재무는 분기 갱신이라 공격적 캐시.
 CREATE TABLE IF NOT EXISTS company_profile (
   corp_code  TEXT PRIMARY KEY,

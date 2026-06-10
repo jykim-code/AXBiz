@@ -156,83 +156,60 @@ const bullets = (a) =>
     .join('') +
   '</ul>';
 
-function cardHTML(c) {
-  const sum = (c.keyPoints && c.keyPoints[0]) || '';
-  const src = safeUrl(c.sourceUrl);
-  const conf = safeUrl(c.confluenceUrl);
-  let h =
-    '<div class="card group bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 hover:-translate-y-1 transition-transform duration-300 cursor-pointer" role="button" tabindex="0" aria-expanded="false">';
-  const count = c.count || 1;
-  const badge = count > 1 ? '<span class="text-[10px] font-bold text-lime-600 bg-lime/15 rounded-full px-2 py-0.5 flex-none">' + count + '건</span>' : '';
-  const dateChip = c.date ? '<span class="text-[11px] text-ink/55 font-medium ml-auto flex-none">' + escapeHtml(c.date) + '</span>' : '';
-  h += '<div class="p-6 flex items-start gap-3">';
-  h +=
-    '<div class="flex-1 min-w-0">' +
-    '<div class="flex items-center gap-2">' +
-    '<h4 class="font-display font-bold text-lg tracking-tight">' + escapeHtml(c.name) + '</h4>' +
-    badge + dateChip +
-    '</div>' +
-    '<p class="text-sm opacity-80 mt-1.5 leading-snug">' + escapeHtml(sum) + '</p></div>';
-  h +=
-    '<span class="chev flex-none mt-1 opacity-75 transition-transform duration-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m6 9 6 6 6-6"/></svg></span>';
-  h += '</div>';
-  h += '<div class="card-body"><div class="px-6 pb-6 space-y-5">';
-  // 기간 내 다건이면 안내 + 기업 상세(전체 타임라인) 링크
-  h +=
-    '<div class="flex items-center gap-2 text-xs -mt-1">' +
-    '<span class="opacity-70">' + (count > 1 ? '이 기간 ' + count + '건 · 최신 ' + escapeHtml(c.date || '') : escapeHtml(c.date || '')) + '</span>' +
-    '<a href="/company?name=' + encodeURIComponent(c.name) + '" class="ml-auto text-lime-600 font-semibold hover:underline">기업 상세 →</a>' +
-    '</div>';
-  if (c.keyPoints && c.keyPoints.length)
-    h +=
-      '<div><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2.5">주요 내용</div>' +
-      bullets(c.keyPoints) +
-      '</div>';
-  if (c.implications && c.implications.length)
-    h +=
-      '<div><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2.5">시사점</div>' +
-      bullets(c.implications) +
-      '</div>';
-  if (c.hancomInsight && c.hancomInsight.length) {
-    h +=
-      '<div class="bg-lime/15 border border-lime rounded-2xl p-4"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2.5">한컴 인사이트</div>' +
-      '<ul class="space-y-2">' +
-      c.hancomInsight
-        .map(
-          (x) =>
-            '<li class="text-sm leading-relaxed pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime-600">' +
-            escapeHtml(x) +
-            '</li>'
-        )
-        .join('') +
-      '</ul></div>';
-  }
+// 한 건(날짜)의 상세: 주요 내용 / 시사점 / 한컴 인사이트 / 링크
+function entryDetail(e) {
+  const src = safeUrl(e.sourceUrl), conf = safeUrl(e.confluenceUrl);
+  let h = '';
+  if (e.keyPoints && e.keyPoints.length)
+    h += '<div><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">주요 내용</div>' + bullets(e.keyPoints) + '</div>';
+  if (e.implications && e.implications.length)
+    h += '<div><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">시사점</div>' + bullets(e.implications) + '</div>';
+  if (e.hancomInsight && e.hancomInsight.length)
+    h += '<div class="bg-lime/15 border border-lime rounded-2xl p-4"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">한컴 인사이트</div><ul class="space-y-2">' +
+      e.hancomInsight.map((x) => '<li class="text-sm leading-relaxed pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime-600">' + escapeHtml(x) + '</li>').join('') + '</ul></div>';
   if (src || conf) {
     h += '<div class="flex flex-wrap gap-2 pt-1">';
-    if (src)
-      h +=
-        '<a href="' + escapeHtml(src) +
-        '" target="_blank" rel="noopener noreferrer" class="text-xs font-medium border border-ink/10 rounded-full px-3.5 py-2 flex items-center gap-1.5 hover:bg-ink hover:text-white transition-colors">' +
-        icon('link') + ' 출처 기사</a>';
-    if (conf)
-      h +=
-        '<a href="' + escapeHtml(conf) +
-        '" target="_blank" rel="noopener noreferrer" class="text-xs font-medium border border-ink/10 rounded-full px-3.5 py-2 flex items-center gap-1.5 hover:bg-ink hover:text-white transition-colors">' +
-        icon('doc') + ' 상세 모니터링</a>';
+    if (src) h += '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener noreferrer" class="text-xs font-medium border border-ink/10 rounded-full px-3.5 py-2 flex items-center gap-1.5 hover:bg-ink hover:text-white transition-colors">' + icon('link') + ' 출처 기사</a>';
+    if (conf) h += '<a href="' + escapeHtml(conf) + '" target="_blank" rel="noopener noreferrer" class="text-xs font-medium border border-ink/10 rounded-full px-3.5 py-2 flex items-center gap-1.5 hover:bg-ink hover:text-white transition-colors">' + icon('doc') + ' 상세 모니터링</a>';
     h += '</div>';
   }
-  if (c.tags && c.tags.length)
-    h +=
-      '<div class="flex flex-wrap gap-2">' +
-      c.tags
-        .map(
-          (t) =>
-            '<span class="text-xs opacity-80 bg-beige border border-ink/5 rounded-full px-3 py-1">#' +
-            escapeHtml(t) +
-            '</span>'
-        )
-        .join('') +
-      '</div>';
+  return h;
+}
+
+// 옵션 1: 기업별 1카드. 접힘=최신 헤드라인+N건 / 펼침=기간 종합(다건) + 날짜별 타임라인
+function cardHTML(co) {
+  const entries = co.entries || [];
+  const latest = entries[0] || co;
+  const n = co.count || entries.length || 1;
+  const sum = (latest.keyPoints && latest.keyPoints[0]) || '';
+  const badge = n > 1 ? '<span class="text-[10px] font-bold text-lime-600 bg-lime/15 rounded-full px-2 py-0.5 flex-none">' + n + '건</span>' : '';
+  const dateChip = co.date ? '<span class="text-[11px] text-ink/55 font-medium ml-auto flex-none">' + escapeHtml(co.date) + '</span>' : '';
+  let h = '<div class="card group bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 hover:-translate-y-1 transition-transform duration-300 cursor-pointer" role="button" tabindex="0" aria-expanded="false" data-company="' + escapeHtml(co.name) + '">';
+  h += '<div class="p-6 flex items-start gap-3"><div class="flex-1 min-w-0">' +
+    '<div class="flex items-center gap-2"><h4 class="font-display font-bold text-lg tracking-tight">' + escapeHtml(co.name) + '</h4>' + badge + dateChip + '</div>' +
+    '<p class="text-sm opacity-80 mt-1.5 leading-snug">' + escapeHtml(sum) + '</p></div>' +
+    '<span class="chev flex-none mt-1 opacity-75 transition-transform duration-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m6 9 6 6 6-6"/></svg></span></div>';
+  h += '<div class="card-body"><div class="px-6 pb-6 space-y-5">';
+  // 기간 종합(다건일 때, 펼침 시 lazy 로드)
+  if (n > 1)
+    h += '<div class="period-summary bg-ink text-white rounded-2xl p-4" data-loaded="0">' +
+      '<div class="text-xs font-bold uppercase tracking-widest text-lime mb-1.5">기간 종합</div>' +
+      '<div class="summary-text text-sm leading-relaxed opacity-90">종합 생성 중…</div></div>';
+  h += '<div class="flex justify-end -mt-1"><a href="/company?name=' + encodeURIComponent(co.name) + '" class="text-xs text-lime-600 font-semibold hover:underline">기업 상세 →</a></div>';
+  if (n > 1) {
+    // 날짜별 미니 타임라인(최신순)
+    h += '<div class="space-y-5 border-l-2 border-lime/40 pl-5">';
+    entries.forEach((e) => {
+      h += '<div class="relative"><div class="absolute -left-[27px] top-1.5 w-3 h-3 rounded-full bg-lime border-2 border-white"></div>' +
+        '<div class="text-xs font-bold text-lime-600 mb-2">' + escapeHtml(e.date) + '</div>' +
+        '<div class="space-y-4">' + entryDetail(e) + '</div></div>';
+    });
+    h += '</div>';
+  } else {
+    h += '<div class="space-y-5">' + entryDetail(latest) + '</div>';
+  }
+  if (co.tags && co.tags.length)
+    h += '<div class="flex flex-wrap gap-2">' + co.tags.map((t) => '<span class="text-xs opacity-80 bg-beige border border-ink/5 rounded-full px-3 py-1">#' + escapeHtml(t) + '</span>').join('') + '</div>';
   h += '</div></div></div>';
   return h;
 }
@@ -270,7 +247,7 @@ function stepPeriod(dir) {
   state.anchor = fmtDate(a);
 }
 
-// 기간 내 항목을 기업별 1건으로 병합 (최신 entry 내용 + 등장 건수 + 태그 합집합)
+// 기간 내 항목을 기업별로 묶음 (entries[] 최신순 + 태그 합집합). 내용 손실 없음.
 function aggregate() {
   const [s, e] = periodRange();
   const map = {};
@@ -278,18 +255,19 @@ function aggregate() {
     if (!r.date || r.date < s || r.date > e) return;
     (r.companies || []).forEach((c) => {
       if (!c || !c.name) return;
-      const cur = map[c.name];
-      if (!cur) {
-        map[c.name] = Object.assign({}, c, { date: r.date, count: 1, _tags: new Set(c.tags || []) });
-      } else {
-        cur.count++;
-        (c.tags || []).forEach((t) => cur._tags.add(t));
-        if (r.date >= cur.date) { const cnt = cur.count, tg = cur._tags; Object.assign(cur, c, { date: r.date, count: cnt, _tags: tg }); }
-      }
+      const co = (map[c.name] = map[c.name] || { name: c.name, category: c.category, entries: [], _tags: new Set() });
+      co.entries.push(Object.assign({ date: r.date }, c));
+      (c.tags || []).forEach((t) => co._tags.add(t));
+      co.category = c.category; // 최신 분류 반영(대개 동일)
     });
   });
   const items = Object.values(map);
-  items.forEach((c) => (c.tags = [...c._tags]));
+  items.forEach((co) => {
+    co.entries.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    co.count = co.entries.length;
+    co.date = co.entries[0] ? co.entries[0].date : '';
+    co.tags = [...co._tags];
+  });
   return items;
 }
 
@@ -382,6 +360,29 @@ function onCardActivate(e) {
   }
   const open = card.classList.toggle('open');
   card.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) loadPeriodSummary(card);
+}
+
+// 펼칠 때 기간 종합 1줄 lazy 로드(다건 카드만, 1회). 현재 기간의 그 기업 entries로 생성.
+async function loadPeriodSummary(card) {
+  const box = card.querySelector('.period-summary');
+  if (!box || box.dataset.loaded === '1') return;
+  box.dataset.loaded = '1';
+  const name = card.dataset.company;
+  const co = aggregate().find((x) => x.name === name);
+  const textEl = box.querySelector('.summary-text');
+  if (!co || co.entries.length < 2) { box.remove(); return; }
+  const [start, end] = periodRange();
+  try {
+    const { summary } = await API.periodSummary({
+      name, start, end,
+      entries: co.entries.map((e) => ({ date: e.date, keyPoints: e.keyPoints, implications: e.implications, hancomInsight: e.hancomInsight })),
+    });
+    if (summary) { textEl.textContent = summary; textEl.classList.remove('opacity-90'); }
+    else box.remove(); // 종합 실패 → 박스 숨김(타임라인은 그대로)
+  } catch {
+    box.remove();
+  }
 }
 function setupCardInteractions() {
   ['large', 'mid', 'startup'].forEach((k) => {

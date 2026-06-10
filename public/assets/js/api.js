@@ -67,6 +67,16 @@ const API = {
   companyProfile(name) {
     return getJSON('/api/company-profile?name=' + encodeURIComponent(name));
   },
+  // 기간 종합 (공개). { summary } — 다건 기업의 기간 동향 1~2문장 종합
+  async periodSummary(payload) {
+    const res = await fetch('/api/period-summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return { summary: null };
+    return res.json();
+  },
   // 기업 AI 요약 (공개). { available, flow[], insight[], dataDate }
   companySummary(name) {
     return getJSON('/api/company-summary?name=' + encodeURIComponent(name));
