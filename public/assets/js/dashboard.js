@@ -189,13 +189,13 @@ function cardHTML(co) {
     '<div class="flex items-center gap-2"><h4 class="font-display font-bold text-lg tracking-tight">' + escapeHtml(co.name) + '</h4>' + badge + dateChip + '</div>' +
     '<p class="text-sm opacity-80 mt-1.5 leading-snug">' + escapeHtml(sum) + '</p></div>' +
     '<span class="chev flex-none mt-1 opacity-75 transition-transform duration-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m6 9 6 6 6-6"/></svg></span></div>';
-  h += '<div class="card-body"><div class="px-6 pb-6 space-y-5">';
+  h += '<div class="card-body"><div class="px-6 pb-6 pt-1 space-y-5 border-t border-ink/5">';
   // 기간 종합(다건일 때, 펼침 시 lazy 로드)
   if (n > 1)
     h += '<div class="period-summary bg-ink text-white rounded-2xl p-4" data-loaded="0">' +
       '<div class="text-xs font-bold uppercase tracking-widest text-lime mb-1.5">기간 종합</div>' +
       '<div class="summary-text text-sm leading-relaxed opacity-90">종합 생성 중…</div></div>';
-  h += '<div class="flex justify-end -mt-1"><a href="/company?name=' + encodeURIComponent(co.name) + '" class="text-xs text-lime-600 font-semibold hover:underline">기업 상세 →</a></div>';
+  h += '<div class="flex justify-end"><a href="/company?name=' + encodeURIComponent(co.name) + '" class="text-xs text-lime-600 font-semibold hover:underline">기업 상세 →</a></div>';
   if (n > 1) {
     // 날짜별 미니 타임라인(최신순)
     h += '<div class="space-y-5 border-l-2 border-lime/40 pl-5">';
