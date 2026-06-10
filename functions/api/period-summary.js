@@ -31,7 +31,7 @@ export async function onRequestPost({ request, env }) {
       (im.length ? ' | 시사점: ' + im.join(' / ') : '') +
       (hi.length ? ' | 한컴인사이트: ' + hi.join(' / ') : '');
   }).join('\n');
-  const ck = name + '|' + start + '|' + end + '|' + sigOf(blocks);
+  const ck = 'v2|' + name + '|' + start + '|' + end + '|' + sigOf(blocks);
 
   // 캐시
   try {
@@ -47,7 +47,7 @@ export async function onRequestPost({ request, env }) {
       body: JSON.stringify({
         model: env.OPENROUTER_MODEL,
         temperature: 0.3,
-        max_tokens: 220,
+        max_tokens: 700,
         messages: [
           { role: 'system', content: SYSTEM },
           { role: 'user', content: `기업: ${name}\n기간: ${start} ~ ${end}\n\n${blocks}` },
