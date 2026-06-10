@@ -6,11 +6,11 @@ const CAT = { 대기업: 'large', 중견기업: 'mid', '스타트업·중소': '
 
 /* ===== 상태 ===== */
 const state = {
+  reports: [], // 전체 보고서 [{date, companies}] — 기간 집계용
   dates: [], // 데이터 있는 날짜 (desc)
   dateSet: new Set(), // 빠른 조회용
-  selected: null, // 현재 선택 날짜
-  cache: {}, // date -> companies (조회 캐시)
-  view: null, // 캘린더 표시 월 {y, m(0-based)}
+  mode: 'day', // 'day' | 'week' | 'month'
+  anchor: null, // 기준 날짜 'YYYY-MM-DD'
 };
 
 /* ===== 지식 그래프 (전체 기간 누적) ===== */
@@ -162,17 +162,27 @@ function cardHTML(c) {
   const conf = safeUrl(c.confluenceUrl);
   let h =
     '<div class="card group bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 hover:-translate-y-1 transition-transform duration-300 cursor-pointer" role="button" tabindex="0" aria-expanded="false">';
+  const count = c.count || 1;
+  const badge = count > 1 ? '<span class="text-[10px] font-bold text-lime-600 bg-lime/15 rounded-full px-2 py-0.5 flex-none">' + count + '건</span>' : '';
+  const dateChip = c.date ? '<span class="text-[11px] text-ink/55 font-medium ml-auto flex-none">' + escapeHtml(c.date) + '</span>' : '';
   h += '<div class="p-6 flex items-start gap-3">';
   h +=
-    '<div class="flex-1 min-w-0"><h4 class="font-display font-bold text-lg tracking-tight">' +
-    escapeHtml(c.name) +
-    '</h4><p class="text-sm opacity-80 mt-1.5 leading-snug">' +
-    escapeHtml(sum) +
-    '</p></div>';
+    '<div class="flex-1 min-w-0">' +
+    '<div class="flex items-center gap-2">' +
+    '<h4 class="font-display font-bold text-lg tracking-tight">' + escapeHtml(c.name) + '</h4>' +
+    badge + dateChip +
+    '</div>' +
+    '<p class="text-sm opacity-80 mt-1.5 leading-snug">' + escapeHtml(sum) + '</p></div>';
   h +=
     '<span class="chev flex-none mt-1 opacity-75 transition-transform duration-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m6 9 6 6 6-6"/></svg></span>';
   h += '</div>';
   h += '<div class="card-body"><div class="px-6 pb-6 space-y-5">';
+  // 기간 내 다건이면 안내 + 기업 상세(전체 타임라인) 링크
+  h +=
+    '<div class="flex items-center gap-2 text-xs -mt-1">' +
+    '<span class="opacity-70">' + (count > 1 ? '이 기간 ' + count + '건 · 최신 ' + escapeHtml(c.date || '') : escapeHtml(c.date || '')) + '</span>' +
+    '<a href="/company?name=' + encodeURIComponent(c.name) + '" class="ml-auto text-lime-600 font-semibold hover:underline">기업 상세 →</a>' +
+    '</div>';
   if (c.keyPoints && c.keyPoints.length)
     h +=
       '<div><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2.5">주요 내용</div>' +
@@ -227,79 +237,102 @@ function cardHTML(c) {
   return h;
 }
 
-/* ===== 선택일 브리핑 (캘린더 우측 패널) ===== */
-function updateBrief(date, cols, companies) {
-  document.getElementById('briefDate').textContent = date || '—';
-  const total = (companies || []).length;
-  document.getElementById('briefCount').textContent = total;
+/* ===== 기간(일/주/월) 계산 ===== */
+function parseYmd(s) { return new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)); }
+function fmtDate(dt) { return ymd(dt.getFullYear(), dt.getMonth() + 1, dt.getDate()); }
+const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+
+// 현재 mode·anchor 기준 [시작, 끝] (YYYY-MM-DD). 주=월~일, 월=1일~말일.
+function periodRange() {
+  const a = parseYmd(state.anchor);
+  if (state.mode === 'day') return [state.anchor, state.anchor];
+  if (state.mode === 'week') {
+    const dow = (a.getDay() + 6) % 7; // 월=0
+    const s = new Date(a); s.setDate(a.getDate() - dow);
+    const e = new Date(s); e.setDate(s.getDate() + 6);
+    return [fmtDate(s), fmtDate(e)];
+  }
+  const s = new Date(a.getFullYear(), a.getMonth(), 1);
+  const e = new Date(a.getFullYear(), a.getMonth() + 1, 0);
+  return [fmtDate(s), fmtDate(e)];
+}
+function periodLabel() {
+  const [s, e] = periodRange();
+  if (state.mode === 'day') return s + ' (' + DOW[parseYmd(s).getDay()] + ')';
+  if (state.mode === 'week') return s + ' ~ ' + e.slice(5);
+  return s.slice(0, 4) + '년 ' + (+s.slice(5, 7)) + '월';
+}
+function stepPeriod(dir) {
+  const a = parseYmd(state.anchor);
+  if (state.mode === 'day') a.setDate(a.getDate() + dir);
+  else if (state.mode === 'week') a.setDate(a.getDate() + 7 * dir);
+  else a.setDate(1), a.setMonth(a.getMonth() + dir);
+  state.anchor = fmtDate(a);
+}
+
+// 기간 내 항목을 기업별 1건으로 병합 (최신 entry 내용 + 등장 건수 + 태그 합집합)
+function aggregate() {
+  const [s, e] = periodRange();
+  const map = {};
+  (state.reports || []).forEach((r) => {
+    if (!r.date || r.date < s || r.date > e) return;
+    (r.companies || []).forEach((c) => {
+      if (!c || !c.name) return;
+      const cur = map[c.name];
+      if (!cur) {
+        map[c.name] = Object.assign({}, c, { date: r.date, count: 1, _tags: new Set(c.tags || []) });
+      } else {
+        cur.count++;
+        (c.tags || []).forEach((t) => cur._tags.add(t));
+        if (r.date >= cur.date) { const cnt = cur.count, tg = cur._tags; Object.assign(cur, c, { date: r.date, count: cnt, _tags: tg }); }
+      }
+    });
+  });
+  const items = Object.values(map);
+  items.forEach((c) => (c.tags = [...c._tags]));
+  return items;
+}
+
+/* ===== 기간 브리핑 ===== */
+function updateBrief(items, cols) {
+  document.getElementById('briefKind').textContent = { day: 'Daily', week: 'Weekly', month: 'Monthly' }[state.mode];
+  document.getElementById('briefDate').textContent = periodLabel();
+  document.getElementById('briefCount').textContent = items.length;
   const bd = document.getElementById('briefBreakdown');
   const tagsEl = document.getElementById('briefTags');
-  if (!total) {
-    bd.textContent = '데이터 없음';
-    tagsEl.innerHTML = '';
-    return;
-  }
-  bd.textContent =
-    '대기업 ' + cols.large.length + ' · 중견 ' + cols.mid.length + ' · 스타트업 ' + cols.startup.length;
-  // 그 날짜의 태그를 빈도순으로 상위 5개
+  if (!items.length) { bd.textContent = '데이터 없음'; tagsEl.innerHTML = ''; return; }
+  bd.textContent = '대기업 ' + cols.large.length + ' · 중견 ' + cols.mid.length + ' · 스타트업 ' + cols.startup.length;
   const freq = {};
-  companies.forEach((c) => (c.tags || []).forEach((t) => (freq[t] = (freq[t] || 0) + 1)));
-  const top = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 5);
+  items.forEach((c) => (c.tags || []).forEach((t) => (freq[t] = (freq[t] || 0) + 1)));
+  const top = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 6);
   tagsEl.innerHTML = top
-    .map(
-      (t) =>
-        '<span class="text-[11px] opacity-80 bg-beige border border-ink/5 rounded-full px-2.5 py-0.5">#' +
-        escapeHtml(t) +
-        '</span>'
-    )
+    .map((t) => '<span class="text-[11px] opacity-80 bg-beige border border-ink/5 rounded-full px-2.5 py-0.5">#' + escapeHtml(t) + '</span>')
     .join('');
 }
 
-/* ===== 날짜별 카드 렌더 ===== */
-async function renderDate(date) {
-  document.getElementById('selDate').textContent = date || '—';
+/* ===== 기간 카드 렌더 ===== */
+function renderPeriod() {
+  document.getElementById('selDate').textContent = periodLabel();
+  const items = aggregate();
   const cols = { large: [], mid: [], startup: [] };
-  let companies = [];
-
-  if (date) {
-    companies = state.cache[date];
-    if (!companies) {
-      try {
-        companies = await API.report(date);
-        state.cache[date] = companies;
-      } catch {
-        companies = [];
-      }
-    }
-    companies.forEach((c) => {
-      const k = CAT[c.category];
-      if (k) cols[k].push(c);
-    });
-  }
-
+  items.forEach((c) => { const k = CAT[c.category]; if (k) cols[k].push(c); });
   for (const k of ['large', 'mid', 'startup']) {
-    const el = document.getElementById('col-' + k);
-    el.innerHTML =
-      cols[k].map(cardHTML).join('') ||
-      '<div class="text-sm text-ink/55 px-2 py-3">해당 날짜 동향 없음</div>';
+    cols[k].sort((a, b) => (b.date || '').localeCompare(a.date || '') || a.name.localeCompare(b.name));
+    document.getElementById('col-' + k).innerHTML =
+      cols[k].map(cardHTML).join('') || '<div class="text-sm text-ink/55 px-2 py-3">해당 기간 동향 없음</div>';
     document.getElementById('cnt-' + k).textContent = cols[k].length;
   }
-
-  updateBrief(date, cols, companies);
+  updateBrief(items, cols);
 }
 
-/* ===== 캘린더 ===== */
+/* ===== 캘린더 (anchor 월 표시, 선택 기간 하이라이트) ===== */
 function renderCal() {
-  const { y, m } = state.view;
+  const a = parseYmd(state.anchor);
+  const y = a.getFullYear(), m = a.getMonth();
   document.getElementById('calMon').textContent = y + ' . ' + pad2(m + 1);
-  const dows = ['일', '월', '화', '수', '목', '금', '토'];
-  let h = dows
-    .map(
-      (d) =>
-        '<div class="text-[10px] font-semibold uppercase tracking-wider opacity-75 text-center">' +
-        d +
-        '</div>'
-    )
+  const [ps, pe] = periodRange();
+  let h = DOW
+    .map((d) => '<div class="text-[10px] font-semibold uppercase tracking-wider opacity-75 text-center">' + d + '</div>')
     .join('');
   const first = new Date(y, m, 1).getDay();
   const days = new Date(y, m + 1, 0).getDate();
@@ -307,35 +340,33 @@ function renderCal() {
   for (let d = 1; d <= days; d++) {
     const ds = ymd(y, m + 1, d);
     const has = state.dateSet.has(ds);
-    const sel = ds === state.selected;
-    let cls = 'relative h-8 rounded-lg flex items-center justify-center text-sm font-display ';
-    if (sel) cls += 'bg-lime text-ink font-bold';
-    else if (has) cls += 'bg-beige border border-ink/5 font-semibold cursor-pointer hover:border-lime';
-    else cls += 'opacity-30';
-    const interactive = has && !sel ? ' data-date="' + ds + '" role="button" tabindex="0" aria-label="' + ds + ' 데이터 보기"' : '';
+    const inP = ds >= ps && ds <= pe; // 선택 기간 내
+    let cls = 'relative h-8 rounded-lg flex items-center justify-center text-sm font-display cursor-pointer transition-colors ';
+    if (inP) cls += 'bg-lime text-ink font-bold';
+    else if (has) cls += 'bg-beige border border-ink/5 font-semibold hover:border-lime';
+    else cls += 'opacity-30 hover:bg-beige';
     h +=
-      '<div class="' + cls + '"' + interactive + '>' +
+      '<div class="' + cls + '" data-date="' + ds + '" role="button" tabindex="0" aria-label="' + ds + '">' +
       d +
-      (has && !sel
-        ? '<span class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-lime-600"></span>'
-        : '') +
+      (has ? '<span class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ' + (inP ? 'bg-ink/60' : 'bg-lime-600') + '"></span>' : '') +
       '</div>';
   }
   const g = document.getElementById('calGrid');
   g.innerHTML = h;
   g.querySelectorAll('[data-date]').forEach((el) => {
-    const pick = () => {
-      state.selected = el.dataset.date;
-      renderDate(state.selected);
-      renderCal();
-    };
+    const pick = () => { state.anchor = el.dataset.date; renderPeriod(); renderCal(); };
     el.onclick = pick;
     el.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
-        e.preventDefault();
-        pick();
-      }
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); pick(); }
     });
+  });
+}
+
+/* ===== 모드 토글 활성 표시 ===== */
+function renderToggle() {
+  document.querySelectorAll('#modeToggle button').forEach((b) => {
+    b.className = 'flex-1 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ' +
+      (b.dataset.mode === state.mode ? 'bg-ink text-lime' : 'text-ink/60 hover:text-ink');
   });
 }
 
@@ -382,52 +413,30 @@ async function init() {
   setupReveal();
   setupCardInteractions();
 
+  // 전체 보고서(그래프·기간 집계 공용)
+  try { state.reports = await API.all(); } catch { state.reports = []; }
+
   // 그래프/통계: 전체 누적 — graph.js(Cytoscape)가 담당, 미로드 시 buildGraph(SVG) 폴백
   const render = typeof initGraph === 'function' ? initGraph : buildGraph;
-  try {
-    const reports = await API.all();
-    render(reports);
-  } catch {
-    render([]);
-  }
+  try { render(state.reports); } catch { render([]); }
 
-  // 날짜 목록 → 최신 기본값
-  try {
-    state.dates = await API.dates();
-  } catch {
-    state.dates = [];
-  }
+  // 날짜 목록 → 최신을 기준점으로
+  state.dates = (state.reports || []).map((r) => r.date).filter(Boolean).sort((a, b) => b.localeCompare(a));
   state.dateSet = new Set(state.dates);
+  state.anchor = state.dates[0] || todayYmd();
+  if (!state.dates.length) document.getElementById('selDate').textContent = '데이터 없음';
 
-  if (state.dates.length) {
-    state.selected = state.dates[0];
-  } else {
-    state.selected = null;
-    document.getElementById('selDate').textContent = '데이터 없음';
-  }
-
-  const base = state.selected || todayYmd();
-  state.view = { y: +base.slice(0, 4), m: +base.slice(5, 7) - 1 };
-
-  await renderDate(state.selected);
+  renderToggle();
+  renderPeriod();
   renderCal();
 
-  document.getElementById('prevM').onclick = () => {
-    state.view.m--;
-    if (state.view.m < 0) {
-      state.view.m = 11;
-      state.view.y--;
-    }
-    renderCal();
-  };
-  document.getElementById('nextM').onclick = () => {
-    state.view.m++;
-    if (state.view.m > 11) {
-      state.view.m = 0;
-      state.view.y++;
-    }
-    renderCal();
-  };
+  // 일/주/월 토글
+  document.querySelectorAll('#modeToggle button').forEach((b) => {
+    b.onclick = () => { state.mode = b.dataset.mode; renderToggle(); renderPeriod(); renderCal(); };
+  });
+  // 기간 네비 ◀ ▶
+  document.getElementById('periodPrev').onclick = () => { stepPeriod(-1); renderPeriod(); renderCal(); };
+  document.getElementById('periodNext').onclick = () => { stepPeriod(1); renderPeriod(); renderCal(); };
 }
 
 document.addEventListener('DOMContentLoaded', init);

@@ -139,19 +139,32 @@
         </div>
       </div>
 
-      <!-- Bottom calendar -->
-      <div class="sn-reveal flex-none bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 px-5 sm:px-7 py-4 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
-        <div class="flex items-center gap-3 min-w-[190px]">
-          <button id="prevM" aria-label="이전 달" class="w-9 h-9 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-lg">‹</button>
-          <div class="font-display font-bold text-lg min-w-[100px] text-center" id="calMon">—</div>
-          <button id="nextM" aria-label="다음 달" class="w-9 h-9 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-lg">›</button>
+      <!-- Bottom: 기간(일/주/월) 컨트롤 + 캘린더 + 브리핑 -->
+      <div class="sn-reveal flex-none bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 px-5 sm:px-7 py-4 flex flex-col xl:flex-row xl:items-center gap-4 xl:gap-7">
+        <!-- 기간 네비 + 일/주/월 토글 (세로 스택) -->
+        <div class="flex-none flex flex-col gap-2.5">
+          <div class="flex items-center gap-3 min-w-[190px]">
+            <button id="periodPrev" aria-label="이전 기간" class="w-9 h-9 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-lg">‹</button>
+            <div class="font-display font-bold text-base flex-1 text-center" id="periodLabel">—</div>
+            <button id="periodNext" aria-label="다음 기간" class="w-9 h-9 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-lg">›</button>
+          </div>
+          <div class="inline-flex self-stretch rounded-full bg-beige p-1" id="modeToggle">
+            <button data-mode="day" class="flex-1 px-4 py-1.5 rounded-full text-sm font-semibold">일</button>
+            <button data-mode="week" class="flex-1 px-4 py-1.5 rounded-full text-sm font-semibold">주</button>
+            <button data-mode="month" class="flex-1 px-4 py-1.5 rounded-full text-sm font-semibold">월</button>
+          </div>
         </div>
-        <div class="grid grid-cols-7 gap-1.5 w-full sm:w-[420px] sm:flex-none" id="calGrid"></div>
 
-        <!-- 선택일 브리핑 -->
-        <div class="flex-1 min-w-0 w-full sm:border-l sm:border-ink/10 sm:pl-6 flex flex-col gap-2">
+        <!-- 캘린더 -->
+        <div class="flex-none">
+          <div class="text-[11px] font-semibold opacity-50 mb-1 text-center" id="calMon">—</div>
+          <div class="grid grid-cols-7 gap-1.5 w-full sm:w-[300px]" id="calGrid"></div>
+        </div>
+
+        <!-- 기간 브리핑 -->
+        <div class="flex-1 min-w-0 w-full xl:border-l xl:border-ink/10 xl:pl-6 flex flex-col gap-2">
           <div class="flex items-baseline gap-2">
-            <span class="text-[10px] font-bold uppercase tracking-widest text-lime-600">Selected</span>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-lime-600" id="briefKind">Daily</span>
             <span class="font-display font-semibold text-sm" id="briefDate">—</span>
           </div>
           <div class="flex items-baseline gap-3">
