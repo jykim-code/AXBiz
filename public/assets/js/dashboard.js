@@ -246,8 +246,13 @@ function periodLabel() {
 }
 function stepPeriod(dir) {
   const a = parseYmd(state.anchor);
-  if (state.mode === 'day') a.setDate(a.getDate() + dir);
-  else if (state.mode === 'week') a.setDate(a.getDate() + 7 * dir);
+  if (state.mode === 'day') {
+    // 일 모드도 ◀▶는 보통 달력처럼 "월 이동"(날짜는 유지, 말일 보정). 특정 날짜는 캘린더 클릭으로 선택.
+    const d = a.getDate();
+    a.setDate(1); a.setMonth(a.getMonth() + dir);
+    const last = new Date(a.getFullYear(), a.getMonth() + 1, 0).getDate();
+    a.setDate(Math.min(d, last));
+  } else if (state.mode === 'week') a.setDate(a.getDate() + 7 * dir);
   else a.setDate(1), a.setMonth(a.getMonth() + dir);
   state.anchor = fmtDate(a);
 }
