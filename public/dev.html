@@ -79,7 +79,7 @@
 <script src="/assets/js/util.js"></script>
 <script>
 const esc = (s) => (typeof escapeHtml === 'function' ? escapeHtml(s) : String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])));
-const DIFF = { 'new': ['🆕 신규', 'bg-lime/20 text-lime-600'], 'replace': ['✏️ 교체', 'bg-amber-100 text-amber-700'] };
+const DIFF = { 'new': ['신규', 'bg-lime/30 text-lime-700'], 'replace': ['교체', 'bg-amber-100 text-amber-700'], 'same': ['동일', 'bg-ink/10 text-ink/45'] };
 const CATS = ['대기업', '중견기업', '스타트업·중소'];
 function toast(m) { const t = document.getElementById('toast'); t.textContent = m; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 2400); }
 
@@ -117,7 +117,7 @@ async function refresh() {
   try {
     const res = await API.devDrafts();
     DRAFTS = res.drafts || [];
-    document.getElementById('counts').textContent = 'draft ' + DRAFTS.length + '건 · 🆕 ' + DRAFTS.filter(d=>d.diff==='new').length + ' · ✏️ ' + DRAFTS.filter(d=>d.diff==='replace').length;
+    document.getElementById('counts').textContent = 'draft ' + DRAFTS.length + '건 · 신규 ' + DRAFTS.filter(d=>d.diff==='new').length + ' · 교체 ' + DRAFTS.filter(d=>d.diff==='replace').length + ' · 동일 ' + DRAFTS.filter(d=>d.diff==='same').length;
     document.getElementById('cCount').textContent = '미배포 ' + DRAFTS.length + '건';
     render();
   } catch (e) {

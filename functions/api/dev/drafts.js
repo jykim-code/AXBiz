@@ -3,6 +3,10 @@
 //   POST {id, action:'delete'} → draft 삭제
 import { pinOk, forbidden } from '../../_auth.js';
 
+// 내용 비교용 시그니처(요약 제외 — 실질 콘텐츠만). 같으면 '동일'.
+const norm = (v) => (Array.isArray(v) ? v.map((x) => String(x || '').trim()).filter(Boolean).join('||') : String(v == null ? '' : v).trim());
+const sig = (e) => { e = e || {}; return [norm(e.category), norm(e.keyPoints), norm(e.implications), norm(e.hancomInsight), norm(e.tags), norm(e.sourceUrl), norm(e.confluenceUrl)].join('@@'); };
+
 export async function onRequestGet({ request, env }) {
   if (!pinOk(env, request)) return forbidden();
   try {
@@ -18,7 +22,8 @@ export async function onRequestGet({ request, env }) {
         const live = await env.DB.prepare('SELECT companies FROM reports WHERE date = ?').bind(r.date).first();
         if (live) {
           const cs = JSON.parse(live.companies || '[]');
-          if (Array.isArray(cs) && cs.some((c) => c && c.name === r.company)) diff = 'replace';
+          const match = Array.isArray(cs) ? cs.find((c) => c && c.name === r.company) : null;
+          if (match) diff = (sig(match) === sig(data)) ? 'same' : 'replace';
         }
       } catch { /* 기본 new */ }
       list.push({ id: r.id, date: r.date, company: r.company, category: r.category, source: r.source, created_at: r.created_at, data, diff });
