@@ -71,6 +71,13 @@ _(없음 — Phase 2 완료. 아래 ✅ 참고)_
 
 ## ✅ 완료
 
+### E-2. dev/admin 통합 콘솔 + 데일리(LLM)/히스토리 가져오기  ✅  _(2026-06-12)_
+> dev/admin 혼용 해소. **/admin 단일 콘솔**(검수·배포 기본 탭) + **/preview**(실사이트 draft 합본). /dev → /admin 리다이렉트.
+- [x] 가져오기 2종: **데일리**(섹션 A LLM 구조화, `/api/dev/import-daily`, 기업명 정규화) / **히스토리**(6열 표 파서)
+- [x] /admin 탭 재구성: 검수·배포(draft 배지) · 가져오기 · DART · 의견함 · 수동 입력(직접 반영 경고) · 설정
+- [x] 검수 카드 **DART 미연결 배지**(클릭 → DART 탭) — 새 기업 매핑 유도
+- [x] 검증: 데일리 실페이지 LLM 추출(올거나이즈·금융망분리) 정상, 공개 무누수, 리다이렉트
+
 ### E. dev 검수 → 1-click 배포 파이프라인 (실사이트 dev 프리뷰)  ✅  _(2026-06-12)_
 > 플랜: `.omc/plans/dev-staging-publish-pipeline.md`. Claude 앱(생성) → 컨플 → `/dev` 검수 → 배포. 생성은 Claude 앱 유지(품질·비용).
 - [x] `draft_entries` 테이블(draft/published, `(date,company,source)` 유니크) — 원격 D1 적용
