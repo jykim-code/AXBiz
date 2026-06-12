@@ -38,9 +38,10 @@ _(없음 — Phase 2 완료. 아래 ✅ 참고)_
 **D. 서비스 지표(애널리틱스)**
 - [ ] **서비스 지표 대시보드** — 체류시간·이탈률·클릭/탐색 흐름 등 KPI를 관리자가 확인. (이탈 방지 전략의 측정 도구)
 
-**E. 운영·배포 파이프라인 (dev 검수 → 1-click 배포)**
-- [ ] **배포 전 검수용 dev(스테이징) 페이지 별도 구성** — 관리자가 본 사이트 반영 전 확인
-- [ ] **검수→배포 자동화** — 현재: 클로드 데일리 뉴스 자동화 → 컨플 작성 → 관리자가 수기 검증·정제 → 관리자 페이지 입력. **개선: dev 페이지에서 관리자가 확인·수정(오류/보완)한 뒤 "배포" 버튼 → 본 사이트 즉시 반영** (수동 입력 단계 제거)
+**E. 운영·배포 파이프라인 (dev 검수 → 1-click 배포)** — ✅ **Phase 1 완료 (2026-06-12)** (아래 ✅ 참고)
+- [x] **배포 전 검수용 dev(스테이징) 페이지 별도 구성** — `/dev`(PIN) → `?preview=1`로 실사이트를 draft 합본 렌더
+- [x] **검수→배포 자동화** — 컨플 → draft 가져오기 → `/dev` 검수 → "배포" 버튼 → 라이브 즉시 반영(수동 재입력 제거)
+- [ ] (Phase 2) 컨플 Cron 자동 적재 / dev 내 직접 편집 패널 / 새 draft 알림
 
 ### 🌐 데이터 커버리지 확장
 - [ ] **해외 경쟁사** — 미국 SEC EDGAR(재무) + 글로벌 뉴스. 현재 보류한 5곳(Anthropic·MS·OpenAI·Salesforce·Cohere)부터
@@ -69,6 +70,19 @@ _(없음 — Phase 2 완료. 아래 ✅ 참고)_
 ---
 
 ## ✅ 완료
+
+### E. dev 검수 → 1-click 배포 파이프라인 (실사이트 dev 프리뷰)  ✅  _(2026-06-12)_
+> 플랜: `.omc/plans/dev-staging-publish-pipeline.md`. Claude 앱(생성) → 컨플 → `/dev` 검수 → 배포. 생성은 Claude 앱 유지(품질·비용).
+- [x] `draft_entries` 테이블(draft/published, `(date,company,source)` 유니크) — 원격 D1 적용
+- [x] 공용 모듈: `_auth.js`(PIN), `_confluence.js`(파싱·`parseConfluencePage`), `_publish.js`(`mergeAndPublishDate` 병합+재색인+요약). `import-confluence` 리팩터로 공용화
+- [x] dev 엔드포인트(PIN): `/api/dev/import`(컨플→draft) · `reports-all`·`reports`(draft 합본 프리뷰) · `drafts`(목록·삭제) · `publish`(draft→reports 승격)
+- [x] `api.js` 프리뷰 라우팅(`?preview=1`+PIN→dev 합본, 403 시 공개 폴백) + dev 래퍼
+- [x] `/dev`(PIN 게이트) → `?preview=1` 진입 / `dev-toolbar.js`(상단 배너·가져오기·검수 드로어·배포, 비프리뷰 시 no-op) — index·company·explore에 포함
+- [x] 끝단 검증: 격리 날짜로 draft→프리뷰(_draft)→**공개 무누수**→배포→**라이브 반영**→published 전환, PIN 403, 정리까지 확인
+
+### 상단 Hero 검색 + 월간 기본 (상사 피드백 A·C 일부)  ✅  _(2026-06-12)_
+- [x] 대시보드 기본 기간 **월간**으로 변경
+- [x] nav 아래 **Hero 검색 바** + 빠른 칩, Enter/검색 시 `/api/ask` **인앱 인라인 답변**(출처·`[n]`)으로 **이탈 방지**, "탐색에서 더 보기"로 `/explore?q=` 연결
 
 ### AI 태그 추천 (지식그래프 LLM 보강 1단계)  ✅  _(2026-06-05)_
 - [x] `POST /api/suggest-tags`(PIN): 기업 본문(주요내용/시사점/한컴인사이트)→OpenRouter(JSON)로 한국어 태그 4~8개 추출

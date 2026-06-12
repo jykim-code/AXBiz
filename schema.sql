@@ -67,6 +67,23 @@ CREATE TABLE IF NOT EXISTS period_summary (
   fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- dev 검수 드래프트. 컨플 가져오기 → draft 적재 → /dev 프리뷰 검수 → 배포 시 reports 로 승격.
+--   라이브(reports)는 published 만 노출. 프리뷰는 published+draft 합본(PIN).
+CREATE TABLE IF NOT EXISTS draft_entries (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  date        TEXT NOT NULL,                 -- 'YYYY-MM-DD'
+  company     TEXT NOT NULL,
+  category    TEXT,
+  data        TEXT NOT NULL,                 -- JSON: 기업 항목(name,category,summary,sourceUrl,confluenceUrl,keyPoints[],implications[],hancomInsight[],tags[])
+  source      TEXT,                          -- 'confluence' | 'manual'
+  source_ref  TEXT,                          -- 컨플 pageId/URL
+  status      TEXT NOT NULL DEFAULT 'draft', -- 'draft' | 'published'
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_draft_dcs ON draft_entries(date, company, source) WHERE status='draft';
+CREATE INDEX IF NOT EXISTS idx_draft_status_date ON draft_entries(status, date DESC);
+
 -- DART 응답 캐시(회사개황+재무). corp_code 기준. 재무는 분기 갱신이라 공격적 캐시.
 CREATE TABLE IF NOT EXISTS company_profile (
   corp_code  TEXT PRIMARY KEY,

@@ -10,17 +10,31 @@ async function getJSON(url) {
   return res.json();
 }
 
+// dev 프리뷰: ?preview=1 + sessionStorage PIN 이면 draft 합본(dev) 엔드포인트로 라우팅.
+function devPin() { try { return sessionStorage.getItem('devPin') || ''; } catch { return ''; } }
+function devPreviewActive() {
+  try { return new URLSearchParams(location.search).get('preview') === '1' && !!devPin(); } catch { return false; }
+}
+async function getJSONPin(url) {
+  const res = await fetch(url, { headers: { Accept: 'application/json', 'x-admin-pin': devPin() } });
+  if (!res.ok) { const err = new Error('REQUEST_FAILED'); err.status = res.status; throw err; }
+  return res.json();
+}
+
 const API = {
   // 데이터가 있는 날짜 배열(desc)
   dates() {
     return getJSON('/api/dates');
   },
-  // 특정 날짜 companies 배열
+  // 특정 날짜 companies 배열 (dev 프리뷰면 draft 합본, 실패 시 공개로 폴백)
   report(date) {
-    return getJSON('/api/reports?date=' + encodeURIComponent(date));
+    const pub = '/api/reports?date=' + encodeURIComponent(date);
+    if (devPreviewActive()) return getJSONPin('/api/dev/reports?date=' + encodeURIComponent(date)).catch(() => getJSON(pub));
+    return getJSON(pub);
   },
-  // 전체 보고서 [{date, companies}] — 그래프/통계 누적용
+  // 전체 보고서 [{date, companies}] — 그래프/통계 누적용 (dev 프리뷰면 draft 합본)
   all() {
+    if (devPreviewActive()) return getJSONPin('/api/dev/reports-all').catch(() => getJSON('/api/reports/all'));
     return getJSON('/api/reports/all');
   },
   health() {
@@ -174,6 +188,36 @@ const API = {
     });
     let data = {};
     try { data = await res.json(); } catch { /* no body */ }
+    if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; err.data = data; throw err; }
+    return data;
+  },
+
+  // ===== dev 검수·배포 (PIN, sessionStorage devPin) =====
+  isDevPreview() { return devPreviewActive(); },
+  async devVerifyPin(pin) {
+    const res = await fetch('/api/dev/drafts', { headers: { Accept: 'application/json', 'x-admin-pin': pin || '' } });
+    return res.ok;
+  },
+  async devImport(url) {
+    const res = await fetch('/api/dev/import', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pin': devPin() }, body: JSON.stringify({ url }) });
+    let data = {}; try { data = await res.json(); } catch { /* */ }
+    if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; err.data = data; throw err; }
+    return data;
+  },
+  async devDrafts() {
+    const res = await fetch('/api/dev/drafts', { headers: { Accept: 'application/json', 'x-admin-pin': devPin() } });
+    if (!res.ok) { const err = new Error('REQUEST_FAILED'); err.status = res.status; throw err; }
+    return res.json();
+  },
+  async devDeleteDraft(id) {
+    const res = await fetch('/api/dev/drafts', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pin': devPin() }, body: JSON.stringify({ id, action: 'delete' }) });
+    let data = {}; try { data = await res.json(); } catch { /* */ }
+    if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; throw err; }
+    return data;
+  },
+  async devPublish(payload) {
+    const res = await fetch('/api/dev/publish', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pin': devPin() }, body: JSON.stringify(payload || {}) });
+    let data = {}; try { data = await res.json(); } catch { /* */ }
     if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; err.data = data; throw err; }
     return data;
   },
