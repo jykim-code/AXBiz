@@ -37,6 +37,15 @@
 - 배포: Cloudflare Pages + GitHub 레포 자동 배포.
 - 관리자 인증: 단순 숫자 PIN. 서버(Function)에서 `ADMIN_PIN` 환경변수와 대조하여 검증.
 
+## ⭐ 배포 워크플로 (2026-06-12 사용자 확정)
+- **코드(UI/기능) 변경**: 항상 **preview 브랜치에 먼저 배포** → 사용자에게 프리뷰 URL 공유 → **확인 후** main 배포.
+  - 프리뷰: `npx wrangler pages deploy public --project-name=ax-biz-radar --branch=preview --commit-dirty=true --commit-message="ascii"`
+    → `https://preview.ax-biz-radar.pages.dev` (바인딩·시크릿 모두 동작 확인됨)
+  - 본 반영: 같은 명령에 `--branch=main`.
+  - 예외: 사용자가 명시적으로 "바로 배포"라고 한 경우만 main 직행.
+- **데이터(보고서) 변경**: 코드와 무관 — `/admin` 가져오기/수동입력 → draft → 검수 → 배포 버튼 (사이트 `/preview`에서 draft 합본 확인).
+- 두 트랙은 독립: 코드 프리뷰=preview 브랜치 URL, 데이터 프리뷰=`/preview`(draft 합본).
+
 ## 데이터 / API (계획 기준 — AX-Biz-Radar-기획.md 참조)
 - 스키마: `reports(date PK, companies TEXT(JSON), updated_at)`. 날짜 PK upsert(덮어쓰기).
 - 엔드포인트: `GET /api/dates`, `GET /api/reports?date=`, `POST /api/reports`(PIN 검증, 자동화 진입점).
@@ -45,6 +54,7 @@
 
 ## 지침 로그 (시간순 누적)
 - 디자인은 `design-preview.html` 기준. (사용자 확정)
+- 코드 변경은 preview 브랜치 선배포→확인 후 main 반영. 데이터는 /admin draft→검수→배포. (2026-06-12 사용자 지시)
 - 기획안의 레이더/오렌지/다크 컨셉 → Template 라임 톤으로 전환. (사용자 지시)
 - 칸반: 가로 3컬럼 → 세로 스윔레인 + 카드 2장 grid. (사용자 지시)
 - 관리자 입력 버튼 삭제, 관리자 페이지 존재 비노출. (사용자 지시)
