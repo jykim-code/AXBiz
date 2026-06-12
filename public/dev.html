@@ -53,6 +53,19 @@
   </nav>
 
   <main class="max-w-[1080px] mx-auto px-6 py-8 space-y-8">
+    <section class="bg-beige border border-ink/10 rounded-[20px] p-5">
+      <div class="lbl mb-2">사용 가이드</div>
+      <ol class="text-sm space-y-1.5 opacity-85 list-decimal pl-5">
+        <li><b>컨플 가져오기</b> — 컨플 URL 입력 → 파싱해 draft로 적재. <b>라이브엔 아직 반영되지 않습니다.</b></li>
+        <li><b>검수</b> — 항목 확인·<b>편집</b>·<b>삭제</b>. 라이브 대비 상태 배지:
+          <span class="inline-block text-[11px] font-bold rounded-full px-2 py-0.5 bg-lime/30 text-lime-700">신규</span> 새로 추가 ·
+          <span class="inline-block text-[11px] font-bold rounded-full px-2 py-0.5 bg-amber-100 text-amber-700">교체</span> 기존 덮어씀 ·
+          <span class="inline-block text-[11px] font-bold rounded-full px-2 py-0.5 bg-ink/10 text-ink/45">동일</span> 라이브와 같음 → <b>배포 불필요, 삭제로 정리</b></li>
+        <li><b>프리뷰</b> — 우상단 <b>“실사이트 프리뷰 ↗”</b>로 실제 보일 모습 확인.</li>
+        <li><b>배포</b> — 건별·날짜별·전체. 라이브에 <b>즉시 반영</b>되고 같은 (날짜·기업) 항목은 <b>교체</b>됩니다.</li>
+      </ol>
+    </section>
+
     <section class="bg-white rounded-[20px] border border-ink/5 shadow-xl shadow-ink/5 p-6">
       <div class="lbl mb-2">① 컨플 가져오기 → draft</div>
       <div class="flex flex-col sm:flex-row gap-2">
@@ -66,6 +79,7 @@
     <section>
       <div class="flex items-end justify-between mb-4">
         <div><h2 class="text-xl font-bold tracking-tight">② 검수 목록</h2><p class="text-sm opacity-60" id="counts">불러오는 중…</p></div>
+        <button id="cClearSame" class="btn text-xs border border-ink/15 px-3 py-1.5 hover:bg-beige hidden"></button>
       </div>
       <div id="list" class="space-y-6"></div>
       <div id="empty" class="hidden text-center py-16 text-ink/45">검수할 draft가 없습니다. 위에서 컨플을 가져오세요.</div>
@@ -119,6 +133,10 @@ async function refresh() {
     DRAFTS = res.drafts || [];
     document.getElementById('counts').textContent = 'draft ' + DRAFTS.length + '건 · 신규 ' + DRAFTS.filter(d=>d.diff==='new').length + ' · 교체 ' + DRAFTS.filter(d=>d.diff==='replace').length + ' · 동일 ' + DRAFTS.filter(d=>d.diff==='same').length;
     document.getElementById('cCount').textContent = '미배포 ' + DRAFTS.length + '건';
+    const sameN = DRAFTS.filter(d => d.diff === 'same').length;
+    const cs = document.getElementById('cClearSame');
+    if (sameN) { cs.classList.remove('hidden'); cs.textContent = '동일 ' + sameN + '건 정리'; cs.onclick = clearSame; }
+    else cs.classList.add('hidden');
     render();
   } catch (e) {
     if (e.status === 403) { sessionStorage.removeItem('devPin'); location.reload(); }
@@ -192,6 +210,14 @@ function confirmPublish(payload, label) {
   if (!confirm(label + ' 라이브에 배포할까요?\n배포하면 본 사이트에 즉시 반영되고 같은 (날짜·기업) 항목은 교체됩니다.')) return;
   API.devPublish(payload).then(r => { toast((r.publishedIds?r.publishedIds.length:0) + '건 배포됨 → 라이브 반영'); refresh(); })
     .catch(e => toast('배포 실패: ' + (e.status || e.message)));
+}
+
+async function clearSame() {
+  const ids = DRAFTS.filter(d => d.diff === 'same').map(d => d.id);
+  if (!ids.length) return;
+  if (!confirm('동일(변경 없음) ' + ids.length + '건을 검수 목록에서 삭제할까요?\n라이브엔 영향이 없습니다(draft만 정리).')) return;
+  for (const id of ids) { try { await API.devDeleteDraft(id); } catch (e) { /* 계속 */ } }
+  toast(ids.length + '건 정리됨'); refresh();
 }
 
 function doImport() {
