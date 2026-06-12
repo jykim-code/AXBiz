@@ -33,31 +33,57 @@ export async function resolvePageId(url, auth) {
   return null;
 }
 
-// storage XHTML 첫 표 → 행 파싱 (열: 날짜|유형|주요내용|시사점|한컴인사이트|출처|태그)
+// 한 행의 셀 추출 (header=true 면 <th>, 아니면 <td>)
+function cellsOf(tr, header) {
+  const re = header ? /<th[^>]*>([\s\S]*?)<\/th>/gi : /<td[^>]*>([\s\S]*?)<\/td>/gi;
+  const out = []; let m;
+  while ((m = re.exec(tr)) !== null) out.push(m[1]);
+  return out;
+}
+// 헤더 텍스트 → 열 인덱스 매핑. 못 읽으면 null(위치기반 폴백).
+function mapHeader(headerCells) {
+  const t = headerCells.map((c) => stripTags(c));
+  const find = (...keys) => t.findIndex((h) => keys.some((k) => h.includes(k)));
+  const date = find('날짜'), key = find('주요'), impl = find('시사'), insight = find('한컴', '인사이트'), source = find('출처'), tags = find('태그');
+  if (date < 0 || key < 0) return null;
+  return { date, key, impl, insight, source, tags };
+}
+// 헤더 없을 때 열 수로 추정. 7열=날짜|유형|주요|시사점|한컴|출처|태그 / 6열=날짜|주요|시사점|한컴|출처|태그
+function positionalIndex(n) {
+  return n >= 7 ? { date: 0, key: 2, impl: 3, insight: 4, source: 5, tags: 6 }
+                : { date: 0, key: 1, impl: 2, insight: 3, source: 4, tags: 5 };
+}
+const cell = (cells, i) => (i != null && i >= 0 ? (cells[i] || '') : '');
+
+// storage XHTML 첫 표 → 행 파싱. 헤더 기반 열 매핑으로 6열·7열(유형 유무) 모두 처리.
 export function parseTable(html) {
   const tm = String(html || '').match(/<table[\s\S]*?<\/table>/i);
   if (!tm) return [];
+  const trs = tm[0].match(/<tr[\s\S]*?<\/tr>/gi) || [];
+  if (!trs.length) return [];
+
+  // 헤더(첫 <th> 포함 행) → 인덱스 매핑
+  let idx = null;
+  for (const tr of trs) {
+    if (/<th[\s>]/i.test(tr)) { idx = mapHeader(cellsOf(tr, true)); break; }
+  }
+
   const rows = [];
-  const trRe = /<tr[\s\S]*?<\/tr>/gi;
-  let m;
-  while ((m = trRe.exec(tm[0])) !== null) {
-    const tr = m[0];
-    if (/<th[\s>]/i.test(tr)) continue;
-    const cells = [];
-    const tdRe = /<td[^>]*>([\s\S]*?)<\/td>/gi;
-    let c;
-    while ((c = tdRe.exec(tr)) !== null) cells.push(c[1]);
-    if (cells.length < 7) continue;
-    const date = normDate(stripTags(cells[0]));
+  for (const tr of trs) {
+    if (/<th[\s>]/i.test(tr)) continue; // 헤더 행 스킵
+    const cells = cellsOf(tr, false);
+    if (cells.length < 5) continue;
+    const col = idx || positionalIndex(cells.length);
+    const date = normDate(stripTags(cell(cells, col.date)));
     if (!date) continue;
-    const hrefM = cells[5].match(/href="([^"]+)"/i);
+    const hrefM = String(cell(cells, col.source)).match(/href="([^"]+)"/i);
     rows.push({
       date,
-      keyPoint: stripTags(cells[2]),
-      implication: stripTags(cells[3]),
-      insight: stripTags(cells[4]),
+      keyPoint: stripTags(cell(cells, col.key)),
+      implication: stripTags(cell(cells, col.impl)),
+      insight: stripTags(cell(cells, col.insight)),
       sourceUrl: hrefM ? decode(hrefM[1]) : '',
-      tags: stripTags(cells[6]).split(',').map((t) => t.trim()).filter(Boolean),
+      tags: stripTags(cell(cells, col.tags)).split(',').map((t) => t.trim()).filter(Boolean),
     });
   }
   return rows;

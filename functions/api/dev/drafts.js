@@ -30,15 +30,41 @@ export async function onRequestGet({ request, env }) {
   }
 }
 
+const CATEGORIES = ['대기업', '중견기업', '스타트업·중소'];
+const arr = (v, fb) => (Array.isArray(v) ? v.map((x) => String(x || '').trim()).filter(Boolean) : fb);
+
 export async function onRequestPost({ request, env }) {
   if (!pinOk(env, request)) return forbidden();
   let body; try { body = await request.json(); } catch { return Response.json({ error: 'INVALID_JSON' }, { status: 400 }); }
   const id = +body?.id;
   const action = String(body?.action || '');
-  if (!id || action !== 'delete') return Response.json({ error: 'BAD_REQUEST' }, { status: 400 });
+  if (!id) return Response.json({ error: 'BAD_REQUEST' }, { status: 400 });
+
   try {
-    await env.DB.prepare("DELETE FROM draft_entries WHERE id = ? AND status = 'draft'").bind(id).run();
-    return Response.json({ ok: true });
+    if (action === 'delete') {
+      await env.DB.prepare("DELETE FROM draft_entries WHERE id = ? AND status = 'draft'").bind(id).run();
+      return Response.json({ ok: true });
+    }
+    if (action === 'update') {
+      const row = await env.DB.prepare("SELECT data, category FROM draft_entries WHERE id = ? AND status = 'draft'").bind(id).first();
+      if (!row) return Response.json({ error: 'NOT_FOUND' }, { status: 404 });
+      let cur = {}; try { cur = JSON.parse(row.data || '{}'); } catch { cur = {}; }
+      const d = body.data || {};
+      const merged = Object.assign({}, cur, {
+        summary: d.summary != null ? String(d.summary).trim().slice(0, 300) : (cur.summary || ''),
+        keyPoints: arr(d.keyPoints, cur.keyPoints || []),
+        implications: arr(d.implications, cur.implications || []),
+        hancomInsight: arr(d.hancomInsight, cur.hancomInsight || []),
+        tags: arr(d.tags, cur.tags || []),
+        category: CATEGORIES.includes(d.category) ? d.category : (cur.category || row.category),
+        sourceUrl: d.sourceUrl != null ? String(d.sourceUrl).trim() : (cur.sourceUrl || ''),
+        confluenceUrl: d.confluenceUrl != null ? String(d.confluenceUrl).trim() : (cur.confluenceUrl || ''),
+      });
+      await env.DB.prepare("UPDATE draft_entries SET data = ?, category = ?, updated_at = datetime('now') WHERE id = ? AND status = 'draft'")
+        .bind(JSON.stringify(merged), merged.category, id).run();
+      return Response.json({ ok: true });
+    }
+    return Response.json({ error: 'BAD_REQUEST' }, { status: 400 });
   } catch (err) {
     console.error('POST /api/dev/drafts', err);
     return Response.json({ error: 'DB_ERROR' }, { status: 500 });
