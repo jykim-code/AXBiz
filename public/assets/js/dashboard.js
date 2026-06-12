@@ -465,6 +465,81 @@ async function init() {
   // 기간 네비 ◀ ▶
   document.getElementById('periodPrev').onclick = () => { stepPeriod(-1); renderPeriod(); renderCal(); };
   document.getElementById('periodNext').onclick = () => { stepPeriod(1); renderPeriod(); renderCal(); };
+
+  setupHeroSearch();
+}
+
+/* ===== 상단 Hero 검색 — 페이지 이탈 없이 인앱 RAG 답변(원툴/이탈 방지) ===== */
+function setupHeroSearch() {
+  const form = document.getElementById('heroSearch');
+  if (!form || typeof API === 'undefined' || !API.ask) return;
+  const q = document.getElementById('heroQ');
+  const btn = document.getElementById('heroBtn');
+  const ans = document.getElementById('heroAnswer');
+  const chipsEl = document.getElementById('heroChips');
+
+  const CHIPS = ['삼성SDS 최근 동향', '멀티 LLM 허브를 추진하는 기업', '조달청과 관련된 기업', 'AI 에이전트 거버넌스 동향'];
+  if (chipsEl) {
+    chipsEl.innerHTML = CHIPS.map((c) => '<button type="button" class="hero-chip text-xs bg-white border border-ink/10 rounded-full px-3 py-1.5 hover:border-lime-600 transition-colors">' + escapeHtml(c) + '</button>').join('');
+    chipsEl.querySelectorAll('.hero-chip').forEach((c) => (c.onclick = () => { q.value = c.textContent; ask(); }));
+  }
+
+  function close() { ans.classList.add('hidden'); ans.innerHTML = ''; }
+
+  function srcHTML(s) {
+    const links = [];
+    if (s.sourceUrl) links.push('<a href="' + safeUrl(s.sourceUrl) + '" target="_blank" rel="noopener" class="text-lime-600 hover:underline">원문</a>');
+    if (s.confluenceUrl) links.push('<a href="' + safeUrl(s.confluenceUrl) + '" target="_blank" rel="noopener" class="text-lime-600 hover:underline">상세</a>');
+    return '<div class="bg-beige border border-ink/5 rounded-xl p-2.5">' +
+      '<div class="flex items-center gap-1.5"><span class="text-[10px] font-bold text-lime-600">[' + s.n + ']</span>' +
+      '<a href="/company?name=' + encodeURIComponent(s.name) + '" class="font-display font-semibold text-xs tracking-tight hover:text-lime-600">' + escapeHtml(s.name) + '</a>' +
+      '<span class="text-[10px] text-ink/45 ml-auto">' + escapeHtml(s.date || '') + '</span></div>' +
+      (links.length ? '<div class="text-[11px] mt-1 flex gap-2">' + links.join('') + '</div>' : '') + '</div>';
+  }
+
+  function answerHTML(data, question) {
+    let html = '<div class="flex items-center gap-2 mb-2"><span class="text-[11px] font-bold uppercase tracking-widest text-lime-600">답변</span>' +
+      '<span class="text-[11px] text-ink/45">사이트 내 · 이탈 없음</span>' +
+      '<button type="button" id="heroAnsClose" aria-label="닫기" class="ml-auto text-ink/40 hover:text-ink text-lg leading-none">×</button></div>';
+    if (!data || !data.answer) {
+      return html + '<div class="text-sm text-ink/70">관련 자료를 찾지 못했어요. 다른 표현으로 물어봐 주세요.</div>';
+    }
+    const body = escapeHtml(data.answer).replace(/\[(\d+)\]/g, '<sup class="text-[10px] font-bold text-lime-600 align-super">[$1]</sup>');
+    html += '<div class="leading-relaxed whitespace-pre-line text-ink/90 text-sm">' + body + '</div>';
+    const srcs = data.sources || [];
+    if (srcs.length) {
+      html += '<p class="text-[11px] font-semibold tracking-widest text-lime-600 uppercase mt-4 mb-2">출처</p>' +
+        '<div class="grid sm:grid-cols-2 gap-2">' + srcs.map(srcHTML).join('') + '</div>';
+    }
+    html += '<div class="mt-3 text-right"><a href="/explore?q=' + encodeURIComponent(question) + '" class="text-xs text-lime-600 font-semibold hover:underline">탐색 페이지에서 더 보기 →</a></div>';
+    return html;
+  }
+
+  async function ask() {
+    const question = (q.value || '').trim();
+    if (!question) return;
+    btn.disabled = true;
+    ans.classList.remove('hidden');
+    ans.innerHTML = '<div class="flex items-center gap-2 text-ink/60 text-sm"><span class="inline-block w-4 h-4 border-2 border-ink/20 border-t-ink rounded-full animate-spin"></span>자료를 검색하고 답변을 작성하는 중…</div>';
+    try {
+      const data = await API.ask(question);
+      ans.innerHTML = answerHTML(data, question);
+    } catch {
+      ans.innerHTML = '<div class="text-sm">답변을 가져오지 못했어요. <a href="/explore" class="text-lime-600 hover:underline">검색 페이지</a>에서 다시 시도해 주세요.</div>';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  form.addEventListener('submit', (e) => { e.preventDefault(); ask(); });
+  q.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ask(); } });
+  ans.addEventListener('click', (e) => { if (e.target.closest('#heroAnsClose')) close(); });
+  // 바깥 클릭·ESC 로 답변 닫기
+  document.addEventListener('click', (e) => {
+    if (ans.classList.contains('hidden')) return;
+    if (!e.target.closest('#heroAnswer') && !e.target.closest('#heroSearch') && !e.target.closest('#heroChips')) close();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 }
 
 document.addEventListener('DOMContentLoaded', init);

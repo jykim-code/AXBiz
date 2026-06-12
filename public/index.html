@@ -66,6 +66,25 @@
     </div>
   </nav>
 
+  <!-- ===== Hero 검색 (상단 바로 검색 · 인앱 답변으로 이탈 방지) ===== -->
+  <div class="flex-none bg-beige border-b border-ink/5">
+    <div class="max-w-[1600px] mx-auto px-5 sm:px-8 py-4">
+      <div class="max-w-[820px] mx-auto relative">
+        <form id="heroSearch" class="relative">
+          <span class="absolute left-5 top-1/2 -translate-y-1/2 opacity-40 pointer-events-none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </span>
+          <input id="heroQ" type="text" maxlength="500" autocomplete="off"
+            placeholder="AX 동향을 검색하거나 질문하세요 — 예: 조달청과 관련된 기업"
+            class="w-full rounded-full bg-white border border-ink/10 py-3.5 pl-14 pr-28 text-base focus:outline-none focus:ring-2 focus:ring-lime shadow-sm" />
+          <button type="submit" id="heroBtn" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-ink text-lime font-semibold text-sm px-5 py-2.5 hover:bg-ink/90 disabled:opacity-40 transition">검색</button>
+        </form>
+        <div class="flex flex-wrap gap-2 mt-3" id="heroChips"></div>
+        <div id="heroAnswer" class="hidden absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-ink/10 shadow-2xl shadow-ink/15 p-5 z-30 max-h-[60vh] overflow-y-auto"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== Main ===== -->
   <main class="flex-1 min-h-0">
     <div class="max-w-[1600px] mx-auto px-5 sm:px-8 py-6 h-full flex flex-col gap-6">
