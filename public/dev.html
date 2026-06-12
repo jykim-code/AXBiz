@@ -66,7 +66,6 @@
     <section>
       <div class="flex items-end justify-between mb-4">
         <div><h2 class="text-xl font-bold tracking-tight">② 검수 목록</h2><p class="text-sm opacity-60" id="counts">불러오는 중…</p></div>
-        <button id="cLogout" class="btn text-xs border border-ink/15 px-3 py-1.5 hover:bg-beige">프리뷰 종료(로그아웃)</button>
       </div>
       <div id="list" class="space-y-6"></div>
       <div id="empty" class="hidden text-center py-16 text-ink/45">검수할 draft가 없습니다. 위에서 컨플을 가져오세요.</div>
@@ -109,7 +108,6 @@ function showConsole() {
   document.getElementById('console').classList.remove('hidden');
   document.getElementById('importBtn').onclick = doImport;
   document.getElementById('cPublishAll').onclick = () => confirmPublish({ all: true }, '검수 목록 전체를');
-  document.getElementById('cLogout').onclick = () => { sessionStorage.removeItem('devPin'); location.href = '/'; };
   refresh();
 }
 
