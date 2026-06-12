@@ -215,6 +215,12 @@ const API = {
     if (!res.ok) { const err = new Error('REQUEST_FAILED'); err.status = res.status; throw err; }
     return res.json();
   },
+  async devCreateDrafts(date, items) {
+    const res = await fetch('/api/dev/drafts', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pin': devPin() }, body: JSON.stringify({ action: 'create', date, items }) });
+    let d = {}; try { d = await res.json(); } catch { /* */ }
+    if (!res.ok) { const err = new Error(d.error || 'REQUEST_FAILED'); err.status = res.status; throw err; }
+    return d;
+  },
   async devUpdateDraft(id, data) {
     const res = await fetch('/api/dev/drafts', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pin': devPin() }, body: JSON.stringify({ id, action: 'update', data }) });
     let d = {}; try { d = await res.json(); } catch { /* */ }

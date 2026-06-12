@@ -43,12 +43,44 @@ export async function onRequestGet({ request, env }) {
 
 const CATEGORIES = ['대기업', '중견기업', '스타트업·중소'];
 const arr = (v, fb) => (Array.isArray(v) ? v.map((x) => String(x || '').trim()).filter(Boolean) : fb);
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function onRequestPost({ request, env }) {
   if (!pinOk(env, request)) return forbidden();
   let body; try { body = await request.json(); } catch { return Response.json({ error: 'INVALID_JSON' }, { status: 400 }); }
-  const id = +body?.id;
   const action = String(body?.action || '');
+
+  // 수동 입력 → draft 일괄 생성 (같은 (date,company,'manual') draft 는 갱신)
+  if (action === 'create') {
+    const date = String(body?.date || '').trim();
+    if (!DATE_RE.test(date)) return Response.json({ error: 'INVALID_DATE' }, { status: 400 });
+    const items = Array.isArray(body?.items) ? body.items.slice(0, 50) : [];
+    let count = 0;
+    for (const it of items) {
+      const name = String(it?.name || '').trim().slice(0, 200);
+      if (!name) continue;
+      const category = CATEGORIES.includes(it?.category) ? it.category : '대기업';
+      const data = JSON.stringify({
+        name, category,
+        summary: String(it?.summary || '').trim().slice(0, 300),
+        sourceUrl: String(it?.sourceUrl || '').trim().slice(0, 1000),
+        confluenceUrl: String(it?.confluenceUrl || '').trim().slice(0, 1000),
+        keyPoints: arr(it?.keyPoints, []), implications: arr(it?.implications, []),
+        hancomInsight: arr(it?.hancomInsight, []), tags: arr(it?.tags, []),
+      });
+      try {
+        await env.DB.prepare("DELETE FROM draft_entries WHERE date = ? AND company = ? AND source = 'manual' AND status = 'draft'").bind(date, name).run();
+        await env.DB.prepare(
+          `INSERT INTO draft_entries (date, company, category, data, source, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 'manual', 'draft', datetime('now'), datetime('now'))`
+        ).bind(date, name, category, data).run();
+        count++;
+      } catch (err) { console.error('drafts create', name, err); }
+    }
+    return Response.json({ ok: true, count, date });
+  }
+
+  const id = +body?.id;
   if (!id) return Response.json({ error: 'BAD_REQUEST' }, { status: 400 });
 
   try {

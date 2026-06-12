@@ -45,7 +45,10 @@
         <div class="font-display font-bold text-xl tracking-tight">AX Biz Radar</div>
         <span class="text-sm font-medium opacity-60">관리자 입력</span>
       </div>
-      <a href="/" class="text-xs font-semibold border border-ink/15 rounded-full px-4 py-2 hover:bg-ink hover:text-white transition-colors">대시보드 보기</a>
+      <div class="flex gap-2">
+        <a href="/" target="_blank" class="text-xs font-semibold border border-ink/15 rounded-full px-4 py-2 hover:bg-ink hover:text-white transition-colors">Published 보기</a>
+        <a href="/preview" target="_blank" class="text-xs font-semibold bg-ink text-lime rounded-full px-4 py-2 hover:opacity-90 transition-opacity">미리보기 (draft 포함)</a>
+      </div>
     </div>
   </nav>
 
@@ -68,16 +71,16 @@
   <section id="editor" class="max-w-[1100px] mx-auto px-5 sm:px-8 py-10 hidden">
 
     <div class="flex flex-wrap gap-2 mb-8">
-      <button id="tabReviewBtn" class="btn px-4 py-2 bg-ink text-white">검수·배포 <span id="tabReviewCnt" class="hidden text-[10px] font-bold bg-lime text-ink rounded-full px-1.5 py-0.5 align-middle"></span></button>
-      <button id="tabImportBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">가져오기</button>
+      <button id="tabImportBtn" class="btn px-4 py-2 bg-ink text-white">가져오기</button>
+      <button id="tabReportBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">수동 입력</button>
+      <button id="tabReviewBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">검수·배포 <span id="tabReviewCnt" class="hidden text-[10px] font-bold bg-lime text-ink rounded-full px-1.5 py-0.5 align-middle"></span></button>
       <button id="tabDartBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">DART 연결</button>
       <button id="tabSuggBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">의견함</button>
-      <button id="tabReportBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">수동 입력</button>
-      <button id="tabSetBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">설정</button>
+      <button id="tabSetBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">태그 관리</button>
     </div>
 
     <div id="tab-report" class="hidden">
-    <div class="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-800 mb-6">⚠️ 수동 입력은 <b>검수 없이 라이브에 직접 반영</b>됩니다. 컨플 기반 데이터는 "가져오기 → 검수·배포"를 사용하세요.</div>
+    <div class="bg-beige border border-ink/10 rounded-2xl px-4 py-3 text-sm mb-6">수동 입력도 <b>draft로 저장 → 검수·배포</b>를 거쳐 라이브에 반영됩니다(가져오기와 동일 흐름). "기존 데이터 불러오기"로 라이브 항목을 불러와 수정할 수도 있습니다.</div>
     <div class="flex flex-col sm:flex-row sm:items-end gap-4 mb-8">
       <div class="flex-1">
         <div class="label mb-1.5">분석 날짜</div>
@@ -95,7 +98,7 @@
     <div id="companies" class="space-y-5"></div>
 
     <div class="flex items-center gap-4 mt-8 pt-6 border-t border-ink/10">
-      <button id="saveBtn" class="btn bg-ink text-white px-8 py-3 hover:bg-lime hover:text-ink">저장 (덮어쓰기)</button>
+      <button id="saveBtn" class="btn bg-ink text-white px-8 py-3 hover:bg-lime hover:text-ink">draft로 저장 → 검수</button>
       <span id="saveStatus" class="text-sm"></span>
     </div>
     </div><!-- /tab-report -->
@@ -118,7 +121,7 @@
     </div>
 
     <!-- ===== 가져오기 (데일리 / 히스토리 → draft) ===== -->
-    <div id="tab-import" class="hidden">
+    <div id="tab-import">
       <h2 class="font-display font-bold text-xl tracking-tight mb-2">컨플 가져오기</h2>
       <p class="text-sm opacity-60 mb-4">가져온 항목은 <b>draft</b>로 적재되어 "검수·배포" 탭과 <a href="/preview" target="_blank" class="text-lime-600 font-semibold hover:underline">미리보기</a>에서만 보입니다. <b>배포해야 라이브에 반영됩니다.</b></p>
       <div class="bg-white rounded-2xl border border-ink/5 shadow p-5 max-w-[760px]">
@@ -136,11 +139,11 @@
     </div>
 
     <!-- ===== 검수·배포 ===== -->
-    <div id="tab-review">
+    <div id="tab-review" class="hidden">
       <details class="bg-white rounded-2xl border border-ink/5 shadow p-5 mb-6">
         <summary class="font-display font-bold cursor-pointer select-none">📖 사용 가이드 <span class="text-xs font-normal opacity-50">(클릭해 펼치기)</span></summary>
         <div class="mt-4 flex flex-wrap items-center gap-2 text-sm font-semibold">
-          <span class="bg-beige rounded-full px-3 py-1.5">① 가져오기(데일리/히스토리)</span><span class="text-lime-600">→</span>
+          <span class="bg-beige rounded-full px-3 py-1.5">① 가져오기(데일리/히스토리) 또는 수동 입력</span><span class="text-lime-600">→</span>
           <span class="bg-beige rounded-full px-3 py-1.5">② 검수·수정</span><span class="text-lime-600">→</span>
           <span class="bg-beige rounded-full px-3 py-1.5">③ 미리보기</span><span class="text-lime-600">→</span>
           <span class="bg-ink text-lime rounded-full px-3 py-1.5">④ 배포</span>

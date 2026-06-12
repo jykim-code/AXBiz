@@ -222,7 +222,7 @@ async function loadExisting() {
   }
 }
 
-/* ===== 저장 ===== */
+/* ===== 저장 (수동 입력 → draft, 검수·배포 동일 흐름) ===== */
 async function save() {
   const date = document.getElementById('reportDate').value;
   const status = document.getElementById('saveStatus');
@@ -233,19 +233,26 @@ async function save() {
     return;
   }
   const companies = collect();
+  if (!companies.length) {
+    status.textContent = '입력된 기업이 없습니다.';
+    status.style.color = '#dc2626';
+    return;
+  }
   btn.disabled = true;
   status.style.color = '#111';
-  status.textContent = '저장 중…';
+  status.textContent = 'draft 저장 중…';
   try {
-    const res = await API.save(date, companies, adminPin);
+    const res = await API.devCreateDrafts(date, companies);
     status.style.color = '#7ba500';
-    status.textContent = '저장 완료 (' + res.count + '개 기업)';
-    toast('저장 완료 — 대시보드에 즉시 반영됩니다', true);
+    status.textContent = 'draft ' + res.count + '건 저장 — 검수·배포 탭에서 배포하세요 (라이브 미반영)';
+    toast('draft ' + res.count + '건 저장 (라이브 미반영)', true);
+    showTab('review');
   } catch (e) {
     if (e.status === 403) {
       // PIN 무효화 → 게이트 재노출
       adminPin = '';
       sessionStorage.removeItem('adminPin');
+      sessionStorage.removeItem('devPin');
       showGate(true);
       return;
     }
@@ -273,7 +280,8 @@ function showEditor() {
   if (!dateInput.value) dateInput.value = todayYmd();
   const wrap = document.getElementById('companies');
   if (!wrap.children.length) wrap.appendChild(companyBlock());
-  showTab('review'); // 기본 탭 = 검수·배포
+  showTab('imp'); // 기본 탭 = 가져오기(흐름 시작점). 검수 대기 수는 배지로 표시.
+  loadReview(); // 탭 배지(미배포 건수) 갱신
 }
 
 function init() {
