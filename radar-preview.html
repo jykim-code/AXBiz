@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Radar — 구버 레이아웃 프리뷰 (라임 톤)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+    fontFamily: { sans: ['Inter','sans-serif'], display: ['"Space Grotesk"','sans-serif'] },
+  } } };
+</script>
+<style>
+  body { background:#f7f5f0; color:#111; font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family:'Space Grotesk',sans-serif; }
+  ::selection { background:#c8f200; color:#111; }
+  .feed::-webkit-scrollbar{width:8px} .feed::-webkit-scrollbar-thumb{background:rgba(17,17,17,.12);border-radius:8px}
+  .tl::-webkit-scrollbar{height:6px} .tl::-webkit-scrollbar-thumb{background:rgba(17,17,17,.12);border-radius:8px}
+</style>
+</head>
+<body class="h-screen flex overflow-hidden">
+
+<!-- ===== 좌측 에이전트 레일 (구버식, 라임 톤) ===== -->
+<aside class="w-64 flex-none bg-lime/15 border-r border-lime/30 flex flex-col">
+  <div class="h-20 flex items-center gap-2 px-5 border-b border-ink/10">
+    <img src="/assets/HANCOM.png" alt="HANCOM" class="h-6 w-auto" onerror="this.style.display='none'"/>
+    <span class="font-display font-bold text-sm tracking-tight">AX Biz Radar</span>
+  </div>
+  <nav class="flex-1 overflow-y-auto p-3 space-y-5">
+    <div>
+      <div class="text-[10px] font-bold uppercase tracking-widest text-lime-600 px-2 mb-2">브리핑 에이전트</div>
+      <div class="space-y-1" id="radarAgents"></div>
+    </div>
+    <div>
+      <div class="text-[10px] font-bold uppercase tracking-widest text-lime-600 px-2 mb-2">기업 에이전트</div>
+      <div class="space-y-1" id="coAgents"></div>
+    </div>
+  </nav>
+  <a href="/" class="p-4 border-t border-ink/10 text-[11px] opacity-70 hover:opacity-100">← 대시보드로</a>
+</aside>
+
+<!-- ===== 메인 ===== -->
+<div class="flex-1 flex flex-col min-w-0">
+  <header class="flex-none bg-white/70 backdrop-blur border-b border-ink/5">
+    <!-- breadcrumb + 기간 nav -->
+    <div class="px-6 h-14 flex items-center justify-between gap-4">
+      <div class="text-sm opacity-60" id="crumb">Radar › 위클리 Radar</div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1.5">
+          <button class="w-8 h-8 rounded-full bg-beige hover:bg-lime flex items-center justify-center">‹</button>
+          <span class="font-display font-bold text-sm" id="periodLabel">—</span>
+          <button class="w-8 h-8 rounded-full bg-beige hover:bg-lime flex items-center justify-center">›</button>
+        </div>
+        <button class="text-xs font-semibold rounded-full border border-ink/15 px-3 py-1.5 opacity-50 cursor-default" title="Phase 2">🔔 알림 설정</button>
+      </div>
+    </div>
+    <!-- 일/주 통합 타임라인 -->
+    <div class="px-6 pb-3 overflow-x-auto tl"><div id="timeline" class="flex items-center gap-1 min-w-max"></div></div>
+  </header>
+
+  <main class="flex-1 overflow-y-auto feed">
+    <div class="max-w-[880px] mx-auto px-6 sm:px-10 py-8" id="edition"></div>
+    <div class="max-w-[880px] mx-auto px-6 sm:px-10 pb-12 text-xs opacity-50">AX Biz Radar · 프리뷰 (목업 데이터)</div>
+  </main>
+</div>
+
+<script>
+const LBL = (t) => '<div class="text-[11px] font-bold uppercase tracking-widest text-lime-600 mb-2">'+t+'</div>';
+const coChip = (t) => '<span class="text-xs font-semibold bg-ink text-white rounded-full px-3 py-1">'+t+'</span>';
+const CATCOLOR = { '대기업':'bg-lime/15 text-lime-600', '중견기업':'bg-beige', '스타트업·중소':'bg-ink/5' };
+
+const RADAR_AGENTS = [
+  { kind:'weekly',  label:'위클리 Radar', sub:'매주 발행' },
+  { kind:'monthly', label:'먼슬리 Radar', sub:'매월 발행' },
+];
+const CO_AGENTS = ['삼성SDS','네이버','SK텔레콤','LG CNS','업스테이지'];
+
+const DATA = {
+  weekly: {
+    crumb:'Radar › 위클리 Radar', label:'2026-05-25 ~ 05-31', eyebrow:'WEEKLY RADAR · 5월 5주차',
+    headline:'삼성·SK, "AI 에이전트 시대" 선언 — 경쟁축이 멀티 LLM에서 에이전트 거버넌스로',
+    overview:'이번 주 국내 AX 시장의 핵심은 "단일 LLM 성능 경쟁"의 종료 신호다. 삼성SDS가 AX 서밋에서 패브릭스 2.0(복수 에이전트 통합 운영·거버넌스)을 예고하고, SK텔레콤은 실행-검증 루프형 에이전트를 사내 적용하며, 경쟁의 무게중심이 "여러 에이전트를 어떻게 안전하게 굴리느냐"로 이동했다.',
+    metrics:{ count:9, companies:7, fresh:2, tags:['AI 에이전트','멀티 LLM','거버넌스','온프레미스'] },
+    movements:[
+      { title:'패브릭스 2.0 예고 — "챗봇 시대 끝, AI 에이전트 시대"', company:'삼성SDS', date:'05-29', why:'AX 서밋 2026(320사·600명)에서 복수 에이전트 통합운영·통합 거버넌스 발표. 경쟁을 오케스트레이션·거버넌스로 재정의.', src:'#' },
+      { title:'AI 검색에 차세대 하이퍼클로바X 적용', company:'네이버', date:'05-28', why:'6월부터 적용, "AI 통합 에이전트" 목표. 검색 트래픽을 생성형으로 방어하며 커머스 연계 포석.', src:'#' },
+      { title:'에이닷 비즈 코워크 사내 베타', company:'SK텔레콤', date:'05-28', why:'요청 시 실행계획·코드작성·결과검증 자동. 사내 도그푸딩으로 B2B 상품화 전 검증.', src:'#' },
+      { title:'통합요금제 + AIDC 전환 전략', company:'LG유플러스', date:'05-28', why:'본업 매출 감소를 AI·데이터센터 신사업으로 상쇄. 성장축을 인프라로 이동.', src:'#' },
+    ],
+    themes:[
+      { name:'AI 에이전트 거버넌스', cos:['삼성SDS','SK텔레콤'], note:'복수 에이전트의 통합 관리·감사가 새 경쟁 포인트로 부상.' },
+      { name:'멀티 LLM 허브', cos:['삼성SDS','네이버'], note:'모델 선택권·라우팅이 사실상 표준 요구사항화.' },
+      { name:'AI 신사업으로의 축 이동', cos:['LG유플러스'], note:'본업 정체를 AIDC·AX로 상쇄하는 통신사 공통 전략.' },
+    ],
+    hancom:'경쟁이 "모델 성능"에서 "에이전트 운영·거버넌스"로 넘어간 주다. 한컴은 문서 자동화 에이전트에 통합 관리·감사·이력 기능을 붙이는 것이 차별점이 될 수 있다. 또한 멀티 LLM 라우팅은 더 이상 옵션이 아니라 기본 요구이므로, 제품 로드맵에 모델 선택권을 표준으로 반영할 필요가 있다.',
+    highlights:[
+      { name:'삼성SDS', cat:'대기업', sum:'패브릭스 2.0·AX 서밋으로 에이전트 거버넌스 주도' },
+      { name:'네이버', cat:'대기업', sum:'AI 검색에 하이퍼클로바X 적용, 통합 에이전트 목표' },
+      { name:'SK텔레콤', cat:'대기업', sum:'에이닷 비즈 코워크 사내 베타로 B2B 검증' },
+      { name:'LG유플러스', cat:'대기업', sum:'통합요금제+AIDC로 성장축 이동' },
+    ],
+    sources:['삼성SDS AX 서밋 2026','네이버 하이퍼클로바X','SKT 에이닷 비즈 코워크','LG유플러스 통합요금제'],
+  },
+  monthly: {
+    crumb:'Radar › 먼슬리 Radar', label:'2026년 5월', eyebrow:'MONTHLY RADAR · 2026.05',
+    headline:'5월의 AX — 멀티 LLM 허브 구축에서 "에이전트 전환" 선언까지',
+    overview:'5월 한 달 국내 AX 시장은 초반 "멀티 LLM 허브" 구축에서 출발해, 말미엔 삼성·SK가 "AI 에이전트 시대"를 공식화하며 경쟁 프레임 자체를 전환했다. 공공·금융을 겨냥한 온프레미스·보안 강화도 한 달 내내 이어졌다.',
+    metrics:{ count:31, companies:14, fresh:5, tags:['AI 에이전트','멀티 LLM','공공 SI','온프레미스','거버넌스'] },
+    movements:[
+      { title:'"AI 에이전트 시대" 공식 선언 (삼성·SK 동반)', company:'삼성SDS·SK텔레콤', date:'5월 말', why:'월말 경쟁축이 단일 LLM→에이전트 오케스트레이션·거버넌스로 전환.', src:'#' },
+      { title:'패브릭스 멀티 LLM 허브 전환', company:'삼성SDS', date:'05-15', why:'외부 LLM 추가 연동으로 모델 선택권 강화, 락인 완화.', src:'#' },
+      { title:'클로드 엔터프라이즈 그룹 전사 도입', company:'LG CNS', date:'06-09', why:'앤트로픽 클로드를 전 계열사 통합 도입(6월로 이어진 흐름).', src:'#' },
+      { title:'엔비디아 GW급 AI 팩토리 공동 구축 공시', company:'네이버', date:'06-09', why:'2027년부터 인프라 동맹, AX 하드웨어 저변 확대.', src:'#' },
+    ],
+    themes:[
+      { name:'멀티 LLM 허브', cos:['삼성SDS','네이버'], note:'월초 핵심 테마. 모델 라우팅 표준화.' },
+      { name:'AI 에이전트 전환', cos:['삼성SDS','SK텔레콤'], note:'월말 경쟁 프레임 전환의 핵심.' },
+      { name:'공공·온프레미스 강화', cos:['올거나이즈','업스테이지'], note:'조달·보안 민감 고객 겨냥 지속.' },
+    ],
+    hancom:'5월은 한컴이 두 흐름을 동시에 봐야 하는 달이었다. (1) 멀티 LLM 라우팅의 표준화 — 제품 기본기로 반영. (2) "에이전트 전환" — 문서 워크플로우를 단발 기능이 아니라 실행-검증 루프형 에이전트로 재설계할 시점. 공공/온프레미스 수요가 꾸준한 만큼 보안 배포 옵션도 동반 강화가 필요하다.',
+    highlights:[
+      { name:'삼성SDS', cat:'대기업', sum:'멀티 LLM 허브→에이전트 거버넌스로 한 달간 주도' },
+      { name:'SK텔레콤', cat:'대기업', sum:'사내 적용→전사 관리체계(AXMS)→문화 정착' },
+      { name:'LG CNS', cat:'대기업', sum:'클로드 엔터프라이즈 전 계열사 도입' },
+      { name:'업스테이지', cat:'스타트업·중소', sum:'노코드 AI 에이전트 플랫폼 인수' },
+      { name:'올거나이즈', cat:'스타트업·중소', sum:'알리 2.0 공공 조달 채널 확보' },
+      { name:'네이버', cat:'대기업', sum:'엔비디아와 AI 팩토리 공동 구축 공시' },
+    ],
+    sources:['삼성SDS 패브릭스 2.0','SKT AXMS','LG CNS 클로드 도입','업스테이지 인수','올거나이즈 조달','네이버-엔비디아'],
+  },
+};
+
+let current = 'weekly';
+
+function renderSidebar() {
+  document.getElementById('radarAgents').innerHTML = RADAR_AGENTS.map(a => {
+    const on = a.kind === current;
+    return '<button data-kind="'+a.kind+'" class="w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors '+(on?'bg-white/70 ring-1 ring-ink/10':'hover:bg-white/40')+'">'+
+      '<span class="w-7 h-7 flex-none rounded-lg bg-lime flex items-center justify-center text-ink font-display font-bold text-xs">R</span>'+
+      '<span class="min-w-0"><span class="block text-sm font-semibold truncate">'+a.label+'</span><span class="block text-[11px] opacity-55">'+a.sub+'</span></span></button>';
+  }).join('');
+  document.getElementById('coAgents').innerHTML = CO_AGENTS.map(n =>
+    '<a href="#" class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-white/40 transition-colors">'+
+      '<span class="w-7 h-7 flex-none rounded-lg bg-ink/10 flex items-center justify-center text-[11px] font-bold">'+n.slice(0,2)+'</span>'+
+      '<span class="text-sm truncate">'+n+'</span></a>').join('');
+  document.querySelectorAll('#radarAgents button').forEach(b => b.onclick = () => { current = b.dataset.kind; renderAll(); });
+}
+
+function renderTimeline() {
+  const el = document.getElementById('timeline');
+  if (current === 'weekly') {
+    // 구버식: 평일 숫자 + 주차 마커, 활성 주(5주차)
+    const weeks = [['1','2','3'],['6','7','8','9','10'],['13','14','15','16','17'],['20','21','22','23','24'],['25','26','27','28','29']];
+    let h = '';
+    weeks.forEach((days, i) => {
+      const active = i === 4;
+      days.forEach(d => h += '<span class="px-2 py-1 text-xs '+(active?'text-ink font-bold':'opacity-40')+'">'+d+'</span>');
+      h += '<span class="px-3 py-1 rounded-full text-xs font-semibold flex-none '+(active?'bg-ink text-lime':'bg-beige opacity-70 hover:opacity-100')+'">'+(i+1)+'주차</span>';
+      if (i < weeks.length-1) h += '<span class="opacity-20 px-1">·</span>';
+    });
+    el.innerHTML = h;
+  } else {
+    el.innerHTML = ['2월','3월','4월','5월','6월'].map((m,i)=>
+      '<span class="px-3.5 py-1 rounded-full text-xs font-semibold flex-none '+(i===3?'bg-ink text-lime':'bg-beige opacity-70 hover:opacity-100')+'">'+m+'</span>').join('<span class="opacity-20 px-1">·</span>');
+  }
+}
+
+function renderEdition() {
+  const d = DATA[current];
+  document.getElementById('crumb').textContent = d.crumb;
+  document.getElementById('periodLabel').textContent = d.label;
+  const m = d.metrics;
+  document.getElementById('edition').innerHTML =
+    '<div class="mb-8">'+
+      '<div class="text-xs font-bold uppercase tracking-[0.2em] text-lime-600 mb-3">'+d.eyebrow+'</div>'+
+      '<h1 class="font-display font-bold text-3xl sm:text-4xl tracking-tight leading-[1.15] mb-4">'+d.headline+'</h1>'+
+      '<p class="text-lg leading-relaxed opacity-80">'+d.overview+'</p>'+
+    '</div>'+
+    '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">'+
+      [['총 동향',m.count],['추적 기업',m.companies],['신규 기업',m.fresh]].map(([k,v])=>
+        '<div class="bg-white rounded-2xl border border-ink/5 shadow-xl shadow-ink/5 p-4"><div class="font-display font-bold text-3xl leading-none">'+v+'</div><div class="text-[11px] font-semibold uppercase tracking-widest opacity-60 mt-2">'+k+'</div></div>').join('')+
+      '<div class="bg-ink text-white rounded-2xl p-4"><div class="text-[11px] font-semibold uppercase tracking-widest text-lime mb-2">Top 태그</div><div class="flex flex-wrap gap-1">'+m.tags.map(t=>'<span class="text-[11px] bg-white/10 rounded-full px-2 py-0.5">#'+t+'</span>').join('')+'</div></div>'+
+    '</div>'+
+    '<section class="mb-10">'+LBL('핵심 MOVEMENT')+
+      '<div class="space-y-3">'+d.movements.map((mv,i)=>
+        '<div class="bg-white rounded-2xl border border-ink/5 shadow-xl shadow-ink/5 p-5 flex gap-4">'+
+          '<div class="font-display font-bold text-2xl text-lime-600 flex-none w-8">'+(i+1)+'</div>'+
+          '<div class="flex-1 min-w-0">'+
+            '<div class="font-display font-bold mb-1">'+mv.title+'</div>'+
+            '<div class="flex items-center gap-2 mb-2 text-xs flex-wrap"><span class="font-semibold text-lime-600">'+mv.company+'</span><span class="opacity-40">·</span><span class="opacity-55">'+mv.date+'</span><a href="'+mv.src+'" class="opacity-55 hover:text-lime-600 underline">출처</a></div>'+
+            '<p class="text-sm leading-relaxed opacity-80">'+mv.why+'</p>'+
+          '</div></div>').join('')+'</div>'+
+    '</section>'+
+    '<section class="mb-10">'+LBL('트렌드 · 테마')+
+      '<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">'+d.themes.map(th=>
+        '<div class="bg-white rounded-2xl border border-ink/5 shadow-xl shadow-ink/5 p-5">'+
+          '<div class="font-display font-bold text-lg tracking-tight mb-2">'+th.name+'</div>'+
+          '<div class="flex flex-wrap gap-1 mb-3">'+th.cos.map(coChip).join('')+'</div>'+
+          '<p class="text-sm leading-relaxed opacity-75">'+th.note+'</p></div>').join('')+'</div>'+
+    '</section>'+
+    '<section class="mb-10"><div class="bg-lime/15 border border-lime/40 rounded-[24px] p-7">'+
+      '<div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">한컴 종합 시사점</div>'+
+      '<p class="text-lg leading-relaxed">'+d.hancom+'</p></div></section>'+
+    '<section class="mb-10">'+LBL('기업별 하이라이트')+
+      '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">'+d.highlights.map(h=>
+        '<a href="#" class="bg-white rounded-2xl border border-ink/5 shadow-xl shadow-ink/5 p-4 hover:-translate-y-0.5 transition-transform block">'+
+          '<div class="flex items-center gap-2 mb-1"><span class="font-display font-bold">'+h.name+'</span><span class="text-[10px] font-semibold rounded-full px-2 py-0.5 '+(CATCOLOR[h.cat]||'bg-beige')+'">'+h.cat+'</span><span class="ml-auto text-lime-600 text-sm">→</span></div>'+
+          '<p class="text-sm opacity-75 leading-snug">'+h.sum+'</p></a>').join('')+'</div>'+
+    '</section>'+
+    '<section>'+LBL('출처')+
+      '<div class="flex flex-wrap gap-2">'+d.sources.map(s=>'<a href="#" class="text-xs bg-white border border-ink/10 rounded-full px-3 py-1.5 hover:border-lime-600">🔗 '+s+'</a>').join('')+'</div>'+
+    '</section>';
+}
+
+function renderAll(){ renderSidebar(); renderTimeline(); renderEdition(); document.querySelector('.feed').scrollTop = 0; }
+renderAll();
+</script>
+</body>
+</html>
