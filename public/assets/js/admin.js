@@ -252,7 +252,7 @@ async function save() {
       // PIN 무효화 → 게이트 재노출
       adminPin = '';
       sessionStorage.removeItem('adminPin');
-      sessionStorage.removeItem('devPin');
+      localStorage.removeItem('devPin');
       showGate(true);
       return;
     }
@@ -303,7 +303,7 @@ function init() {
     if (btn) btn.disabled = false;
     adminPin = pin;
     sessionStorage.setItem('adminPin', pin);
-    sessionStorage.setItem('devPin', pin); // 검수·배포(draft API)·/preview 공용
+    localStorage.setItem('devPin', pin); // 검수·배포(draft API)·/preview 공용
     showEditor();
   });
 
@@ -337,7 +337,7 @@ function init() {
   const saved = sessionStorage.getItem('adminPin');
   if (saved) {
     adminPin = saved;
-    sessionStorage.setItem('devPin', saved); // draft API·/preview 공용
+    localStorage.setItem('devPin', saved); // draft API·/preview 공용
     showEditor();
   } else {
     showGate(false);
@@ -660,7 +660,7 @@ async function runImport() {
     toast('draft ' + d.count + '건 가져옴 (라이브 미반영)', true);
     showTab('review');
   } catch (e) {
-    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); sessionStorage.removeItem('devPin'); showGate(true); return; }
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); localStorage.removeItem('devPin'); showGate(true); return; }
     status.style.color = '#dc2626';
     status.textContent = '실패: ' + ((e.data && (e.data.hint || e.data.error)) || e.status || e.message);
   } finally {
@@ -688,7 +688,7 @@ async function loadReview() {
     if (sameN) { cs.classList.remove('hidden'); cs.textContent = '동일 ' + sameN + '건 정리'; } else cs.classList.add('hidden');
     renderReview();
   } catch (e) {
-    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); sessionStorage.removeItem('devPin'); showGate(true); }
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); localStorage.removeItem('devPin'); showGate(true); }
   }
 }
 function rvSect(label, arr) {

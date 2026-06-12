@@ -10,8 +10,11 @@ async function getJSON(url) {
   return res.json();
 }
 
-// dev 프리뷰: ?preview=1 + sessionStorage PIN 이면 draft 합본(dev) 엔드포인트로 라우팅.
-function devPin() { try { return sessionStorage.getItem('devPin') || ''; } catch { return ''; } }
+// dev 프리뷰: ?preview=1 + 저장된 PIN 이면 draft 합본(dev) 엔드포인트로 라우팅.
+// PIN 은 localStorage(탭 간 공유 — admin 인증 후 새 탭 미리보기 허용). 403 시 제거됨.
+function devPin() {
+  try { return localStorage.getItem('devPin') || sessionStorage.getItem('devPin') || ''; } catch { return ''; }
+}
 function devPreviewActive() {
   try { return new URLSearchParams(location.search).get('preview') === '1' && !!devPin(); } catch { return false; }
 }

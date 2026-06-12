@@ -2,11 +2,68 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="robots" content="noindex, nofollow" />
-<title>미리보기로 이동 중…</title>
-<!-- /preview = 실사이트를 draft 합본으로 보는 미리보기 진입점 (PIN은 /admin 인증 시 세션에 저장됨) -->
-<meta http-equiv="refresh" content="0;url=/?preview=1" />
-<script>location.replace('/?preview=1');</script>
+<title>미리보기 — AX Biz Radar</title>
+<link rel="icon" type="image/png" href="/assets/hancom_favicon.png" />
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { lime:'#c8f200', beige:'#f7f5f0', ink:'#111', 'lime-600':'#7ba500' },
+    fontFamily: { sans:['Inter','sans-serif'], display:['"Space Grotesk"','sans-serif'] },
+  } } };
+</script>
+<style>
+  body { background:#f7f5f0; color:#111; font-family:'Inter',sans-serif; }
+  h1,h2 { font-family:'Space Grotesk',sans-serif; }
+</style>
 </head>
-<body></body>
+<body class="min-h-screen flex items-center justify-center p-6">
+  <!-- 인증돼 있으면 즉시 /?preview=1 로 넘어가고, 아니면 PIN 게이트 표시 -->
+  <div id="gate" class="hidden w-full max-w-sm bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-7">
+    <div class="flex items-center gap-2 mb-1">
+      <span class="font-display font-bold tracking-tight">AX Biz Radar</span>
+      <span class="text-[10px] font-bold uppercase tracking-widest bg-ink text-lime rounded-full px-2 py-0.5">PREVIEW</span>
+    </div>
+    <h1 class="font-display font-bold text-xl tracking-tight mb-1">미리보기 (draft 포함)</h1>
+    <p class="text-sm opacity-60 mb-5">실사이트를 미배포(draft) 합본으로 미리봅니다. 관리자 PIN을 입력하세요.</p>
+    <form id="gateForm" class="space-y-3">
+      <input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="관리자 PIN"
+        class="w-full rounded-full bg-beige border border-ink/10 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lime" />
+      <button type="submit" id="go" class="w-full rounded-full bg-ink text-lime font-semibold text-sm px-4 py-2.5 hover:opacity-90 disabled:opacity-40">미리보기 입장</button>
+      <div id="err" class="text-xs text-red-500 hidden"></div>
+    </form>
+    <a href="/" class="block mt-4 text-xs text-ink/50 hover:text-ink">← Published 대시보드로</a>
+  </div>
+  <div id="checking" class="text-sm opacity-50">인증 확인 중…</div>
+
+<script src="/assets/js/api.js"></script>
+<script>
+  const gate = document.getElementById('gate'), checking = document.getElementById('checking');
+  function enter() { location.replace('/?preview=1'); }
+  function showGate() { checking.classList.add('hidden'); gate.classList.remove('hidden'); document.getElementById('pin').focus(); }
+
+  // 저장된 PIN(admin 인증 시 localStorage 공유)이 유효하면 바로 입장
+  (async () => {
+    let saved = '';
+    try { saved = localStorage.getItem('devPin') || ''; } catch {}
+    if (saved && await API.devVerifyPin(saved).catch(() => false)) { enter(); return; }
+    try { localStorage.removeItem('devPin'); } catch {}
+    showGate();
+  })();
+
+  document.getElementById('gateForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const v = document.getElementById('pin').value.trim(); if (!v) return;
+    const go = document.getElementById('go'), err = document.getElementById('err');
+    go.disabled = true; err.classList.add('hidden');
+    try {
+      if (await API.devVerifyPin(v)) { try { localStorage.setItem('devPin', v); } catch {} enter(); }
+      else { err.textContent = 'PIN이 올바르지 않습니다.'; err.classList.remove('hidden'); }
+    } catch { err.textContent = '확인 중 오류가 발생했습니다.'; err.classList.remove('hidden'); }
+    finally { go.disabled = false; }
+  });
+</script>
+</body>
 </html>

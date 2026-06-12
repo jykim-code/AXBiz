@@ -5,7 +5,7 @@
   var params = new URLSearchParams(location.search);
   if (params.get('preview') !== '1') return;            // 프리뷰 모드에서만
   if (typeof API === 'undefined') return;
-  function getPin() { try { return sessionStorage.getItem('devPin') || ''; } catch (e) { return ''; } }
+  function getPin() { try { return localStorage.getItem('devPin') || sessionStorage.getItem('devPin') || ''; } catch (e) { return ''; } }
 
   var BAR_H = 44;
   document.body.style.paddingTop = BAR_H + 'px';
@@ -24,9 +24,8 @@
   }
 
   if (!getPin()) {
-    bar.innerHTML = '<span style="font-weight:700;letter-spacing:.08em;font-size:10px;text-transform:uppercase;background:#c8f200;color:#111;border-radius:999px;padding:2px 8px">DEV 프리뷰</span>' +
-      '<span style="opacity:.85">인증이 필요합니다</span><span style="flex:1"></span>' +
-      '<a href="/admin/" style="color:#c8f200;font-weight:600;text-decoration:none">검수 콘솔에서 PIN 입력 →</a>';
+    // 미인증 ?preview=1 직접 진입 → /preview 게이트로 (PIN 입력 화면)
+    location.replace('/preview');
     return;
   }
 
@@ -41,7 +40,7 @@
   function refreshCount() {
     API.devDrafts().then(function (r) {
       var el = document.getElementById('devCount'); if (el) el.textContent = '미배포 ' + ((r && r.count) || 0) + '건';
-    }).catch(function (e) { if (e && e.status === 403) { try { sessionStorage.removeItem('devPin'); } catch (x) {} location.href = '/admin/'; } });
+    }).catch(function (e) { if (e && e.status === 403) { try { localStorage.removeItem('devPin'); sessionStorage.removeItem('devPin'); } catch (x) {} location.href = '/preview'; } });
   }
   document.getElementById('devPub').onclick = function () {
     if (!window.confirm('미배포 draft 전체를 라이브에 배포할까요?\n본 사이트에 즉시 반영되고 같은 (날짜·기업) 항목은 교체됩니다.')) return;
