@@ -273,6 +273,7 @@ function showEditor() {
   if (!dateInput.value) dateInput.value = todayYmd();
   const wrap = document.getElementById('companies');
   if (!wrap.children.length) wrap.appendChild(companyBlock());
+  showTab('review'); // 기본 탭 = 검수·배포
 }
 
 function init() {
@@ -294,6 +295,7 @@ function init() {
     if (btn) btn.disabled = false;
     adminPin = pin;
     sessionStorage.setItem('adminPin', pin);
+    sessionStorage.setItem('devPin', pin); // 검수·배포(draft API)·/preview 공용
     showEditor();
   });
 
@@ -303,14 +305,19 @@ function init() {
   document.getElementById('loadBtn').addEventListener('click', loadExisting);
   document.getElementById('saveBtn').addEventListener('click', save);
 
-  // 탭: 보고서 입력 / 의견함
+  // 탭: 검수·배포 / 가져오기 / DART / 의견함 / 수동 입력 / 설정
+  document.getElementById('tabReviewBtn').addEventListener('click', () => showTab('review'));
+  document.getElementById('tabImportBtn').addEventListener('click', () => showTab('imp'));
   document.getElementById('tabReportBtn').addEventListener('click', () => showTab('report'));
   document.getElementById('tabSuggBtn').addEventListener('click', () => showTab('sugg'));
   document.getElementById('tabDartBtn').addEventListener('click', () => showTab('dart'));
-  document.getElementById('tabConfBtn').addEventListener('click', () => showTab('conf'));
   document.getElementById('tabSetBtn').addEventListener('click', () => showTab('set'));
-  document.getElementById('confPreview').addEventListener('click', confPreview);
-  document.getElementById('confRun').addEventListener('click', confRun);
+  // 가져오기 (데일리/히스토리)
+  document.querySelectorAll('#impToggle button').forEach((b) => b.addEventListener('click', () => { impMode = b.dataset.imp; renderImpToggle(); }));
+  document.getElementById('impRun').addEventListener('click', runImport);
+  // 검수·배포
+  document.getElementById('rvPublishAll').addEventListener('click', () => confirmPublishRv({ all: true }, '검수 목록 전체를'));
+  document.getElementById('rvClearSame').addEventListener('click', clearSameRv);
   document.getElementById('suggRefresh').addEventListener('click', loadSuggestions);
   document.getElementById('dartRefresh').addEventListener('click', loadDartMappings);
   document.getElementById('pinSave').addEventListener('click', savePinned);
@@ -322,20 +329,23 @@ function init() {
   const saved = sessionStorage.getItem('adminPin');
   if (saved) {
     adminPin = saved;
+    sessionStorage.setItem('devPin', saved); // draft API·/preview 공용
     showEditor();
   } else {
     showGate(false);
   }
 }
 
-/* ===== 탭 전환 (보고서 / 의견함 / DART 연결) ===== */
+/* ===== 탭 전환 ===== */
 function showTab(which) {
-  const tabs = { report: 'tab-report', sugg: 'tab-suggestions', dart: 'tab-dart', conf: 'tab-conf', set: 'tab-settings' };
-  const btns = { report: 'tabReportBtn', sugg: 'tabSuggBtn', dart: 'tabDartBtn', conf: 'tabConfBtn', set: 'tabSetBtn' };
+  const tabs = { review: 'tab-review', imp: 'tab-import', report: 'tab-report', sugg: 'tab-suggestions', dart: 'tab-dart', set: 'tab-settings' };
+  const btns = { review: 'tabReviewBtn', imp: 'tabImportBtn', report: 'tabReportBtn', sugg: 'tabSuggBtn', dart: 'tabDartBtn', set: 'tabSetBtn' };
   for (const k in tabs) {
     document.getElementById(tabs[k]).classList.toggle('hidden', k !== which);
     document.getElementById(btns[k]).className = 'btn px-4 py-2 ' + (k === which ? 'bg-ink text-white' : 'border border-ink/15 hover:bg-ink hover:text-white');
   }
+  if (which === 'review') loadReview();
+  if (which === 'imp') renderImpToggle();
   if (which === 'sugg') loadSuggestions();
   if (which === 'dart') loadDartMappings();
   if (which === 'set') { loadPinned(); loadTagManager(); }
@@ -611,55 +621,148 @@ async function deleteTagsGlobal() {
   }
 }
 
-/* ===== 컨플 가져오기 탭 ===== */
-async function confPreview() {
-  const url = document.getElementById('confUrl').value.trim();
-  const status = document.getElementById('confStatus');
-  const box = document.getElementById('confBox');
-  if (!url) { status.textContent = 'URL을 입력하세요.'; return; }
-  status.style.color = '#111';
-  status.textContent = '컨플 페이지 읽는 중…';
-  box.classList.add('hidden');
-  try {
-    const d = await API.importConfluence({ url, dryRun: true }, adminPin);
-    document.getElementById('confName').value = d.name || '';
-    document.getElementById('confCat').value = d.category || '대기업';
-    document.getElementById('confInfo').innerHTML =
-      '<div class="text-ink/80"><b>' + escapeHtml(d.pageTitle || '') + '</b> — <b>' + d.count + '건</b></div>' +
-      '<div class="text-xs text-ink/55 mt-1">날짜: ' + (d.dates || []).map(escapeHtml).join(', ') + '</div>' +
-      (d.sample ? '<div class="text-xs text-ink/55 mt-1">샘플: [' + escapeHtml(d.sample.date) + '] ' + escapeHtml(d.sample.keyPoint) + '…</div>' : '');
-    document.getElementById('confRunStatus').textContent = '';
-    box.classList.remove('hidden');
-    status.textContent = '';
-  } catch (e) {
-    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
-    status.style.color = '#dc2626';
-    status.textContent = '실패: ' + ((e.data && (e.data.hint || e.data.error)) || e.status || e.message);
-  }
+/* ===== 가져오기 탭 (데일리/히스토리 → draft) ===== */
+let impMode = 'daily';
+const IMP_HINT = {
+  daily: '데일리: "AX 플랫폼 주요 경쟁사 사업동향 [YYMMDD]" 페이지 — 섹션 A(상위 보고용)를 AI가 기업별로 추출합니다. (1날짜 × N기업, 추출 결과는 검수에서 보정)',
+  history: '히스토리: "AX 동향 히스토리 - 기업 (연도)" 페이지 — 타임라인 표를 그대로 파싱합니다. (1기업 × N날짜)',
+};
+function renderImpToggle() {
+  document.querySelectorAll('#impToggle button').forEach((b) => {
+    b.className = 'px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ' +
+      (b.dataset.imp === impMode ? 'bg-ink text-lime' : 'text-ink/60 hover:text-ink');
+  });
+  document.getElementById('impHint').textContent = IMP_HINT[impMode];
 }
-
-async function confRun() {
-  const url = document.getElementById('confUrl').value.trim();
-  const status = document.getElementById('confRunStatus');
-  const btn = document.getElementById('confRun');
-  const nameOverride = document.getElementById('confName').value.trim();
-  const categoryOverride = document.getElementById('confCat').value;
+async function runImport() {
+  const url = document.getElementById('impUrl').value.trim();
+  const status = document.getElementById('impStatus');
+  const btn = document.getElementById('impRun');
+  if (!url) { status.textContent = 'URL을 입력하세요.'; return; }
   btn.disabled = true;
   status.style.color = '#111';
-  status.textContent = '가져오는 중… (수십 초 걸릴 수 있음)';
+  status.textContent = (impMode === 'daily' ? 'AI 추출 중… (수십 초 걸릴 수 있음)' : '표 파싱 중…');
   try {
-    const d = await API.importConfluence({ url, nameOverride, categoryOverride }, adminPin);
+    const d = impMode === 'daily' ? await API.devImportDaily(url) : await API.devImport(url);
     status.style.color = '#7ba500';
-    status.textContent = '완료: ' + escapeHtml(d.name) + ' ' + d.count + '건, ' + (d.savedDates || []).length + '개 날짜 저장' +
-      ((d.failedDates || []).length ? ' (실패: ' + d.failedDates.join(', ') + ')' : '');
-    toast(d.name + ' 가져오기 완료 — 대시보드·검색에 반영됨', true);
+    status.textContent = '✓ draft ' + d.count + '건 적재' +
+      (impMode === 'daily' ? ' (' + escapeHtml(d.date || '') + ' · ' + (d.companies || []).map(escapeHtml).join(', ') + ')' : ' (' + escapeHtml(d.name || '') + ')') +
+      ' — 검수·배포 탭에서 확인하세요';
+    document.getElementById('impUrl').value = '';
+    toast('draft ' + d.count + '건 가져옴 (라이브 미반영)', true);
+    showTab('review');
   } catch (e) {
-    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); sessionStorage.removeItem('devPin'); showGate(true); return; }
     status.style.color = '#dc2626';
     status.textContent = '실패: ' + ((e.data && (e.data.hint || e.data.error)) || e.status || e.message);
   } finally {
     btn.disabled = false;
   }
+}
+
+/* ===== 검수·배포 탭 ===== */
+const RV_DIFF = { 'new': ['신규', 'bg-lime/30 text-lime-700'], 'replace': ['교체', 'bg-amber-100 text-amber-700'], 'same': ['동일', 'bg-ink/10 text-ink/45'] };
+const RV_CATS = ['대기업', '중견기업', '스타트업·중소'];
+let RV_DRAFTS = [];
+
+async function loadReview() {
+  try {
+    const res = await API.devDrafts();
+    RV_DRAFTS = res.drafts || [];
+    const n = RV_DRAFTS.length;
+    document.getElementById('rvCounts').textContent = 'draft ' + n + '건 · 신규 ' + RV_DRAFTS.filter(d => d.diff === 'new').length +
+      ' · 교체 ' + RV_DRAFTS.filter(d => d.diff === 'replace').length + ' · 동일 ' + RV_DRAFTS.filter(d => d.diff === 'same').length;
+    const cnt = document.getElementById('tabReviewCnt');
+    cnt.classList.toggle('hidden', !n);
+    cnt.textContent = n;
+    const sameN = RV_DRAFTS.filter(d => d.diff === 'same').length;
+    const cs = document.getElementById('rvClearSame');
+    if (sameN) { cs.classList.remove('hidden'); cs.textContent = '동일 ' + sameN + '건 정리'; } else cs.classList.add('hidden');
+    renderReview();
+  } catch (e) {
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); sessionStorage.removeItem('devPin'); showGate(true); }
+  }
+}
+function rvSect(label, arr) {
+  return (arr && arr.length)
+    ? '<div><span class="label">' + label + '</span><ul class="list-disc pl-5 opacity-85 text-sm">' + arr.map(t => '<li>' + escapeHtml(t) + '</li>').join('') + '</ul></div>'
+    : '';
+}
+function rvCard(x) {
+  const [bt, bc] = RV_DIFF[x.diff] || RV_DIFF['new'];
+  const d = x.data || {};
+  const dart = !x.dartLinked
+    ? '<button type="button" class="rv-dart text-[11px] font-bold rounded-full px-2 py-0.5 bg-red-50 text-red-500 border border-red-200 hover:bg-red-100" title="DART 연결 탭으로 이동 (재무 표시용 1회 매핑)">DART 미연결</button>'
+    : '';
+  return '<div class="bg-white rounded-2xl border border-ink/5 shadow p-5" data-rvid="' + x.id + '">' +
+    '<div class="flex items-center gap-2 flex-wrap mb-2">' +
+      '<span class="text-[11px] font-bold rounded-full px-2 py-0.5 ' + bc + '">' + bt + '</span>' +
+      '<span class="font-display font-bold">' + escapeHtml(x.company) + '</span>' +
+      '<span class="text-[10px] font-semibold bg-beige rounded-full px-2 py-0.5">' + escapeHtml(x.category || '') + '</span>' +
+      dart +
+      '<span class="text-[10px] opacity-45 ml-auto">' + escapeHtml(x.source === 'daily' ? '데일리' : '히스토리') + ' · ' + escapeHtml(x.date) + '</span></div>' +
+    (d.summary ? '<p class="text-sm font-semibold mb-2">' + escapeHtml(d.summary) + '</p>' : '') +
+    '<div class="space-y-1.5">' + rvSect('주요 내용', d.keyPoints) + rvSect('시사점', d.implications) + rvSect('한컴 인사이트', d.hancomInsight) + '</div>' +
+    '<div class="flex flex-wrap gap-1.5 mt-2">' + (d.tags || []).map(t => '<span class="text-xs bg-beige border border-ink/5 rounded-full px-2.5 py-0.5">#' + escapeHtml(t) + '</span>').join('') + '</div>' +
+    '<div class="flex items-center gap-2 mt-4 pt-3 border-t border-ink/5">' +
+      '<button class="btn text-xs border border-ink/15 px-3 py-1.5 hover:bg-beige" data-rvact="edit">편집</button>' +
+      '<button class="btn text-xs border border-ink/15 px-3 py-1.5 hover:bg-red-500 hover:text-white hover:border-red-500" data-rvact="del">삭제</button>' +
+      '<button class="btn text-xs bg-ink text-white px-4 py-1.5 ml-auto hover:bg-lime hover:text-ink" data-rvact="pub">이 건 배포</button>' +
+    '</div></div>';
+}
+function renderReview() {
+  const byDate = {};
+  RV_DRAFTS.forEach(x => (byDate[x.date] = byDate[x.date] || []).push(x));
+  const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+  document.getElementById('rvEmpty').classList.toggle('hidden', RV_DRAFTS.length > 0);
+  const list = document.getElementById('rvList');
+  list.innerHTML = dates.map(dt =>
+    '<div><div class="flex items-center gap-3 mb-2"><div class="font-display font-bold text-lg">' + dt + '</div><div class="h-px flex-1 bg-ink/10"></div>' +
+    '<button class="btn text-xs bg-beige px-3 py-1.5 hover:bg-lime" data-rvpubdate="' + dt + '">이 날짜 배포</button></div>' +
+    '<div class="space-y-3">' + byDate[dt].map(rvCard).join('') + '</div></div>').join('');
+  list.querySelectorAll('[data-rvpubdate]').forEach(b => b.onclick = () => confirmPublishRv({ dates: [b.getAttribute('data-rvpubdate')] }, b.getAttribute('data-rvpubdate') + ' 날짜를'));
+  list.querySelectorAll('.rv-dart').forEach(b => b.onclick = () => showTab('dart'));
+  list.querySelectorAll('[data-rvid]').forEach(card => {
+    const id = +card.getAttribute('data-rvid');
+    card.querySelector('[data-rvact="del"]').onclick = async () => { try { await API.devDeleteDraft(id); toast('삭제됨', true); loadReview(); } catch { toast('삭제 실패', false); } };
+    card.querySelector('[data-rvact="pub"]').onclick = () => confirmPublishRv({ ids: [id] }, '이 1건을');
+    card.querySelector('[data-rvact="edit"]').onclick = () => openEditDraft(card, id);
+  });
+}
+function openEditDraft(card, id) {
+  const x = RV_DRAFTS.find(d => d.id === id); if (!x) return; const d = x.data || {};
+  const ta = (v) => escapeHtml((v || []).join('\n'));
+  card.innerHTML = '<div class="space-y-2">' +
+    '<div class="flex items-center gap-2"><b class="font-display">' + escapeHtml(x.company) + '</b><span class="text-xs opacity-55">' + escapeHtml(x.date) + '</span>' +
+      '<select class="field !w-auto ml-auto text-xs py-1" data-rvf="category">' + RV_CATS.map(c => '<option ' + (c === x.category ? 'selected' : '') + '>' + c + '</option>').join('') + '</select></div>' +
+    '<div><span class="label">한 줄 요약</span><input class="field" data-rvf="summary" value="' + escapeHtml(d.summary || '') + '"></div>' +
+    '<div><span class="label">주요 내용 (줄당 1개)</span><textarea class="field" rows="3" data-rvf="keyPoints">' + ta(d.keyPoints) + '</textarea></div>' +
+    '<div><span class="label">시사점</span><textarea class="field" rows="2" data-rvf="implications">' + ta(d.implications) + '</textarea></div>' +
+    '<div><span class="label">한컴 인사이트</span><textarea class="field" rows="2" data-rvf="hancomInsight">' + ta(d.hancomInsight) + '</textarea></div>' +
+    '<div><span class="label">태그 (쉼표)</span><input class="field" data-rvf="tags" value="' + escapeHtml((d.tags || []).join(', ')) + '"></div>' +
+    '<div class="flex gap-2 pt-1"><button class="btn text-xs bg-ink text-white px-4 py-1.5" data-rvsave>저장</button><button class="btn text-xs border border-ink/15 px-3 py-1.5 hover:bg-beige" data-rvcancel>취소</button></div>' +
+  '</div>';
+  const g = (f) => card.querySelector('[data-rvf="' + f + '"]').value;
+  const lines = (f) => g(f).split('\n').map(s => s.trim()).filter(Boolean);
+  card.querySelector('[data-rvcancel]').onclick = () => renderReview();
+  card.querySelector('[data-rvsave]').onclick = async () => {
+    try {
+      await API.devUpdateDraft(id, { summary: g('summary'), category: g('category'), keyPoints: lines('keyPoints'), implications: lines('implications'), hancomInsight: lines('hancomInsight'), tags: g('tags').split(',').map(s => s.trim()).filter(Boolean) });
+      toast('저장됨', true); loadReview();
+    } catch { toast('저장 실패', false); }
+  };
+}
+function confirmPublishRv(payload, label) {
+  if (!confirm(label + ' 라이브에 배포할까요?\n배포하면 본 사이트에 즉시 반영되고 같은 (날짜·기업) 항목은 교체됩니다.')) return;
+  API.devPublish(payload).then(r => { toast((r.publishedIds ? r.publishedIds.length : 0) + '건 배포됨 → 라이브 반영', true); loadReview(); })
+    .catch(e => toast('배포 실패: ' + (e.status || e.message), false));
+}
+async function clearSameRv() {
+  const ids = RV_DRAFTS.filter(d => d.diff === 'same').map(d => d.id);
+  if (!ids.length) return;
+  if (!confirm('동일(변경 없음) ' + ids.length + '건을 검수 목록에서 삭제할까요?\n라이브엔 영향이 없습니다(draft만 정리).')) return;
+  for (const id of ids) { try { await API.devDeleteDraft(id); } catch { /* 계속 */ } }
+  toast(ids.length + '건 정리됨', true); loadReview();
 }
 
 document.addEventListener('DOMContentLoaded', init);

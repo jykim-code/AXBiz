@@ -89,13 +89,13 @@ export function parseTable(html) {
   return rows;
 }
 
-// 고수준: URL → 페이지 조회·파싱 → { ok, name, category, pageId, confUrl, title, rows } | { ok:false, error, status, hint }
-export async function parseConfluencePage(env, opts) {
+// 페이지 조회 공용: URL → { ok, pageId, title, html, confUrl } | { ok:false, error, status, hint }
+export async function fetchPage(env, url) {
   if (!env.CONFLUENCE_EMAIL || !env.CONFLUENCE_API_TOKEN) {
     return { ok: false, status: 503, error: 'NOT_CONFIGURED', hint: 'CONFLUENCE_EMAIL / CONFLUENCE_API_TOKEN 시크릿 필요' };
   }
   const auth = 'Basic ' + btoa(`${env.CONFLUENCE_EMAIL}:${env.CONFLUENCE_API_TOKEN}`);
-  const pageId = await resolvePageId(opts?.url, auth);
+  const pageId = await resolvePageId(url, auth);
   if (!pageId) return { ok: false, status: 400, error: 'INVALID_URL', hint: '컨플 페이지 URL(/pages/<id>) 또는 /wiki/x/ 단축링크를 입력하세요' };
 
   let page;
@@ -106,12 +106,23 @@ export async function parseConfluencePage(env, opts) {
     if (!r.ok) return { ok: false, status: 502, error: 'CONFLUENCE_ERROR' };
     page = await r.json();
   } catch (err) {
-    console.error('parseConfluencePage: fetch', err);
+    console.error('fetchPage: fetch', err);
     return { ok: false, status: 502, error: 'CONFLUENCE_FETCH_FAILED' };
   }
+  return {
+    ok: true,
+    pageId,
+    title: page?.title || '',
+    html: page?.body?.storage?.value || '',
+    confUrl: `${CONF_BASE}/spaces/${page?.space?.key || ''}/pages/${pageId}`,
+  };
+}
 
-  const title = page?.title || '';
-  const html = page?.body?.storage?.value || '';
+// 고수준(히스토리): URL → 페이지 조회·표 파싱 → { ok, name, category, pageId, confUrl, title, rows } | { ok:false, ... }
+export async function parseConfluencePage(env, opts) {
+  const res = await fetchPage(env, opts?.url);
+  if (!res.ok) return res;
+  const { pageId, title, html, confUrl } = res;
   const text = stripTags(html);
 
   let name = (title.match(/-\s*(.+?)\s*\(/) || [])[1] || title;
@@ -128,7 +139,6 @@ export async function parseConfluencePage(env, opts) {
   const rows = parseTable(html);
   if (!rows.length) return { ok: false, status: 422, error: 'NO_TABLE_ROWS', hint: '타임라인 표(날짜|유형|주요 내용|시사점|한컴 인사이트|출처|태그)를 찾지 못했습니다' };
 
-  const confUrl = `${CONF_BASE}/spaces/${page?.space?.key || ''}/pages/${pageId}`;
   return { ok: true, name, category, pageId, confUrl, title, rows };
 }
 

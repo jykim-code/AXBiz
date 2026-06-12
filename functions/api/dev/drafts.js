@@ -13,6 +13,12 @@ export async function onRequestGet({ request, env }) {
     const rows = await env.DB.prepare(
       "SELECT id, date, company, category, data, source, created_at FROM draft_entries WHERE status = 'draft' ORDER BY date DESC, company ASC"
     ).all();
+    // DART 연결 여부(기업명 기준) — 검수 화면에서 미연결 새 기업 안내용
+    let dartSet = new Set();
+    try {
+      const meta = await env.DB.prepare('SELECT name, corp_code FROM company_meta').all();
+      dartSet = new Set((meta.results || []).filter((m) => m.corp_code).map((m) => m.name));
+    } catch { /* 배지 생략 */ }
     const list = [];
     for (const r of (rows.results || [])) {
       let data; try { data = JSON.parse(r.data || '{}'); } catch { data = {}; }
@@ -26,7 +32,7 @@ export async function onRequestGet({ request, env }) {
           if (match) diff = (sig(match) === sig(data)) ? 'same' : 'replace';
         }
       } catch { /* 기본 new */ }
-      list.push({ id: r.id, date: r.date, company: r.company, category: r.category, source: r.source, created_at: r.created_at, data, diff });
+      list.push({ id: r.id, date: r.date, company: r.company, category: r.category, source: r.source, created_at: r.created_at, data, diff, dartLinked: dartSet.has(r.company) });
     }
     return Response.json({ drafts: list, count: list.length });
   } catch (err) {

@@ -204,6 +204,12 @@ const API = {
     if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; err.data = data; throw err; }
     return data;
   },
+  async devImportDaily(url) {
+    const res = await fetch('/api/dev/import-daily', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pin': devPin() }, body: JSON.stringify({ url }) });
+    let data = {}; try { data = await res.json(); } catch { /* */ }
+    if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; err.data = data; throw err; }
+    return data;
+  },
   async devDrafts() {
     const res = await fetch('/api/dev/drafts', { headers: { Accept: 'application/json', 'x-admin-pin': devPin() } });
     if (!res.ok) { const err = new Error('REQUEST_FAILED'); err.status = res.status; throw err; }
