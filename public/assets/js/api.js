@@ -10,13 +10,19 @@ async function getJSON(url) {
   return res.json();
 }
 
-// dev 프리뷰: ?preview=1 + 저장된 PIN 이면 draft 합본(dev) 엔드포인트로 라우팅.
+// dev 프리뷰: 저장된 PIN + 미리보기 모드면 draft 합본(dev) 엔드포인트로 라우팅.
 // PIN 은 localStorage(탭 간 공유 — admin 인증 후 새 탭 미리보기 허용). 403 시 제거됨.
+// 미리보기 모드는 sessionStorage(탭 고정): ?preview=1 로 한번 진입하면 그 탭 내 모든 페이지 이동에서 유지
+// (사이드바·카드 링크로 옮겨도 draft 유지). "실서비스 보기"가 플래그를 지워 빠져나감.
 function devPin() {
   try { return localStorage.getItem('devPin') || sessionStorage.getItem('devPin') || ''; } catch { return ''; }
 }
 function devPreviewActive() {
-  try { return new URLSearchParams(location.search).get('preview') === '1' && !!devPin(); } catch { return false; }
+  try {
+    if (!devPin()) return false;
+    if (new URLSearchParams(location.search).get('preview') === '1') { sessionStorage.setItem('previewMode', '1'); return true; }
+    return sessionStorage.getItem('previewMode') === '1';
+  } catch { return false; }
 }
 async function getJSONPin(url) {
   const res = await fetch(url, { headers: { Accept: 'application/json', 'x-admin-pin': devPin() } });

@@ -1,9 +1,13 @@
-/* dev 프리뷰 배너 — ?preview=1 일 때만 활성(아니면 no-op).
-   실사이트를 draft 합본으로 보는 중임을 표시 + 검수 콘솔/배포 진입. 의존: API (api.js).
-   index/company/explore/(radar) 에 <script> 로 포함. 검수·편집은 /admin 검수·배포 탭에서. */
+/* dev 프리뷰 배너 — 미리보기 모드(탭 고정)일 때 활성(아니면 no-op).
+   ?preview=1 로 진입하면 sessionStorage.previewMode 를 세워 그 탭 내 모든 페이지에서 유지
+   (사이드바·카드 링크로 이동해도 draft 합본 유지). "실서비스 보기"가 해제. 의존: API (api.js). */
 (function () {
-  var params = new URLSearchParams(location.search);
-  if (params.get('preview') !== '1') return;            // 프리뷰 모드에서만
+  var inPreview = false;
+  try {
+    if (new URLSearchParams(location.search).get('preview') === '1') { sessionStorage.setItem('previewMode', '1'); inPreview = true; }
+    else if (sessionStorage.getItem('previewMode') === '1') inPreview = true;
+  } catch (e) { /* */ }
+  if (!inPreview) return;                                // 미리보기 모드 아님 → no-op
   if (typeof API === 'undefined') return;
   function getPin() { try { return localStorage.getItem('devPin') || sessionStorage.getItem('devPin') || ''; } catch (e) { return ''; } }
 
@@ -24,7 +28,8 @@
   }
 
   if (!getPin()) {
-    // 미인증 ?preview=1 직접 진입 → /preview 게이트로 (PIN 입력 화면)
+    // 미인증 진입 → /preview 게이트로 (PIN 입력 화면)
+    try { sessionStorage.removeItem('previewMode'); } catch (e) {}
     location.replace('/preview');
     return;
   }
@@ -35,13 +40,18 @@
     '<span style="flex:1"></span>' +
     '<a href="/admin/" style="' + btn('') + ';text-decoration:none">검수 콘솔</a>' +
     '<button id="devPub" style="' + btn('p') + '">전체 배포 ▶</button>' +
-    '<a href="' + location.pathname + '" style="color:#fff;opacity:.7;font-size:12px;text-decoration:none;margin-left:4px">실서비스 보기</a>';
+    '<a href="#" id="devExit" style="color:#fff;opacity:.7;font-size:12px;text-decoration:none;margin-left:4px">실서비스 보기</a>';
 
   function refreshCount() {
     API.devDrafts().then(function (r) {
       var el = document.getElementById('devCount'); if (el) el.textContent = '미배포 ' + ((r && r.count) || 0) + '건';
-    }).catch(function (e) { if (e && e.status === 403) { try { localStorage.removeItem('devPin'); sessionStorage.removeItem('devPin'); } catch (x) {} location.href = '/preview'; } });
+    }).catch(function (e) { if (e && e.status === 403) { try { localStorage.removeItem('devPin'); sessionStorage.removeItem('devPin'); sessionStorage.removeItem('previewMode'); } catch (x) {} location.href = '/preview'; } });
   }
+  document.getElementById('devExit').onclick = function (e) {
+    e.preventDefault();
+    try { sessionStorage.removeItem('previewMode'); } catch (x) {}
+    location.href = location.pathname; // 미리보기 해제 → published
+  };
   document.getElementById('devPub').onclick = function () {
     if (!window.confirm('미배포 draft 전체를 라이브에 배포할까요?\n본 사이트에 즉시 반영되고 같은 (날짜·기업) 항목은 교체됩니다.')) return;
     API.devPublish({ all: true }).then(function (r) {
