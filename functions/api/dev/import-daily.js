@@ -78,7 +78,7 @@ export async function onRequestPost({ request, env }) {
       body: JSON.stringify({
         model: env.OPENROUTER_MODEL,
         temperature: 0.2,
-        max_tokens: 3000, // deepseek 추론 토큰 여유
+        max_tokens: 3000, // 추론·응답 토큰 여유(모델 무관)
         messages: [
           { role: 'system', content: SYSTEM },
           { role: 'user', content: `알려진 대상 기업: ${known.join(', ') || '(없음)'}\n날짜: ${date}\n\n${sectionA.slice(0, 14000)}` },

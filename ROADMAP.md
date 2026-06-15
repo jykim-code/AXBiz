@@ -156,7 +156,7 @@ _(없음 — Phase 2 완료. 아래 ✅ 참고)_
 
 ### 🔎 에픽: RAG 시맨틱 검색 (탐색 고도화)  ✅  _(2026-06-04)_
 > 검색=Cloudflare Vectorize(`ax-biz-radar-idx`, 1024d/cosine) / 임베딩=Workers AI `@cf/baai/bge-m3`(1024d) /
-> 생성=OpenRouter `deepseek/deepseek-v4-flash` / `/explore` 자연어 질문 + **키워드 폴백·태그 목록 유지**.
+> 생성=OpenRouter `OPENROUTER_MODEL`(현재 `qwen/qwen3.7-plus`) / `/explore` 자연어 질문 + **키워드 폴백·태그 목록 유지**.
 > 프리뷰 배포에서 임베딩·검색·생성·인용까지 끝단 검증 완료. Vectorize는 계정 단일 인덱스(프리뷰·운영 공유).
 - [x] RAG-1 인프라: Vectorize 인덱스 + `[ai]`·`[[vectorize]]`·`[[kv_namespaces]]`(RL) 바인딩 + `functions/_rag.js`(임베딩/청크/upsert/delete)
 - [x] RAG-2 인덱싱: `POST /api/reindex`(PIN 백필) + `POST /api/reports` 증분 재색인(old delete→new upsert, best-effort)

@@ -9,4 +9,4 @@ ADMIN_PIN=1234
 #   - OPENROUTER_API_KEY: https://openrouter.ai/keys 에서 발급
 #   - OPENROUTER_MODEL  : 사용할 챗 모델 슬러그 (크레딧 0이면 `:free` 모델)
 OPENROUTER_API_KEY=
-OPENROUTER_MODEL=deepseek/deepseek-v4-flash
+OPENROUTER_MODEL=qwen/qwen3.7-plus

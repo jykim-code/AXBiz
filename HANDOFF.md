@@ -12,7 +12,7 @@
 ## RAG — 구현된 형태 (확정)
 - **검색**: Cloudflare **Vectorize** `ax-biz-radar-idx` (1024d / cosine). 계정 단일 인덱스(프리뷰·운영 공유).
 - **임베딩**: Workers AI **`@cf/baai/bge-m3`** (1024d). `[ai]` 바인딩, 키 불필요.
-- **생성**: OpenRouter **`deepseek/deepseek-v4-flash`** (`OPENROUTER_MODEL` env). 크레딧 보유 → 무료모델 제약 없음. 쿼리당 약 $0.0001.
+- **생성**: OpenRouter **`qwen/qwen3.7-plus`** (유료, `OPENROUTER_MODEL` env). 모델은 env 교체만으로 변경 가능(코드 무수정).
 - **벡터 구조**: id=`<date>#<companyIdx>`, metadata 경량(snippet=keyPoints[0]만). LLM 컨텍스트는 검색 후 D1 원본 재조회로 확보.
 - **질의 흐름**: 질문 임베딩 → Vectorize 검색(cosine≥0.35, topK 8) → D1 원본 → `[n]` 번호 컨텍스트 → OpenRouter → `{answer, sources[]}`.
 - **운영**: 질문 ≤500자 + **KV 고정 윈도우 Rate Limiting**(IP/분 10). ※ Pages는 `ratelimit` 바인딩 미지원이라 KV(`RL`)로 구현.
@@ -25,7 +25,7 @@
 
 ## 선결 — 모두 해결됨 ✅
 1. ~~토큰 권한~~ → `Vectorize Edit`+`Workers AI Read`+`Cloudflare Pages Edit` 추가 완료(토큰 Roll = 보안 rotate 동시 처리).
-2. ~~`.dev.vars`~~ → `ADMIN_PIN` / `OPENROUTER_API_KEY` / `OPENROUTER_MODEL`(=deepseek-v4-flash) 설정 완료. (`.env`엔 `CLOUDFLARE_API_TOKEN`만)
+2. ~~`.dev.vars`~~ → `ADMIN_PIN` / `OPENROUTER_API_KEY` / `OPENROUTER_MODEL`(=qwen/qwen3.7-plus) 설정 완료. (`.env`엔 `CLOUDFLARE_API_TOKEN`만)
 3. 운영(Production) Pages env: `OPENROUTER_API_KEY`/`OPENROUTER_MODEL` 등록 완료. Preview env에도 3개(+ADMIN_PIN) 등록.
 
 ## 운영 배포 방법 (남은 스텝)
@@ -37,7 +37,7 @@
 ```
 git clone https://github.com/jykim-code/AXBiz.git && cd AXBiz && npm install
 # .env      : CLOUDFLARE_API_TOKEN (D1·Pages·Vectorize Edit + Workers AI Read)
-# .dev.vars : ADMIN_PIN / OPENROUTER_API_KEY / OPENROUTER_MODEL=deepseek/deepseek-v4-flash
+# .dev.vars : ADMIN_PIN / OPENROUTER_API_KEY / OPENROUTER_MODEL=qwen/qwen3.7-plus
 npm run d1:local   # 로컬 D1 스키마
 npm run dev        # http://localhost:8788  (단, Vectorize/Workers AI는 로컬 에뮬레이션 없음 → RAG 검증은 배포에서)
 ```

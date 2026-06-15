@@ -43,7 +43,7 @@ async function genSummary(env, c) {
       body: JSON.stringify({
         model: env.OPENROUTER_MODEL,
         temperature: 0.3,
-        max_tokens: 600, // deepseek 추론 토큰 여유(period-summary 와 동일 사유)
+        max_tokens: 600, // 추론·응답 토큰 여유(모델 무관, period-summary 와 동일 사유)
         messages: [
           { role: 'system', content: SYSTEM },
           { role: 'user', content: content.slice(0, 6000) },
