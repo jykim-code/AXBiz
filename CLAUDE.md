@@ -46,6 +46,13 @@
 - **데이터(보고서) 변경**: 코드와 무관 — `/admin` 가져오기/수동입력 → draft → 검수 → 배포 버튼 (사이트 `/preview`에서 draft 합본 확인).
 - 두 트랙은 독립: 코드 프리뷰=preview 브랜치 URL, 데이터 프리뷰=`/preview`(draft 합본).
 
+## ⭐ 통합 검수 창구 (2026-06-12 사용자 확정)
+- **preview 도메인을 단일 "배포 전 검수" 창구로 사용.** `https://preview.ax-biz-radar.pages.dev/preview` = **새 코드(preview 브랜치) + draft 데이터(공유 D1)**를 한 화면에서 확인.
+  - `/admin`의 "검수 미리보기 ↗" 버튼이 이 URL로 연결됨(크로스오리진이라 PIN 1회 추가 입력).
+- **그래서 main에 코드 배포할 때는 preview 브랜치도 항상 함께(또는 먼저) 배포해 동기화**할 것 — 안 그러면 검수 화면이 옛 코드로 draft를 보여줘 오해 소지.
+  - 데이터만 바뀌는 경우엔 preview 브랜치가 이미 main과 같으니 추가 배포 불필요.
+- prod(`ax-biz-radar.pages.dev`)=발행 코드+발행 데이터(공개), preview 도메인=스테이징(검수).
+
 ## 데이터 / API (계획 기준 — AX-Biz-Radar-기획.md 참조)
 - 스키마: `reports(date PK, companies TEXT(JSON), updated_at)`. 날짜 PK upsert(덮어쓰기).
 - 엔드포인트: `GET /api/dates`, `GET /api/reports?date=`, `POST /api/reports`(PIN 검증, 자동화 진입점).
