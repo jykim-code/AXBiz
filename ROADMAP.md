@@ -36,6 +36,7 @@ _(없음 — Phase 2 완료. 아래 ✅ 참고)_
 
 ### 🤖 AI·지식그래프 고도화
 - [ ] **지식그래프 관계 추출** — 본문에서 기업–기업 관계(제휴·경쟁·리셀) LLM 추출 → `/admin` 검증(source/status). (태그 추천은 ✅ 완료)
+- [ ] **(조사 필요) OKF(Open Knowledge Format) / LLM-wiki 접목** — Google Cloud OKF v0.1(2026-06): 지식=마크다운+YAML 프론트매터 concept, cross-link=그래프, `# Citations`. 접목 후보: ① **관계 그래프(B)를 OKF concept(기업·기관·테마)+typed link로 모델링** ② **D1 데이터를 OKF 번들로 export("지식 자산화", Git·에이전트 소비 가능)** ③ RAG를 큐레이션 concept로 보강. ⚠️ v0.1 신생 표준 — 저장소 교체는 금물, *표현/내보내기 레이어*로만 차용. 참고: cloud.google.com/blog OKF, discuss.pytorch.kr/t/...10701
 - [ ] **주간 다이제스트** — 이번 주 핵심 동향을 LLM이 요약해 대시보드 상단/이메일로
 - [ ] **알림·구독** — 관심 기업/태그에 새 동향 시 이메일·슬랙 알림
 
