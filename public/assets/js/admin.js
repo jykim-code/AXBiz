@@ -320,6 +320,7 @@ function init() {
   document.getElementById('tabSuggBtn').addEventListener('click', () => showTab('sugg'));
   document.getElementById('tabDartBtn').addEventListener('click', () => showTab('dart'));
   document.getElementById('tabSetBtn').addEventListener('click', () => showTab('set'));
+  document.getElementById('tabGuideBtn').addEventListener('click', () => showTab('guide'));
   // 가져오기 (데일리/히스토리)
   document.querySelectorAll('#impToggle button').forEach((b) => b.addEventListener('click', () => { impMode = b.dataset.imp; renderImpToggle(); }));
   document.getElementById('impRun').addEventListener('click', runImport);
@@ -346,8 +347,8 @@ function init() {
 
 /* ===== 탭 전환 ===== */
 function showTab(which) {
-  const tabs = { review: 'tab-review', imp: 'tab-import', report: 'tab-report', sugg: 'tab-suggestions', dart: 'tab-dart', set: 'tab-settings' };
-  const btns = { review: 'tabReviewBtn', imp: 'tabImportBtn', report: 'tabReportBtn', sugg: 'tabSuggBtn', dart: 'tabDartBtn', set: 'tabSetBtn' };
+  const tabs = { review: 'tab-review', imp: 'tab-import', report: 'tab-report', sugg: 'tab-suggestions', dart: 'tab-dart', set: 'tab-settings', guide: 'tab-guide' };
+  const btns = { review: 'tabReviewBtn', imp: 'tabImportBtn', report: 'tabReportBtn', sugg: 'tabSuggBtn', dart: 'tabDartBtn', set: 'tabSetBtn', guide: 'tabGuideBtn' };
   for (const k in tabs) {
     document.getElementById(tabs[k]).classList.toggle('hidden', k !== which);
     document.getElementById(btns[k]).className = 'btn px-4 py-2 ' + (k === which ? 'bg-ink text-white' : 'border border-ink/15 hover:bg-ink hover:text-white');

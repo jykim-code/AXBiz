@@ -77,6 +77,7 @@
       <button id="tabDartBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">DART 연결</button>
       <button id="tabSuggBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">의견함</button>
       <button id="tabSetBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white">태그 관리</button>
+      <button id="tabGuideBtn" class="btn px-4 py-2 border border-ink/15 hover:bg-ink hover:text-white ml-auto">📖 사용 가이드</button>
     </div>
 
     <div id="tab-report" class="hidden">
@@ -200,6 +201,90 @@
         <div class="flex items-center gap-3 mt-3">
           <button id="tagGlobalBtn" class="btn border border-red-300 text-red-600 px-5 py-2.5 hover:bg-red-500 hover:text-white hover:border-red-500">전체 데이터에서 삭제</button>
           <span id="tagGlobalStatus" class="text-sm"></span>
+        </div>
+      </div>
+    </div>
+    <!-- ===== 사용 가이드 ===== -->
+    <div id="tab-guide" class="hidden max-w-[820px]">
+      <div class="bg-white rounded-2xl border border-ink/5 shadow p-6 sm:p-8 space-y-7 leading-relaxed">
+        <div>
+          <div class="label mb-2">Admin Guide</div>
+          <h2 class="font-display font-bold text-2xl tracking-tight">관리자 사용 가이드</h2>
+          <p class="text-sm opacity-70 mt-1">보고서 데이터를 <b>넣고 → 검수하고 → 발행</b>하는 방법.</p>
+        </div>
+
+        <div class="bg-beige border border-ink/10 rounded-xl p-4">
+          <div class="font-display font-bold mb-2">전체 흐름</div>
+          <div class="flex flex-wrap items-center gap-2 text-sm font-semibold">
+            <span class="bg-white border border-ink/10 rounded-full px-3 py-1.5">① 데이터 넣기</span><span class="text-lime-600">→</span>
+            <span class="bg-white border border-ink/10 rounded-full px-3 py-1.5">② 검수</span><span class="text-lime-600">→</span>
+            <span class="bg-white border border-ink/10 rounded-full px-3 py-1.5">③ 미리보기 확인</span><span class="text-lime-600">→</span>
+            <span class="bg-ink text-lime rounded-full px-3 py-1.5">④ 배포</span>
+          </div>
+          <p class="text-xs opacity-70 mt-3">⚠️ 관리자가 넣은 데이터는 <b>곧바로 공개되지 않습니다.</b> draft(초안)로 쌓였다가, <b>검수 후 "배포"</b>를 눌러야 실서비스에 반영됩니다.</p>
+        </div>
+
+        <div>
+          <div class="label mb-2">화면이 두 개입니다</div>
+          <ul class="text-sm space-y-1.5">
+            <li>• <b>운영(Published)</b> <span class="opacity-60">ax-biz-radar.pages.dev</span> — 일반 사용자가 보는 실서비스(발행된 데이터만).</li>
+            <li>• <b>검수 미리보기(Staging)</b> <span class="opacity-60">상단 "검수 미리보기 ↗" 버튼</span> — 관리자 전용. <b>draft까지 합쳐</b> "발행하면 이렇게 보인다"를 미리 확인.</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="label mb-2">① 데이터 넣기 (모두 draft로)</div>
+          <ul class="text-sm space-y-1.5">
+            <li>• <b>[가져오기] 탭</b> — <b>데일리</b>("…사업동향 [날짜]" 페이지, AI가 섹션 A를 기업별 정리) / <b>히스토리</b>("AX 동향 히스토리 - 기업" 표) 중 선택 후 컨플 URL 붙여넣기.</li>
+            <li>• <b>[수동 입력] 탭</b> — 날짜 선택 → 기업 추가 → 입력 → "draft로 저장 → 검수". (기존 항목은 "불러오기"로 수정)</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="label mb-2">② 검수 — [검수·배포] 탭</div>
+          <p class="text-sm mb-2">draft 항목에 <b>상태 배지</b>가 붙습니다:</p>
+          <div class="grid sm:grid-cols-3 gap-2 mb-2">
+            <div class="bg-beige rounded-xl p-3"><span class="inline-block text-[11px] font-bold rounded-full px-2.5 py-0.5 bg-lime/40 text-lime-700 mb-1.5">신규</span><div class="text-xs opacity-80">실서비스에 없음 → 확인 후 <b>배포</b></div></div>
+            <div class="bg-beige rounded-xl p-3"><span class="inline-block text-[11px] font-bold rounded-full px-2.5 py-0.5 bg-amber-100 text-amber-700 mb-1.5">교체</span><div class="text-xs opacity-80">내용 다름 → 수정 후 <b>배포</b>(덮어씀)</div></div>
+            <div class="bg-beige rounded-xl p-3"><span class="inline-block text-[11px] font-bold rounded-full px-2.5 py-0.5 bg-ink/10 text-ink/45 mb-1.5">동일</span><div class="text-xs opacity-80">변경 없음 → <b>삭제</b>로 정리</div></div>
+          </div>
+          <p class="text-xs opacity-70">항목별 <b>편집</b>·<b>삭제</b> 가능. <span class="inline-block text-[11px] font-bold rounded-full px-2 py-0.5 bg-red-50 text-red-500 border border-red-200">DART 미연결</span> 배지는 처음 등장한 기업(아래 참고).</p>
+        </div>
+
+        <div>
+          <div class="label mb-2">③ 미리보기 — 상단 [검수 미리보기 ↗]</div>
+          <ul class="text-sm space-y-1.5">
+            <li>• 클릭 → 새 탭에서 <b>PIN 한 번 더</b> 입력(주소가 달라 정상). 상단 검은 "DEV 프리뷰" 배너 + draft 합본 화면.</li>
+            <li>• 사이드바로 검색·기업 이동해도 미리보기 유지. 빠져나오려면 배너의 <b>"실서비스 보기"</b>.</li>
+            <li class="opacity-70">• 미반영(의도): <b>검색의 자연어(AI) 질문</b>·<b>기업 AI 요약 밴드</b>는 발행 후 갱신. 카드·그래프·타임라인은 draft 모두 표시.</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="label mb-2">④ 배포 (발행)</div>
+          <p class="text-sm">[검수·배포] 탭 또는 미리보기 배너에서 <b>건별 / 날짜별 / 전체</b> 배포. 누르면 <b>즉시 실서비스 반영</b>, 같은 (날짜·기업)은 덮어씀.</p>
+        </div>
+
+        <div>
+          <div class="label mb-2">DART 연결 (재무 표시)</div>
+          <ul class="text-sm space-y-1.5">
+            <li>• 이미 연결된 기업은 자동 표시. <b>처음 등장한 기업</b>(DART 미연결 배지)만 <b>[DART 연결] 탭</b>에서 이름 검색→선택해 1회 매핑.</li>
+            <li>• 해외/비상장 등 DART 대상이 아니면 매핑 안 해도 됨(재무만 미표시).</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="label mb-2">자주 묻는 것</div>
+          <ul class="text-sm space-y-1.5">
+            <li>• <b>넣었는데 실서비스에 안 보여요</b> → 정상(draft). 검수·배포 탭에서 <b>배포</b> 필요.</li>
+            <li>• <b>미리보기 PIN을 또 물어봐요</b> → 주소(도메인)가 달라서. 한 번 넣으면 유지.</li>
+            <li>• <b>같은 컨플을 또 가져오면?</b> → 같은 항목은 갱신(중복 안 쌓임). 안 바뀐 건 <b>동일</b> → 삭제로 정리.</li>
+          </ul>
+        </div>
+
+        <div class="bg-ink text-white rounded-xl p-4">
+          <div class="text-[11px] font-bold uppercase tracking-widest text-lime mb-1">한 줄 요약</div>
+          <p class="text-sm"><b>/admin에서 데이터 넣기 → 검수 → "검수 미리보기 ↗"로 확인 → "배포"</b> = 끝.</p>
         </div>
       </div>
     </div>
