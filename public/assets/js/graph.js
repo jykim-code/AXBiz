@@ -48,13 +48,34 @@ async function initGraph(reports) {
     autoungrabify: true,
   });
 
-  cy.on('mouseover', 'node', (e) => { cy.elements().addClass('dim'); e.target.closedNeighborhood().removeClass('dim').addClass('hi'); });
-  cy.on('mouseout', 'node', () => cy.elements().removeClass('dim hi'));
+  // 줌 레벨별 라벨 가독성: 축소(overview) 시 라벨이 너무 작아 안 보이는 문제 해소.
+  //  - 기업/AX 라벨은 화면상 거의 일정 크기로 유지(font-size = 목표px / zoom, 범위 제한)
+  //  - 태그 라벨은 텍스트 클러터라 축소하면 숨기고, 확대하거나 호버하면 표시
+  const clampF = (px, z, lo, hi) => Math.max(lo, Math.min(hi, Math.round(px / z)));
+  function applyZoomLabels() {
+    const z = cy.zoom() || 1;
+    const showTags = z >= 0.85;
+    cy.batch(() => {
+      cy.nodes('[type="company"]').style('font-size', clampF(12, z, 9, 28));
+      cy.nodes('[type="ax"]').style('font-size', clampF(13, z, 11, 30));
+      if (showTags) cy.nodes('[type="tag"]').removeStyle('label').style('font-size', clampF(10, z, 8, 20));
+      else cy.nodes('[type="tag"]').style('label', '');
+    });
+  }
+  cy.on('zoom', applyZoomLabels);
+
+  cy.on('mouseover', 'node', (e) => {
+    cy.elements().addClass('dim');
+    const nb = e.target.closedNeighborhood();
+    nb.removeClass('dim').addClass('hi');
+    nb.nodes('[type="tag"]').removeStyle('label'); // 강조된 이웃의 태그 라벨은 줌과 무관하게 표시
+  });
+  cy.on('mouseout', 'node', () => { cy.elements().removeClass('dim hi'); applyZoomLabels(); });
   cy.on('tap', 'node', (e) => {
     const ty = e.target.data('type');
     if (ty === 'company') location.href = '/company?name=' + encodeURIComponent(e.target.data('label'));
     else if (ty === 'tag') location.href = '/explore?tag=' + encodeURIComponent(String(e.target.data('label')).replace(/^#/, ''));
   });
   cy.on('tap', (e) => { if (e.target === cy) cy.fit(undefined, 28); });
-  setTimeout(() => { cy.resize(); cy.fit(undefined, 28); }, 100);
+  setTimeout(() => { cy.resize(); cy.fit(undefined, 28); applyZoomLabels(); }, 100);
 }
