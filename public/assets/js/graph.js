@@ -43,7 +43,12 @@ async function initGraph(reports) {
       { selector: '.dim', css: { opacity: 0.12 } },
       { selector: '.hi', css: { opacity: 1, 'line-opacity': 0.9 } },
     ],
-    layout: { name: 'concentric', concentric: (n) => 3 - n.data('level'), levelWidth: () => 1, minNodeSpacing: 24, animate: !reduce },
+    // force(cose) 레이아웃 — 연결된 기업·태그가 서로 끌려 붙어 관계가 가깝게 보임(concentric 의 링 분리 해소)
+    layout: {
+      name: 'cose', animate: !reduce, randomize: true, padding: 20,
+      idealEdgeLength: 42, nodeRepulsion: 3000, edgeElasticity: 140,
+      gravity: 1.1, numIter: 1200, nodeDimensionsIncludeLabels: false,
+    },
     wheelSensitivity: 0.2,
     autoungrabify: true,
   });
