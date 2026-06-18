@@ -46,8 +46,8 @@ async function initGraph(reports) {
     // force(cose) 레이아웃 — 연결된 기업·태그가 서로 끌려 붙어 관계가 가깝게 보임(concentric 의 링 분리 해소)
     layout: {
       name: 'cose', animate: !reduce, randomize: true, padding: 20,
-      idealEdgeLength: 42, nodeRepulsion: 3000, edgeElasticity: 140,
-      gravity: 1.1, numIter: 1200, nodeDimensionsIncludeLabels: false,
+      idealEdgeLength: 70, nodeRepulsion: 5500, edgeElasticity: 120,
+      gravity: 0.75, numIter: 1200, nodeDimensionsIncludeLabels: false,
     },
     wheelSensitivity: 0.2,
     autoungrabify: true,
