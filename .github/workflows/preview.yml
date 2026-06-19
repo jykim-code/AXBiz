@@ -1,8 +1,8 @@
-name: Preview Deploy
+name: Staging Deploy
 
-# main 이 아닌 브랜치에 푸시되거나 PR이 올라오면, 그 코드를 "단일 프리뷰"로 배포한다.
-#  - 프리뷰 주소는 항상 하나: https://preview.ax-biz-radar.pages.dev  (PR마다 새 주소를 만들지 않음)
-#  - 프리뷰 = (그 브랜치의 코드) + (공유 D1의 draft 데이터). 운영(main)은 안 건드림.
+# main 이 아닌 브랜치에 푸시되거나 PR이 올라오면, 그 코드를 "단일 스테이징"으로 배포한다.
+#  - 스테이징 주소는 항상 하나: https://stg.ax-biz-radar.pages.dev  (PR마다 새 주소를 만들지 않음)
+#  - 스테이징 = (그 브랜치의 코드) + (공유 D1의 draft 데이터). 운영(main)은 안 건드림.
 on:
   push:
     branches-ignore: [main]
@@ -18,28 +18,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to single preview
+      - name: Deploy to single staging
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.96.0"
-          command: pages deploy --branch=preview --commit-dirty=true
-      - name: Comment on PR (fixed preview URL)
+          command: pages deploy --branch=stg --commit-dirty=true
+      - name: Comment on PR (fixed staging URL)
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const body = [
-              '🔎 **프리뷰 갱신됨** — 이 변경이 프리뷰에 반영됐습니다.',
+              '🔎 **스테이징 갱신됨** — 이 변경이 스테이징에 반영됐습니다.',
               '',
-              '- 프리뷰(코드+데이터 검수): https://preview.ax-biz-radar.pages.dev/preview  ·  관리자 PIN',
+              '- 스테이징(코드+데이터 검수): https://stg.ax-biz-radar.pages.dev/preview  ·  관리자 PIN',
               '',
               '관리자 검수 후 **머지하면 운영(ax-biz-radar.pages.dev)에 코드가 반영**됩니다. (데이터는 /admin "배포")',
             ].join('\n');
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number,
             });
-            const mine = comments.find(c => c.user.type === 'Bot' && c.body.includes('프리뷰 갱신됨'));
+            const mine = comments.find(c => c.user.type === 'Bot' && c.body.includes('스테이징 갱신됨'));
             if (mine) await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: mine.id, body });
             else await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
