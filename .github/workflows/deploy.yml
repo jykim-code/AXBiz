@@ -1,7 +1,8 @@
-name: Deploy to Cloudflare Pages
+name: Deploy to Cloudflare Pages (production)
 
-# main 에 push 될 때마다 Cloudflare Pages 운영 환경으로 자동 배포.
-# (GitHub Actions 러너는 Cloudflare 로 직접 업로드하므로 사내 프록시 영향을 받지 않음)
+# main 에 머지/푸시될 때만 운영(production) 배포.
+#  - 운영 토큰은 GitHub Secrets 에만 있음(노트북엔 없음) → 아무도 로컬에서 운영 배포 못 함. "머지 = 배포".
+#  - 데이터 검수용 preview 도메인(preview.ax-biz-radar.pages.dev)도 같은 코드로 동기화(검수 화면이 항상 최신 코드).
 on:
   push:
     branches: [main]
@@ -15,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to production (main)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -23,3 +24,10 @@ jobs:
           wranglerVersion: "4.96.0"
           # 프로젝트명/출력디렉터리/D1 바인딩은 wrangler.toml 에서 읽음
           command: pages deploy --branch=main
+      - name: Sync data-review surface (preview alias)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.96.0"
+          command: pages deploy --branch=preview

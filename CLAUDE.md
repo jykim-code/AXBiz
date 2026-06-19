@@ -53,6 +53,15 @@
   - 데이터만 바뀌는 경우엔 preview 브랜치가 이미 main과 같으니 추가 배포 불필요.
 - prod(`ax-biz-radar.pages.dev`)=발행 코드+발행 데이터(공개), preview 도메인=스테이징(검수).
 
+## ⭐ 협업 배포 프로세스 (2026-06-12 사용자 확정) — 2인(관리자 + 협업자)
+- **협업자(또는 그 Claude Code)는 절대 `main`에 직접 푸시/배포하지 않는다.** 항상 **새 브랜치 → PR**까지만.
+  - 코드 변경 요청 시: 새 브랜치 생성 → 커밋 → 푸시 → **PR 생성**. (`gh` 없으면 git push 후 PR은 사용자/웹에서)
+  - `main` 직접 푸시·`wrangler pages deploy --branch=main`(운영 직접배포) **금지**.
+- **운영 배포 = `main` 머지 시 GitHub Actions(`deploy.yml`)만.** 운영 토큰은 GitHub Secrets에만(노트북엔 두지 않음). "머지 = 배포".
+- **PR 올리면 자동**: `preview.yml`이 PR 전용 프리뷰 배포(`pr-<번호>.ax-biz-radar.pages.dev`) + URL 댓글, `pr-check.yml`이 JS 문법 검사.
+- 신규 협업자 셋업은 `ONBOARDING.md` 참고. 데이터 변경은 코드 아님(`/admin` draft→배포).
+- 관리자가 GitHub에서 1회 설정: **`main` 브랜치 보호(PR+승인 필수, 직접 푸시 차단)**, 협업자 collaborator 초대, 운영 토큰은 협업자에게 미공유.
+
 ## 데이터 / API (계획 기준 — AX-Biz-Radar-기획.md 참조)
 - 스키마: `reports(date PK, companies TEXT(JSON), updated_at)`. 날짜 PK upsert(덮어쓰기).
 - 엔드포인트: `GET /api/dates`, `GET /api/reports?date=`, `POST /api/reports`(PIN 검증, 자동화 진입점).

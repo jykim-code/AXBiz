@@ -1,0 +1,47 @@
+name: PR Preview Deploy
+
+# PR이 열리거나 갱신되면 그 변경분을 PR 전용 프리뷰로 배포하고, 프리뷰 URL을 PR에 댓글로 남긴다.
+#  - 운영(main)은 절대 안 건드림. 리뷰어(관리자)가 이 URL로 확인 후 머지하면 그때 운영 반영.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy PR preview
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.96.0"
+          command: pages deploy --branch=pr-${{ github.event.number }} --commit-dirty=true
+      - name: Comment preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = `https://pr-${{ github.event.number }}.ax-biz-radar.pages.dev`;
+            const body = [
+              '🔎 **프리뷰 배포 완료** (이 PR의 변경분)',
+              '',
+              `- 코드 미리보기: ${url}`,
+              `- 데이터(draft) 검수: ${url}/preview  ·  관리자 PIN 필요`,
+              '',
+              '확인 후 **관리자가 머지하면 운영(ax-biz-radar.pages.dev)에 반영**됩니다.',
+            ].join('\n');
+            // 봇 댓글이 이미 있으면 갱신, 없으면 새로
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number,
+            });
+            const mine = comments.find(c => c.user.type === 'Bot' && c.body.includes('프리뷰 배포 완료'));
+            if (mine) {
+              await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+            }

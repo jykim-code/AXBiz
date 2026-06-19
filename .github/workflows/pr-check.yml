@@ -1,0 +1,24 @@
+name: PR Check
+
+# PR마다 JS 문법을 검사해 깨진 코드가 운영에 가는 걸 1차로 막는다(비개발 리뷰어 안전망).
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: JS 문법 검사 (node --check)
+        run: |
+          set -e
+          files=$(find functions public/assets/js -name '*.js')
+          for f in $files; do node --check "$f"; done
+          echo "✓ 모든 JS 문법 OK ($(echo "$files" | wc -l)개)"
