@@ -2,6 +2,7 @@
    의존: API.ask (api.js), escapeHtml/safeUrl (util.js). 의견/관리자 페이지는 제외. */
 (function () {
   const path = location.pathname;
+  if (path === '/' || path === '/index.html') return; // 홈 화면은 제외
   if (path.startsWith('/feedback') || path.startsWith('/admin')) return; // 노출 제외
   if (typeof API === 'undefined' || !API.ask) return; // 의존성 없으면 미표시
 
