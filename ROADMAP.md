@@ -63,8 +63,8 @@ _(없음 — Phase 2 완료. 아래 ✅ 참고)_
 - [x] `설정`→`태그 관리` 명칭, 상단 `Published 보기`+`검수 미리보기 ↗` 링크
 - [x] **동일(변경 없음) diff** 실판정(내용 시그니처) + 배지 아이콘 제거·색 구분(신규/교체/동일) + "동일 N건 정리"
 - [x] **미리보기 안정화**: `/preview` PIN 게이트 · PIN을 localStorage(탭 간 공유) · **미리보기 모드 탭 고정(sticky)** — 사이드바·링크 이동해도 draft 유지(홈만 되던 버그 해결)
-- [x] **preview 도메인 = 통합 검수 창구**(새 코드 + draft 데이터 함께), `/dev`→`/admin` 리다이렉트
-- [x] **배포 워크플로 확정**(CLAUDE.md): 코드=preview 선배포→확인→main, 데이터=draft 파이프라인
+- [x] **stg 도메인 = 통합 검수 창구**(새 코드 + draft 데이터 함께), `/dev`→`/admin` 리다이렉트
+- [x] **배포 워크플로 확정**(CLAUDE.md): 코드=stg 선배포→확인→main, 데이터=draft 파이프라인
 - [x] OpenRouter 모델 **`qwen/qwen3.7-plus`**(유료)로 전환 — env 기반(코드 무수정), 표기 갱신
 - [x] **관리자 운영 가이드** — `ADMIN-GUIDE.md` + `/admin` "📖 사용 가이드" 탭
 

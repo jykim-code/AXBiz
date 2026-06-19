@@ -38,27 +38,27 @@
 - 관리자 인증: 단순 숫자 PIN. 서버(Function)에서 `ADMIN_PIN` 환경변수와 대조하여 검증.
 
 ## ⭐ 배포 워크플로 (2026-06-12 사용자 확정)
-- **코드(UI/기능) 변경**: 항상 **preview 브랜치에 먼저 배포** → 사용자에게 프리뷰 URL 공유 → **확인 후** main 배포.
-  - 프리뷰: `npx wrangler pages deploy public --project-name=ax-biz-radar --branch=preview --commit-dirty=true --commit-message="ascii"`
-    → `https://preview.ax-biz-radar.pages.dev` (바인딩·시크릿 모두 동작 확인됨)
+- **코드(UI/기능) 변경**: 항상 **stg 브랜치에 먼저 배포** → 사용자에게 스테이징 URL 공유 → **확인 후** main 배포.
+  - 스테이징: `npx wrangler pages deploy public --project-name=ax-biz-radar --branch=stg --commit-dirty=true --commit-message="ascii"`
+    → `https://stg.ax-biz-radar.pages.dev` (바인딩·시크릿 모두 동작 확인됨)
   - 본 반영: 같은 명령에 `--branch=main`.
   - 예외: 사용자가 명시적으로 "바로 배포"라고 한 경우만 main 직행.
 - **데이터(보고서) 변경**: 코드와 무관 — `/admin` 가져오기/수동입력 → draft → 검수 → 배포 버튼 (사이트 `/preview`에서 draft 합본 확인).
-- 두 트랙은 독립: 코드 프리뷰=preview 브랜치 URL, 데이터 프리뷰=`/preview`(draft 합본).
+- 두 트랙은 독립: 코드 스테이징=stg 브랜치 URL, 데이터 미리보기=`/preview`(draft 합본).
 
 ## ⭐ 통합 검수 창구 (2026-06-12 사용자 확정)
-- **preview 도메인을 단일 "배포 전 검수" 창구로 사용.** `https://preview.ax-biz-radar.pages.dev/preview` = **새 코드(preview 브랜치) + draft 데이터(공유 D1)**를 한 화면에서 확인.
+- **stg 도메인을 단일 "배포 전 검수" 창구로 사용.** `https://stg.ax-biz-radar.pages.dev/preview` = **새 코드(stg 브랜치) + draft 데이터(공유 D1)**를 한 화면에서 확인.
   - `/admin`의 "검수 미리보기 ↗" 버튼이 이 URL로 연결됨(크로스오리진이라 PIN 1회 추가 입력).
-- **그래서 main에 코드 배포할 때는 preview 브랜치도 항상 함께(또는 먼저) 배포해 동기화**할 것 — 안 그러면 검수 화면이 옛 코드로 draft를 보여줘 오해 소지.
-  - 데이터만 바뀌는 경우엔 preview 브랜치가 이미 main과 같으니 추가 배포 불필요.
-- prod(`ax-biz-radar.pages.dev`)=발행 코드+발행 데이터(공개), preview 도메인=스테이징(검수).
+- **그래서 main에 코드 배포할 때는 stg 브랜치도 항상 함께(또는 먼저) 배포해 동기화**할 것 — 안 그러면 검수 화면이 옛 코드로 draft를 보여줘 오해 소지.
+  - 데이터만 바뀌는 경우엔 stg 브랜치가 이미 main과 같으니 추가 배포 불필요.
+- prod(`ax-biz-radar.pages.dev`)=발행 코드+발행 데이터(공개), stg 도메인=스테이징(검수).
 
 ## ⭐ 협업 배포 프로세스 (2026-06-12 사용자 확정) — 2인(관리자 + 협업자)
 - **협업자(또는 그 Claude Code)는 절대 `main`에 직접 푸시/배포하지 않는다.** 항상 **새 브랜치 → PR**까지만.
   - 코드 변경 요청 시: 새 브랜치 생성 → 커밋 → 푸시 → **PR 생성**. (`gh` 없으면 git push 후 PR은 사용자/웹에서)
   - `main` 직접 푸시·`wrangler pages deploy --branch=main`(운영 직접배포) **금지**.
 - **운영 배포 = `main` 머지 시 GitHub Actions(`deploy.yml`)만.** 운영 토큰은 GitHub Secrets에만(노트북엔 두지 않음). "머지 = 배포".
-- **PR/브랜치 푸시 시 자동**: `preview.yml`이 **단일 프리뷰**(`preview.ax-biz-radar.pages.dev`)로 배포(PR마다 새 주소 X) + PR 댓글, `pr-check.yml`이 JS 문법 검사.
+- **PR/브랜치 푸시 시 자동**: `preview.yml`이 **단일 스테이징**(`stg.ax-biz-radar.pages.dev`)으로 배포(PR마다 새 주소 X) + PR 댓글, `pr-check.yml`이 JS 문법 검사.
 - 신규 협업자 셋업은 `ONBOARDING.md` 참고. 데이터 변경은 코드 아님(`/admin` draft→배포).
 - 관리자가 GitHub에서 1회 설정: **`main` 브랜치 보호(PR+승인 필수, 직접 푸시 차단)**, 협업자 collaborator 초대, 운영 토큰은 협업자에게 미공유.
 
@@ -70,7 +70,8 @@
 
 ## 지침 로그 (시간순 누적)
 - 디자인은 `design-preview.html` 기준. (사용자 확정)
-- 코드 변경은 preview 브랜치 선배포→확인 후 main 반영. 데이터는 /admin draft→검수→배포. (2026-06-12 사용자 지시)
+- 코드 변경은 stg 브랜치 선배포→확인 후 main 반영. 데이터는 /admin draft→검수→배포. (2026-06-12 사용자 지시)
+- 검수 환경 주소를 `preview.ax-biz-radar.pages.dev` → `stg.ax-biz-radar.pages.dev`로 변경(데이터 미리보기 `/preview` 페이지와 이름 충돌 해소). 배포 브랜치도 `preview`→`stg`. (2026-06-19 사용자 지시)
 - 기획안의 레이더/오렌지/다크 컨셉 → Template 라임 톤으로 전환. (사용자 지시)
 - 칸반: 가로 3컬럼 → 세로 스윔레인 + 카드 2장 grid. (사용자 지시)
 - 관리자 입력 버튼 삭제, 관리자 페이지 존재 비노출. (사용자 지시)

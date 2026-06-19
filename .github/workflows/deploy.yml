@@ -2,7 +2,7 @@ name: Deploy to Cloudflare Pages (production)
 
 # main 에 머지/푸시될 때만 운영(production) 배포.
 #  - 운영 토큰은 GitHub Secrets 에만 있음(노트북엔 없음) → 아무도 로컬에서 운영 배포 못 함. "머지 = 배포".
-#  - 데이터 검수용 preview 도메인(preview.ax-biz-radar.pages.dev)도 같은 코드로 동기화(검수 화면이 항상 최신 코드).
+#  - 데이터 검수용 스테이징 도메인(stg.ax-biz-radar.pages.dev)도 같은 코드로 동기화(검수 화면이 항상 최신 코드).
 on:
   push:
     branches: [main]
@@ -24,10 +24,10 @@ jobs:
           wranglerVersion: "4.96.0"
           # 프로젝트명/출력디렉터리/D1 바인딩은 wrangler.toml 에서 읽음
           command: pages deploy --branch=main
-      - name: Sync data-review surface (preview alias)
+      - name: Sync data-review surface (stg alias)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.96.0"
-          command: pages deploy --branch=preview
+          command: pages deploy --branch=stg
