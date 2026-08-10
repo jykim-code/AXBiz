@@ -9,7 +9,7 @@ const state = {
   reports: [], // 전체 보고서 [{date, companies}] — 기간 집계용
   dates: [], // 데이터 있는 날짜 (desc)
   dateSet: new Set(), // 빠른 조회용
-  mode: 'month', // 'day' | 'week' | 'month' — 기본값 월간(상사 피드백)
+  mode: 'week', // 'day' | 'week' | 'month' — 기본값 주간(2026-08-10 사용자 지시, 이전 월간)
   anchor: null, // 기준 날짜 'YYYY-MM-DD'
 };
 
