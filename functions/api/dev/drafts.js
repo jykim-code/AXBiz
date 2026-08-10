@@ -2,6 +2,7 @@
 //   GET            → draft 목록(+ 라이브 대비 diff: 'new'|'replace') desc
 //   POST {id, action:'delete'} → draft 삭제
 import { pinOk, forbidden } from '../../_auth.js';
+import { entryKey } from '../../_publish.js';
 
 // 내용 비교용 시그니처(요약 제외 — 실질 콘텐츠만). 같으면 '동일'.
 const norm = (v) => (Array.isArray(v) ? v.map((x) => String(x || '').trim()).filter(Boolean).join('||') : String(v == null ? '' : v).trim());
@@ -22,13 +23,16 @@ export async function onRequestGet({ request, env }) {
     const list = [];
     for (const r of (rows.results || [])) {
       let data; try { data = JSON.parse(r.data || '{}'); } catch { data = {}; }
-      // diff: 해당 날짜 라이브에 같은 기업이 있으면 replace, 없으면 new
+      // diff: 라이브에 같은 (기업, 동향키)가 있으면 replace, 없으면 new.
+      //   기업명만으로 비교하면 같은 날 두 번째 동향이 'replace' 로 보여
+      //   기존 동향을 덮어쓰는 것처럼 오해된다(실제 배포는 동향키 기준으로 추가됨).
       let diff = 'new';
       try {
         const live = await env.DB.prepare('SELECT companies FROM reports WHERE date = ?').bind(r.date).first();
         if (live) {
           const cs = JSON.parse(live.companies || '[]');
-          const match = Array.isArray(cs) ? cs.find((c) => c && c.name === r.company) : null;
+          const key = entryKey(data);
+          const match = Array.isArray(cs) ? cs.find((c) => c && c.name === r.company && entryKey(c) === key) : null;
           if (match) diff = (sig(match) === sig(data)) ? 'same' : 'replace';
         }
       } catch { /* 기본 new */ }
@@ -68,12 +72,15 @@ export async function onRequestPost({ request, env }) {
         keyPoints: arr(it?.keyPoints, []), implications: arr(it?.implications, []),
         hancomInsight: arr(it?.hancomInsight, []), tags: arr(it?.tags, []),
       });
+      // source_ref = 동향 신원(출처 URL). 같은 날 같은 기업의 다른 동향은 별개 draft 로
+      // 공존하고, 같은 동향을 다시 넣으면 그 건만 갱신된다.
+      const ref = entryKey(JSON.parse(data));
       try {
-        await env.DB.prepare("DELETE FROM draft_entries WHERE date = ? AND company = ? AND source = 'manual' AND status = 'draft'").bind(date, name).run();
+        await env.DB.prepare("DELETE FROM draft_entries WHERE date = ? AND company = ? AND source = 'manual' AND source_ref = ? AND status = 'draft'").bind(date, name, ref).run();
         await env.DB.prepare(
-          `INSERT INTO draft_entries (date, company, category, data, source, status, created_at, updated_at)
-           VALUES (?, ?, ?, ?, 'manual', 'draft', datetime('now'), datetime('now'))`
-        ).bind(date, name, category, data).run();
+          `INSERT INTO draft_entries (date, company, category, data, source, source_ref, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 'manual', ?, 'draft', datetime('now'), datetime('now'))`
+        ).bind(date, name, category, data, ref).run();
         count++;
       } catch (err) { console.error('drafts create', name, err); }
     }
