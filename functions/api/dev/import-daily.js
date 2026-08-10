@@ -117,7 +117,8 @@ export async function onRequestPost({ request, env }) {
       tags: arr(it?.tags).map((t) => t.replace(/^#/, '')).slice(0, 10),
     });
     try {
-      await env.DB.prepare("DELETE FROM draft_entries WHERE date = ? AND company = ? AND source = 'daily' AND status = 'draft'").bind(date, name).run();
+      // 같은 데일리 페이지 재추출은 갱신, 다른 페이지의 같은 (날짜,기업)은 별개 동향으로 공존.
+      await env.DB.prepare("DELETE FROM draft_entries WHERE date = ? AND company = ? AND source = 'daily' AND source_ref = ? AND status = 'draft'").bind(date, name, String(page.pageId)).run();
       await env.DB.prepare(
         `INSERT INTO draft_entries (date, company, category, data, source, source_ref, status, created_at, updated_at)
          VALUES (?, ?, ?, ?, 'daily', ?, 'draft', datetime('now'), datetime('now'))`

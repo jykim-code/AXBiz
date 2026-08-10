@@ -41,12 +41,17 @@ CREATE TABLE IF NOT EXISTS settings (
 -- 기업별 타임라인 파생 테이블 (Phase 2: 타임라인 인지 RAG).
 --   reports(원본)에서 파생 — 기업 한 곳의 dated 항목을 인덱스로 빠르게 조회.
 --   동기화: reports 저장(/api/reports POST)·컨플 가져오기 시. 재구축: scripts 백필.
+--   같은 (기업, 날짜)에 별개 동향이 둘 이상 올 수 있어 seq 로 구분한다.
+--   (예: 2026-08-10 Cloudflare = 'Cloudflare OS 공개' + '카이트서프 공개')
+--   seq 는 그 날짜 재구축 시 부여되는 순번일 뿐 의미를 갖지 않는다. 동향의 신원은
+--   reports 쪽 항목의 출처 URL(_publish.js entryKey)이다.
 CREATE TABLE IF NOT EXISTS company_entries (
   company  TEXT NOT NULL,                      -- 기업 표시명
   date     TEXT NOT NULL,                      -- 'YYYY-MM-DD'
+  seq      INTEGER NOT NULL DEFAULT 0,         -- 같은 (기업,날짜) 안의 순번
   category TEXT,
-  data     TEXT NOT NULL,                      -- 그 (기업×날짜) 항목 JSON
-  PRIMARY KEY (company, date)
+  data     TEXT NOT NULL,                      -- 그 (기업×날짜×seq) 항목 JSON
+  PRIMARY KEY (company, date, seq)
 );
 CREATE INDEX IF NOT EXISTS idx_company_entries_company_date ON company_entries(company, date DESC);
 
@@ -81,7 +86,10 @@ CREATE TABLE IF NOT EXISTS draft_entries (
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
-CREATE UNIQUE INDEX IF NOT EXISTS uq_draft_dcs ON draft_entries(date, company, source) WHERE status='draft';
+-- 같은 (날짜, 기업)에 동향이 둘 이상 올 수 있으므로 source_ref(동향 신원: 수동입력은
+-- 출처 URL, 가져오기는 컨플 pageId)까지 키에 포함한다. source_ref 가 NULL 인 행끼리는
+-- SQLite 규칙상 충돌하지 않는다(과거 수동입력 draft 호환).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_draft_dcsr ON draft_entries(date, company, source, source_ref) WHERE status='draft';
 CREATE INDEX IF NOT EXISTS idx_draft_status_date ON draft_entries(status, date DESC);
 
 -- DART 응답 캐시(회사개황+재무). corp_code 기준. 재무는 분기 갱신이라 공격적 캐시.
