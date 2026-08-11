@@ -36,6 +36,9 @@
   .card-body { max-height: 0; overflow: hidden; transition: max-height .45s ease; }
   .card.open .card-body { max-height: 4000px; }
   .card.open .chev { transform: rotate(180deg); }
+  /* 다건 카드의 접힘 줄은 기간 종합과 같은 문장이므로: 접힘=3줄까지만, 펼침=숨김(다크 박스가 전문 담당) */
+  .card-summary.is-period { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+  .card.open .card-summary.is-period { display: none; }
   .card:focus-visible, [data-date]:focus-visible { outline: 2px solid #7ba500; outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
