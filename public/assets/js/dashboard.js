@@ -193,7 +193,7 @@ function cardHTML(co) {
     '<a href="/company?name=' + encodeURIComponent(co.name) + '" class="font-display font-bold text-lg tracking-tight hover:text-lime-600 inline-flex items-center gap-1" title="기업 상세 보기">' + escapeHtml(co.name) +
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>' +
     badge + dateChip + '</div>' +
-    '<p class="card-summary text-sm font-bold text-ink mt-1.5 leading-snug">' + sumText + '</p></div>' +
+    '<p class="card-summary' + (n > 1 ? ' is-period' : '') + ' text-sm font-bold text-ink mt-1.5 leading-snug">' + sumText + '</p></div>' +
     '<span class="chev flex-none mt-1 opacity-75 transition-transform duration-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m6 9 6 6 6-6"/></svg></span></div>';
   h += '<div class="card-body"><div class="px-6 pb-6 space-y-5">';
   // 기간 종합(다건일 때, 펼침 시 lazy 로드)
@@ -380,6 +380,13 @@ function onCardActivate(e) {
   if (open) loadPeriodSummary(card);
 }
 
+// 종합 실패 → 펼침 박스는 제거하고 접힘 줄만 최신 요약으로 남김.
+// 이때 .is-period(펼치면 숨김)를 떼야 카드를 펼쳤을 때 요약이 사라지지 않음.
+function degradeToLatest(lineEl, box, fallback) {
+  if (lineEl) { lineEl.textContent = fallback; lineEl.classList.remove('is-period'); }
+  if (box) box.remove();
+}
+
 // 다건 카드의 기간 종합 로드(카드당 1회). 접힘 줄(.card-summary)과 펼침 박스(.summary-text)를 동시에 채움.
 // 단건 카드는 종합이 없으므로 일찍 반환(접힘 줄엔 per-entry 요약이 이미 들어가 있음).
 async function loadPeriodSummary(card) {
@@ -402,12 +409,10 @@ async function loadPeriodSummary(card) {
       if (lineEl) lineEl.textContent = summary;
       if (textEl) { textEl.textContent = summary; textEl.classList.remove('opacity-90'); }
     } else {
-      if (lineEl) lineEl.textContent = fallback; // 종합 실패 → 접힘 줄은 최신 요약으로
-      if (box) box.remove();                     // 펼침 박스는 숨김(타임라인은 그대로)
+      degradeToLatest(lineEl, box, fallback);
     }
   } catch {
-    if (lineEl) lineEl.textContent = fallback;
-    if (box) box.remove();
+    degradeToLatest(lineEl, box, fallback);
   }
 }
 function setupCardInteractions() {
