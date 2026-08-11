@@ -596,9 +596,16 @@ async function saveCompanyTags() {
   try {
     const res = await API.manageTags({ name, remove, add }, adminPin);
     await reindexDates(res.affectedDates || [], status);
-    status.style.color = '#7ba500';
-    status.textContent = '완료 (' + (res.affectedDates || []).length + '개 날짜 반영)';
-    toast(name + ' 태그 변경 완료', true);
+    const dates = (res.affectedDates || []).length;
+    if (!dates) {
+      status.style.color = '#dc2626';
+      status.textContent = '변경된 항목 없음 — 태그가 정확히 일치하지 않았습니다';
+      toast(name + ' 태그 변경 없음', false);
+    } else {
+      status.style.color = '#7ba500';
+      status.textContent = '완료 (삭제 ' + (res.removed || 0) + ' / 추가 ' + (res.added || 0) + ', ' + dates + '개 날짜 반영)';
+      toast(name + ' 태그 변경 완료', true);
+    }
     await loadTagManager();
   } catch (e) {
     if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
@@ -618,10 +625,17 @@ async function deleteTagsGlobal() {
   try {
     const res = await API.manageTags({ remove }, adminPin);
     await reindexDates(res.affectedDates || [], status);
-    status.style.color = '#7ba500';
-    status.textContent = '완료 (' + (res.affectedDates || []).length + '개 날짜 반영)';
-    input.value = '';
-    toast('태그 전역 삭제 완료', true);
+    const dates = (res.affectedDates || []).length;
+    if (!dates) {
+      status.style.color = '#dc2626';
+      status.textContent = '변경된 항목 없음 — 입력한 태그가 데이터의 태그와 정확히 일치하지 않습니다';
+      toast('태그 전역 삭제 — 일치 항목 없음', false);
+    } else {
+      status.style.color = '#7ba500';
+      status.textContent = '완료 (' + (res.removed || 0) + '건 삭제, ' + dates + '개 날짜 반영)';
+      input.value = '';
+      toast('태그 전역 삭제 완료', true);
+    }
     await loadTagManager();
   } catch (e) {
     if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
