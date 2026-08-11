@@ -34,24 +34,52 @@ function buildOntology(reports) {
   };
 }
 
+// 태그 표기 정규화(띄어쓰기·기호 차이 흡수) — 기업명과 태그를 같은 것으로 볼 때 쓴다.
+function tagNormKey(s) {
+  return String(s == null ? '' : s).toLowerCase().replace(/[\s·・\-_,.，、/()]/g, '');
+}
+
+/* 그래프 태그 노드의 자격 임계값(= 최소 공유 기업 수). 기본 3.
+   화면에서 강도를 비교해보려면 ?tagmin=2 처럼 URL 로 덮어쓸 수 있다. */
+function tagMinCompanies(fallback) {
+  const base = Number(fallback) > 0 ? Number(fallback) : 3;
+  try {
+    const v = Number(new URLSearchParams(location.search).get('tagmin'));
+    return v >= 1 && v <= 9 ? v : base;
+  } catch { return base; }
+}
+
 /* 큐레이션 태그 목록 (지식그래프·탐색 공용)
-   선정 = 핀(관리자 지정) ∪ 공유 태그(2개 기업 이상) ∪ 기업별 대표 상위 K(항목 내 등장 횟수)
+   한 기업만 쓰는 태그는 관계가 아니라 라벨이라, 관계망에 넣으면 노드·링크만 늘고 아무것도 연결하지 않는다.
+   그래서 자격을 "여러 기업이 공유하는가" 하나로 좁혔다.
+     선정 = 핀(관리자 지정) ∪ 공유 태그(minCompanies 개 기업 이상)
+     제외 = 기업명과 같은 태그 — 그래프에 기업 노드가 이미 있어 같은 대상이 두 번 그려진다.
+     보완 = 태그 연결이 0인 기업에만 그 기업 태그 중 가장 폭 넓은 1개(고립 방지).
+            기업마다 상위 K개를 넣던 이전 방식은 1회성 태그를 그래프로 끌어올리는 주된 원인이었다.
    정렬(중요도순) = 연결 기업 수 desc → 총 등장 횟수 desc → 가나다 */
-function selectCuratedTags(reports, ont, pinned, topPerCompany) {
-  const K = topPerCompany || 3;
-  const perCo = {}; // name -> {tag: count}
+function selectCuratedTags(reports, ont, pinned, minCompanies) {
+  const MIN = tagMinCompanies(minCompanies);
   const totals = {}; // tag -> 총 등장 횟수
   (reports || []).forEach((r) => (r.companies || []).forEach((c) => {
     if (!c || !c.name) return;
-    const m = (perCo[c.name] = perCo[c.name] || {});
-    (c.tags || []).forEach((t) => { m[t] = (m[t] || 0) + 1; totals[t] = (totals[t] || 0) + 1; });
+    (c.tags || []).forEach((t) => { totals[t] = (totals[t] || 0) + 1; });
   }));
+
+  const companyKeys = new Set(ont.companies.map((c) => tagNormKey(c.name)));
+  const isCompanyName = (t) => companyKeys.has(tagNormKey(t));
+  const rank = (a, b) => ont.tagMap[b].size - ont.tagMap[a].size
+    || (totals[b] || 0) - (totals[a] || 0) || a.localeCompare(b);
+
   const set = new Set();
   (Array.isArray(pinned) ? pinned : []).forEach((t) => { if (ont.tagMap[t]) set.add(t); }); // 데이터에 존재하는 핀만
-  ont.tags.forEach((t) => { if (ont.tagMap[t].size >= 2) set.add(t); });
-  Object.values(perCo).forEach((m) => {
-    Object.keys(m).sort((a, b) => m[b] - m[a] || a.localeCompare(b)).slice(0, K).forEach((t) => set.add(t));
+  ont.tags.forEach((t) => { if (!isCompanyName(t) && ont.tagMap[t].size >= MIN) set.add(t); });
+
+  ont.companies.forEach((c) => {
+    const own = [...c.tags].filter((t) => !isCompanyName(t) && ont.tagMap[t]);
+    if (own.some((t) => set.has(t))) return; // 이미 연결됨
+    const best = own.sort(rank)[0];
+    if (best) set.add(best);
   });
-  return [...set].sort((a, b) =>
-    ont.tagMap[b].size - ont.tagMap[a].size || (totals[b] || 0) - (totals[a] || 0) || a.localeCompare(b));
+
+  return [...set].sort(rank);
 }

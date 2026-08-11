@@ -4,7 +4,11 @@
    - Cytoscape 미로드(CDN 차단 등) 시 dashboard.js 의 buildGraph(SVG) 로 폴백 */
 async function initGraph(reports) {
   const ont = buildOntology(reports);
-  if (typeof setStats === 'function') setStats(ont.stats.total, ont.stats.companies, ont.stats.dates, ont.stats.tags);
+  // 통계의 "그래프 태그" 는 실제로 그려지는 태그 수. 핀 조회는 비동기라 우선 핀 없이 계산해 채우고,
+  // 핀을 받은 뒤 아래에서 다시 갱신한다(핀은 태그를 추가하기만 하므로 수가 같거나 늘어난다).
+  if (typeof setStats === 'function') {
+    setStats(ont.stats.total, ont.stats.companies, ont.stats.dates, selectCuratedTags(reports, ont, [], 3).length, ont.stats.tags);
+  }
   const el = document.getElementById('graph');
   if (!el) return;
   if (!ont.companies.length) {
@@ -17,10 +21,12 @@ async function initGraph(reports) {
   }
   el.innerHTML = '';
 
-  // 표시 태그 = 핀 ∪ 공유(2개 기업 이상) ∪ 기업별 대표 상위 3 — 선정·중요도 정렬은 ontology.js 공용(selectCuratedTags)
+  // 표시 태그 = 핀 ∪ 공유(3개 기업 이상, 기업명 태그 제외) + 고립 기업 보완
+  //   — 선정·중요도 정렬은 ontology.js 공용(selectCuratedTags). ?tagmin= 으로 임계값 조정 가능.
   let pinned = [];
   try { const r = await fetch('/api/pinned-tags'); if (r.ok) pinned = await r.json(); } catch { /* 핀 없이 진행 */ }
   const tags = selectCuratedTags(reports, ont, pinned, 3);
+  if (typeof setStats === 'function') setStats(ont.stats.total, ont.stats.companies, ont.stats.dates, tags.length, ont.stats.tags);
   const tagSet = new Set(tags);
 
   const els = [{ data: { id: 'AX', label: 'AX', type: 'ax', level: 0 } }];

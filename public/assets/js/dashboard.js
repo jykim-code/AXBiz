@@ -20,11 +20,24 @@ function hash(s) {
   return h;
 }
 
-function setStats(total, companies, dates, tags) {
+// tags = 그래프에 실제로 그려지는 태그 수, tagsAll = 데이터 전체 태그 종류 수.
+// 그래프는 여러 기업이 공유하는 태그만 그리므로 둘이 크게 다르다. "62 / 612" 로 함께 보여
+// 표시량과 데이터 규모를 동시에 전달하고, 슬래시만으로는 뜻이 안 읽히므로 title 로 풀어 쓴다.
+function setStats(total, companies, dates, tags, tagsAll) {
   document.getElementById('statTotal').textContent = total;
   document.getElementById('statCompanies').textContent = companies;
   document.getElementById('statDates').textContent = dates;
   document.getElementById('statTags').textContent = tags;
+
+  const all = document.getElementById('statTagsAll');
+  const box = document.getElementById('statTagsBox');
+  const hasBoth = tagsAll && tagsAll !== tags;
+  if (all) all.textContent = hasBoth ? ' / ' + tagsAll : '';
+  if (box) {
+    box.title = hasBoth
+      ? '관계망에 표시되는 태그 ' + tags + '개 (여러 기업이 공유하는 태그) / 전체 태그 ' + tagsAll + '종'
+      : '전체 태그 ' + tags + '종';
+  }
 }
 
 function buildGraph(reports) {
@@ -43,10 +56,13 @@ function buildGraph(reports) {
   companies.forEach((c) => c.tags.forEach((t) => (tagMap[t] = tagMap[t] || []).push(c.name)));
   const allTags = Object.keys(tagMap);
 
-  setStats(all.length, companies.length, (reports || []).length, allTags.length);
+  // 표시 태그 선정은 Cytoscape 경로와 같은 기준(ontology.js 공용)을 쓴다 — 폴백만 다른 그래프가
+  // 되지 않도록. 이 경로는 동기 함수라 핀은 반영하지 않는다(핀은 Cytoscape 경로에서만).
+  const tags = (typeof selectCuratedTags === 'function' && typeof buildOntology === 'function')
+    ? selectCuratedTags(reports, buildOntology(reports), [], 3).filter((t) => tagMap[t])
+    : allTags.sort((a, b) => tagMap[b].length - tagMap[a].length || a.localeCompare(b)).slice(0, 30);
 
-  // 그래프 가독성: 빈도(연결 기업 수) 상위 30개 태그만 표시 (통계는 전체 기준)
-  const tags = allTags.sort((a, b) => tagMap[b].length - tagMap[a].length || a.localeCompare(b)).slice(0, 30);
+  setStats(all.length, companies.length, (reports || []).length, tags.length, allTags.length);
 
   const graphEl = document.getElementById('graph');
   if (!companies.length) {
@@ -344,7 +360,8 @@ function renderCal() {
     h +=
       '<div class="' + cls + '" data-date="' + ds + '" role="button" tabindex="0" aria-label="' + ds + '">' +
       d +
-      (has && !me ? '<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-lime-600"></span>' : '') +
+      // 데이터 있는 날 표시 점. 선택 기간(라임 바) 안에서는 lime-600이 배경에 묻히므로 ink로 반전.
+      (has ? '<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ' + (me ? 'bg-ink' : 'bg-lime-600') + '"></span>' : '') +
       '</div>';
   }
   const g = document.getElementById('calGrid');

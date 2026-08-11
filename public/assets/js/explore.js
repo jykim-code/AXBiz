@@ -3,6 +3,7 @@
  *  - 하단: /api/reports/all 재사용, 전체 필드 검색 + 태그 필터(?tag=). (기존 동작 유지)
  */
 let entries = [], allTags = [], activeTag = null;
+const ROW_TAG_MAX = 5; // 결과 카드 1장에 보일 태그 수
 
 function getParam(k) { return new URLSearchParams(location.search).get(k); }
 function el(id) { return document.getElementById(id); }
@@ -11,7 +12,8 @@ async function init() {
   let reports = [];
   try { reports = await API.all(); } catch { reports = []; }
   entries = reports.flatMap((r) => (r.companies || []).map((c) => ({ date: r.date, ...c }))).sort((a, b) => b.date.localeCompare(a.date));
-  // 태그 목록 = 지식그래프와 동일한 큐레이션(핀 ∪ 공유 ∪ 기업별 대표 3), 중요도순
+  // 칩은 지식그래프와 동일한 큐레이션(주요 태그)만 늘어놓는다.
+  // 목록 밖 태그는 위 검색창(#q)이 태그까지 훑으므로 그쪽으로 찾는다.
   let pinned = [];
   try { pinned = await API.pinnedTags(); } catch { pinned = []; }
   allTags = selectCuratedTags(reports, buildOntology(reports), pinned, 3);
@@ -140,7 +142,18 @@ function cardHTML(r) {
     '<span class="text-[10px] bg-beige border border-ink/5 rounded-full px-2 py-0.5 opacity-80">' + escapeHtml(r.category) + '</span>' +
     '<span class="text-[10px] opacity-75 ml-auto">' + escapeHtml(r.date) + '</span></div>' +
     '<p class="text-sm opacity-80">' + escapeHtml((r.keyPoints || [])[0] || '') + '</p>' +
-    '<div class="flex flex-wrap gap-1.5 mt-2">' + (r.tags || []).map((t) => '<span class="text-[11px] opacity-80 bg-beige border border-ink/5 rounded-full px-2 py-0.5">#' + escapeHtml(t) + '</span>').join('') + '</div></div>';
+    '<div class="flex flex-wrap gap-1.5 mt-2">' + rowTagsHTML(r.tags || []) + '</div></div>';
+}
+
+// 카드 1장에 태그를 전량 깔면 본문보다 태그가 길어진다. 앞 N개만 보이고 나머지는 개수로 접는다.
+function rowTagsHTML(tags) {
+  const CLS = 'text-[11px] opacity-80 bg-beige border border-ink/5 rounded-full px-2 py-0.5';
+  const shown = tags.slice(0, ROW_TAG_MAX)
+    .map((t) => '<span class="' + CLS + '">#' + escapeHtml(t) + '</span>').join('');
+  const rest = tags.slice(ROW_TAG_MAX);
+  if (!rest.length) return shown;
+  // 접힌 태그는 title 로 확인 가능(칩을 늘리지 않으면서 정보는 남긴다)
+  return shown + '<span class="' + CLS + ' opacity-60" title="' + escapeHtml(rest.join(', ')) + '">+' + rest.length + '</span>';
 }
 
 document.addEventListener('DOMContentLoaded', init);
