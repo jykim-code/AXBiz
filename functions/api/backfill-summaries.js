@@ -44,6 +44,7 @@ async function genSummary(env, c) {
         model: env.OPENROUTER_MODEL,
         temperature: 0.3,
         max_tokens: 600, // 추론·응답 토큰 여유(모델 무관, period-summary 와 동일 사유)
+        reasoning: { enabled: false }, // 추론모델 토큰 낭비·빈 출력 방지
         messages: [
           { role: 'system', content: SYSTEM },
           { role: 'user', content: content.slice(0, 6000) },

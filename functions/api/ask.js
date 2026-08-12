@@ -176,6 +176,7 @@ export async function onRequestPost({ request, env }) {
         model: env.OPENROUTER_MODEL,
         temperature: 0.2,
         max_tokens: 1200, // 타임라인 컨텍스트(변화 이력 서술) 고려 — 800에선 답변 잘림 발생
+        reasoning: { enabled: false }, // qwen 등 추론모델: 추론 토큰이 응답 예산을 잡아먹어 빈/잘린 출력 → 추론 비활성
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: `오늘 날짜: ${new Date().toISOString().slice(0, 10)}\n질문: ${question}\n\n<자료>\n${blocks.join('\n\n')}\n</자료>` },
