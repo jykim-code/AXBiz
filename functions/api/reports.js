@@ -6,6 +6,7 @@
 import { reindexDate } from '../_rag.js';
 import { generateAndStore } from '../_summary.js';
 import { syncCompanyEntries } from '../_entries.js';
+import { stripTrailingPeriod } from '../_style.js';
 
 const CATEGORIES = ['대기업', '중견기업', '스타트업·중소'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -41,7 +42,7 @@ function asStringArray(v) {
   if (!Array.isArray(v)) return [];
   return v
     .slice(0, MAX_ARR)
-    .map((x) => String(x == null ? '' : x).trim().slice(0, MAX_STR))
+    .map((x) => stripTrailingPeriod(String(x == null ? '' : x).trim().slice(0, MAX_STR)))
     .filter(Boolean);
 }
 
@@ -54,7 +55,7 @@ function sanitizeCompany(c) {
   return {
     name: name.slice(0, MAX_NAME),
     category,
-    summary: String(c.summary || '').trim().slice(0, 300), // 접힘 카드용 한 줄 요약(관리자 입력 또는 백필 생성)
+    summary: stripTrailingPeriod(String(c.summary || '').trim().slice(0, 300)), // 접힘 카드용 한 줄 요약(관리자 입력 또는 백필 생성)
     sourceUrl: String(c.sourceUrl || '').trim().slice(0, MAX_URL),
     confluenceUrl: String(c.confluenceUrl || '').trim().slice(0, MAX_URL),
     keyPoints: asStringArray(c.keyPoints),
