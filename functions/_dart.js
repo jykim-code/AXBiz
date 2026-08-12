@@ -47,18 +47,32 @@ function pickRows(list) {
 
 // 계정명 표기는 업종별로 갈린다. 지주·통신·금융은 '영업수익', IFRS 표시는 '수익(매출액)'을
 // 쓰는 곳이 있어 '매출액' 단일 일치로는 상장사인데도 재무가 비어 보인다.
-const ACCOUNT_ALIASES = {
-  revenue: ['매출액', '수익(매출액)', '영업수익', '매출'],
-  operatingProfit: ['영업이익', '영업이익(손실)', '영업손익'],
+// exact 를 먼저 보고, 표기 변형(예: '매출액및지분법손익')은 include/exclude 로 걸러 잡는다.
+const ACCOUNTS = {
+  revenue: {
+    exact: ['매출액', '수익(매출액)', '영업수익', '매출'],
+    include: ['매출액', '영업수익', '영업수입'],
+    exclude: ['원가', '총이익', '이익률', '채권'],
+  },
+  operatingProfit: {
+    exact: ['영업이익', '영업이익(손실)', '영업손익', '영업이익(△손실)'],
+    include: ['영업이익', '영업손익'],
+    exclude: ['률', '율', '증가'],
+  },
 };
 
-// rows 에서 별칭 순서대로 첫 일치 행을 찾는다.
+// rows 에서 계정 행을 찾는다. 정확일치 우선, 실패 시 부분일치 폴백.
 function findAccount(rows, key) {
-  for (const nm of ACCOUNT_ALIASES[key]) {
-    const r = rows.find((x) => (x.account_nm || '').trim() === nm);
+  const spec = ACCOUNTS[key];
+  const nameOf = (x) => (x.account_nm || '').trim();
+  for (const nm of spec.exact) {
+    const r = rows.find((x) => nameOf(x) === nm);
     if (r) return r;
   }
-  return null;
+  return rows.find((x) => {
+    const n = nameOf(x);
+    return spec.include.some((k) => n.includes(k)) && !spec.exclude.some((k) => n.includes(k));
+  }) || null;
 }
 
 // 사업연도 후보: 사업보고서는 회계연도 종료 후 3개월 내 제출 → 연초에는 전년도분이 아직 없다.
