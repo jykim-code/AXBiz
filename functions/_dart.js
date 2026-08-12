@@ -4,6 +4,7 @@
 //   - 분기 추이: 1Q/반기/3Q/사업보고서는 "누적값" → 분기값은 차분으로 계산(최신 4분기)
 const DART = 'https://opendart.fss.or.kr/api';
 const CACHE_TTL_MS = 7 * 24 * 3600 * 1000; // 재무는 분기 갱신 → 7일 캐시
+const EMPTY_TTL_MS = 6 * 3600 * 1000;      // 재무가 빈 응답이면 6시간만 — DART 일시 장애 대비
 const REPRT = { 1: '11013', 2: '11012', 3: '11014', 4: '11011' };
 
 function num(s) {
@@ -155,12 +156,16 @@ export async function fetchQuarterly(env, corpCode) {
 }
 
 // 회사개황 + 재무(연도 요약 + 분기 추이) (D1 캐시). 7일 이내 캐시 재사용.
+//   빈 결과는 짧게만 붙든다 — DART 가 일시적으로 재무를 안 주는 일이 있어(실측: 개황은
+//   정상인데 fnlttSinglAcnt 만 빈 응답) 7일 캐시에 걸리면 멀쩡한 상장사가 일주일 내내
+//   재무 없이 보인다.
 export async function getCompanyData(env, corpCode) {
   try {
     const row = await env.DB.prepare('SELECT profile, financials, fetched_at FROM company_profile WHERE corp_code = ?').bind(corpCode).first();
     if (row && row.fetched_at) {
       const age = Date.now() - Date.parse(row.fetched_at.replace(' ', 'T') + 'Z'); // D1 datetime('now')=UTC
-      if (Number.isFinite(age) && age >= 0 && age < CACHE_TTL_MS) {
+      const ttl = row.financials ? CACHE_TTL_MS : EMPTY_TTL_MS;
+      if (Number.isFinite(age) && age >= 0 && age < ttl) {
         return {
           company: row.profile ? JSON.parse(row.profile) : null,
           financials: row.financials ? JSON.parse(row.financials) : null,
