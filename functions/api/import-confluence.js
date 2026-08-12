@@ -5,7 +5,7 @@
 //   파싱=_confluence.js / 저장=_publish.js / AI 요약=_summary.js 공용.
 //   시크릿: CONFLUENCE_EMAIL, CONFLUENCE_API_TOKEN
 import { pinOk, forbidden } from '../_auth.js';
-import { parseConfluencePage, rowsToEntries } from '../_confluence.js';
+import { parseConfluencePage, rowsToEntries, failureResponse } from '../_confluence.js';
 import { mergeAndPublishDate } from '../_publish.js';
 import { generateAndStore } from '../_summary.js';
 
@@ -16,7 +16,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
   try { body = await request.json(); } catch { return Response.json({ error: 'INVALID_JSON' }, { status: 400 }); }
 
   const res = await parseConfluencePage(env, body || {});
-  if (!res.ok) return Response.json({ error: res.error, ...(res.hint ? { hint: res.hint } : {}) }, { status: res.status || 400 });
+  if (!res.ok) return failureResponse(res);
 
   const { name, category, confUrl, title, rows } = res;
   const preview = {

@@ -3,7 +3,7 @@
 //   📰 섹션 A(상위 보고용)를 LLM으로 기업별 구조화 → draft_entries(source='daily') 적재.
 //   라이브 reports 무변경. 같은 (date,company,'daily') draft는 갱신.
 import { pinOk, forbidden } from '../../_auth.js';
-import { fetchPage, decode, CATEGORIES } from '../../_confluence.js';
+import { fetchPage, decode, CATEGORIES, failureResponse } from '../../_confluence.js';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -55,7 +55,7 @@ export async function onRequestPost({ request, env }) {
   try { body = await request.json(); } catch { return Response.json({ error: 'INVALID_JSON' }, { status: 400 }); }
 
   const page = await fetchPage(env, body?.url);
-  if (!page.ok) return Response.json({ error: page.error, ...(page.hint ? { hint: page.hint } : {}) }, { status: page.status || 400 });
+  if (!page.ok) return failureResponse(page);
 
   const text = toText(page.html);
   const date = findDate(text, page.title);

@@ -2,7 +2,7 @@
 //   { url, nameOverride?, categoryOverride? } → 컨플 파싱 → draft_entries(status=draft) 적재.
 //   라이브 reports 는 건드리지 않음. 같은 (date,company,source='confluence') 는 갱신(삭제 후 삽입).
 import { pinOk, forbidden } from '../../_auth.js';
-import { parseConfluencePage, rowsToEntries } from '../../_confluence.js';
+import { parseConfluencePage, rowsToEntries, failureResponse } from '../../_confluence.js';
 
 export async function onRequestPost({ request, env }) {
   if (!pinOk(env, request)) return forbidden();
@@ -11,7 +11,7 @@ export async function onRequestPost({ request, env }) {
   try { body = await request.json(); } catch { return Response.json({ error: 'INVALID_JSON' }, { status: 400 }); }
 
   const res = await parseConfluencePage(env, body || {});
-  if (!res.ok) return Response.json({ error: res.error, ...(res.hint ? { hint: res.hint } : {}) }, { status: res.status || 400 });
+  if (!res.ok) return failureResponse(res);
 
   const { name, category, confUrl, pageId, rows } = res;
   const entries = rowsToEntries(name, category, confUrl, rows);
