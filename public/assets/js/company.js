@@ -80,9 +80,70 @@ function cardHTML(c, i) {
 }
 
 const sec = (t, a) => (a && a.length)
-  ? '<div class="mt-2"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-1.5">' + t + '</div><ul class="space-y-1.5">' +
+  ? '<div class="mt-3 first:mt-0"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-1.5">' + t + '</div><ul class="space-y-1.5">' +
     a.map((x) => '<li class="text-sm opacity-80 pl-3 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-ink/30">' + escapeHtml(x) + '</li>').join('') + '</ul></div>'
   : '';
+
+/* ===== 주요 동향 — 건별 카드(접기/펼치기) ===== */
+const CHEV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+
+// 접힌 상태에서는 날짜 + 미리보기 한 줄만 보이고, 헤더를 누르면 본문이 열린다.
+// button 안에는 phrasing content 만 넣어야 하므로 div 대신 span + block/flex 클래스를 쓴다.
+function trendCardHTML(a, i) {
+  const src = safeUrl(a.sourceUrl), conf = safeUrl(a.confluenceUrl);
+  let links = '';
+  if (src) links += '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener noreferrer" class="text-xs border border-ink/10 rounded-full px-3 py-1.5 hover:bg-ink hover:text-white">출처 기사</a>';
+  if (conf) links += '<a href="' + escapeHtml(conf) + '" target="_blank" rel="noopener noreferrer" class="text-xs border border-ink/10 rounded-full px-3 py-1.5 hover:bg-ink hover:text-white">상세 모니터링</a>';
+  const body =
+    sec('주요 내용', a.keyPoints) + sec('시사점', a.implications) +
+    ((a.hancomInsight && a.hancomInsight.length) ? '<div class="bg-lime/10 border border-lime/40 rounded-xl p-3 mt-3"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-1.5">한컴 인사이트</div><ul class="space-y-1.5">' + a.hancomInsight.map((x) => '<li class="text-sm pl-3 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime-600">' + escapeHtml(x) + '</li>').join('') + '</ul></div>' : '') +
+    (links ? '<div class="flex flex-wrap gap-2 mt-3">' + links + '</div>' : '');
+  const preview = (a.keyPoints && a.keyPoints[0]) || (a.implications && a.implications[0]) || '';
+  const open = i === 0; // 최신 1건만 펼친 상태로 시작
+  const cardCls = 'trend-card bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 transition-shadow hover:shadow-ink/10';
+  const dateRow =
+    '<span class="flex items-center gap-2">' +
+      '<span class="text-xs font-bold text-lime-600">' + escapeHtml(a.date) + '</span>' +
+      (i === 0 ? '<span class="text-[10px] font-bold bg-lime rounded-full px-2 py-0.5">최신</span>' : '') +
+    '</span>';
+  const previewRow = preview ? '<span class="trend-preview block text-sm font-semibold text-ink mt-1 leading-snug line-clamp-2">' + escapeHtml(preview) + '</span>' : '';
+  // 펼칠 본문이 없는 건(입력 누락)은 클릭해도 열 것이 없으므로 토글하지 않는 정적 카드로 둔다.
+  if (!body) {
+    return '<article class="' + cardCls + ' is-static">' +
+      '<div class="trend-head">' + dateRow + previewRow + '</div></article>';
+  }
+  return '<article class="' + cardCls + (open ? ' is-open' : '') + '">' +
+    '<button type="button" class="trend-head flex items-start gap-3" aria-expanded="' + open + '">' +
+      '<span class="min-w-0 flex-1">' + dateRow + previewRow + '</span>' +
+      '<span class="trend-chevron flex-none w-8 h-8 rounded-full bg-beige flex items-center justify-center transition-transform">' + CHEV + '</span>' +
+    '</button>' +
+    '<div class="trend-body">' + body + '</div></article>';
+}
+
+function syncTrendAll() {
+  const btn = document.getElementById('trendAll');
+  if (!btn) return;
+  btn.textContent = document.querySelectorAll('.trend-card:not(.is-static):not(.is-open)').length ? '모두 펼치기' : '모두 접기';
+}
+function setTrendOpen(card, open) {
+  card.classList.toggle('is-open', open);
+  const head = card.querySelector('.trend-head');
+  if (head) head.setAttribute('aria-expanded', String(open));
+}
+function bindTrendCards() {
+  const cards = [...document.querySelectorAll('.trend-card:not(.is-static)')];
+  cards.forEach((card) => {
+    const head = card.querySelector('.trend-head');
+    if (head) head.onclick = () => { setTrendOpen(card, !card.classList.contains('is-open')); syncTrendAll(); };
+  });
+  const all = document.getElementById('trendAll');
+  if (all) all.onclick = () => {
+    const expand = cards.some((c) => !c.classList.contains('is-open')); // 하나라도 접혀 있으면 전부 펼침
+    cards.forEach((c) => setTrendOpen(c, expand));
+    syncTrendAll();
+  };
+  syncTrendAll();
+}
 
 function renderDetail(name) {
   const ap = [];
@@ -92,19 +153,13 @@ function renderDetail(name) {
   const cat = ap[0] ? ap[0].category : '';
   const related = ONT.companies.filter((c) => c.name !== name && [...c.tags].some((t) => tags.includes(t))).slice(0, 6).map((c) => c.name);
 
-  const timeline = ap.map((a) => {
-    const src = safeUrl(a.sourceUrl), conf = safeUrl(a.confluenceUrl);
-    let links = '';
-    if (src) links += '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener noreferrer" class="text-xs border border-ink/10 rounded-full px-3 py-1.5 hover:bg-ink hover:text-white">출처 기사</a>';
-    if (conf) links += '<a href="' + escapeHtml(conf) + '" target="_blank" rel="noopener noreferrer" class="text-xs border border-ink/10 rounded-full px-3 py-1.5 hover:bg-ink hover:text-white">상세 모니터링</a>';
-    return '<div class="relative">' +
-      '<div class="absolute -left-[27px] top-1.5 w-3 h-3 rounded-full bg-lime border-2 border-white"></div>' +
-      '<div class="text-xs font-bold text-lime-600">' + escapeHtml(a.date) + '</div>' +
-      sec('주요 내용', a.keyPoints) + sec('시사점', a.implications) +
-      ((a.hancomInsight && a.hancomInsight.length) ? '<div class="bg-lime/10 border border-lime/40 rounded-xl p-3 mt-2"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-1.5">한컴 인사이트</div><ul class="space-y-1.5">' + a.hancomInsight.map((x) => '<li class="text-sm pl-3 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime-600">' + escapeHtml(x) + '</li>').join('') + '</ul></div>' : '') +
-      (links ? '<div class="flex flex-wrap gap-2 mt-2">' + links + '</div>' : '') +
-      '</div>';
-  }).join('');
+  const trends = ap.map(trendCardHTML).join('');
+  // 연관 기업 — 우측 컬럼(회사정보·재무) 아래에 배치
+  const relatedHTML = related.length
+    ? '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-5">' +
+      '<div class="flex items-center gap-2 mb-3"><div class="text-xs font-bold uppercase tracking-widest text-lime-600">연관 기업</div><span class="text-[10px] text-ink/45 ml-auto">태그 공유</span></div>' +
+      '<div class="flex flex-wrap gap-2">' + related.map((n) => '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-sm rounded-full px-3 py-1.5 border bg-white border-ink/10 hover:border-lime">' + escapeHtml(n) + '</a>').join('') + '</div></div>'
+    : '';
 
   const tagsHTML = tags.map((t) => '<a href="/explore?tag=' + encodeURIComponent(t) + '" class="text-xs bg-white border border-ink/5 rounded-full px-2.5 py-1 hover:border-lime">#' + escapeHtml(t) + '</a>').join('');
   document.getElementById('compDetail').innerHTML =
@@ -116,16 +171,25 @@ function renderDetail(name) {
     '</div>' +
     // AI 요약 밴드 (핵심 흐름 + 종합 한컴 인사이트, 비동기 로드)
     '<div id="compSummary" class="mb-6 hidden"></div>' +
-    // 2단: 좌(주요 동향 2/3) · 우(회사정보+재무, 비동기 로드)
+    // 2단: 좌(주요 동향 카드 2/3) · 우(회사정보+재무 비동기 로드 → 연관 기업)
     '<div class="grid lg:grid-cols-3 gap-6 items-start">' +
-      '<div id="detailMain" class="lg:col-span-2 bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6">' +
-        '<div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-3">주요 동향</div>' +
-        '<div class="space-y-5 border-l-2 border-lime/40 pl-5">' + timeline + '</div>' +
+      '<div id="detailMain" class="lg:col-span-2">' +
+        '<div class="flex items-end gap-3 mb-4">' +
+          '<div class="min-w-0">' +
+            '<p class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-1">Trends</p>' +
+            '<h3 class="font-display font-bold text-2xl sm:text-3xl tracking-tight">주요 동향</h3>' +
+          '</div>' +
+          '<span class="flex-none text-sm text-ink/55 ml-auto">' + ap.length + '건</span>' +
+          (ap.length > 1 ? '<button id="trendAll" type="button" class="flex-none text-xs border border-ink/10 rounded-full px-3 py-1.5 hover:bg-ink hover:text-white transition-colors">모두 펼치기</button>' : '') +
+        '</div>' +
+        '<div class="space-y-4">' + trends + '</div>' +
       '</div>' +
-      '<div id="compProfile" class="space-y-6"></div>' +
-    '</div>' +
-    // 연관 기업 (전체 폭)
-    (related.length ? '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6 mt-6"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">연관 기업 (태그 공유)</div><div class="flex flex-wrap gap-2">' + related.map((n) => '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-sm rounded-full px-3 py-1.5 border bg-white border-ink/10 hover:border-lime">' + escapeHtml(n) + '</a>').join('') + '</div></div>' : '');
+      '<aside id="compSide" class="space-y-6">' +
+        '<div id="compProfile" class="space-y-6"></div>' +
+        relatedHTML +
+      '</aside>' +
+    '</div>';
+  bindTrendCards();
   loadProfile(name);
   loadSummary(name);
 }
@@ -261,10 +325,14 @@ async function loadProfile(name) {
     const html = (d.company ? companyCard(d.company) : '') + (d.financials ? financeCard(d.financials) : '');
     if (html.trim()) { right.innerHTML = html; return; }
   }
-  // 데이터 없음(해외·미매핑) → 우측 제거, 좌측 전체폭
+  // 데이터 없음(해외·미매핑) → 회사정보·재무만 제거. 연관 기업이 있으면 우측 컬럼은 유지한다.
   right.remove();
-  const main = document.getElementById('detailMain');
-  if (main) { main.classList.remove('lg:col-span-2'); main.classList.add('lg:col-span-3'); }
+  const side = document.getElementById('compSide');
+  if (side && !side.children.length) {
+    side.remove();
+    const main = document.getElementById('detailMain');
+    if (main) { main.classList.remove('lg:col-span-2'); main.classList.add('lg:col-span-3'); }
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
