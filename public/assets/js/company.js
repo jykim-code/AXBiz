@@ -1,6 +1,8 @@
 /* 기업 — 카드 그리드(검색·카테고리 필터·정렬) + 상세(?name=)  /api/reports/all 재사용 */
 let REPORTS = [], ONT = null;
 let cq = '', activeCat = null, sortBy = 'latest'; // 'latest'(최신 분석일) | 'count'(등장 횟수)
+const COMPANIES_PER_PAGE = 10;
+let gridPage = 1;
 const CATS = ['대기업', '중견기업', '스타트업·중소'];
 // 국내 기업 우선 고정 순서(대기업→중견→스타트업·중소). 목록 외 기업은 선택한 정렬로 뒤에 배치.
 const PRIORITY = ['삼성SDS', 'SK텔레콤', 'LG유플러스', '네이버', 'LG CNS', 'KT DS', '현대오토에버', '야놀자', '이스트소프트', '업스테이지'];
@@ -8,6 +10,49 @@ const priorityIdx = (n) => { const i = PRIORITY.indexOf(n); return i === -1 ? PR
 
 function getParam(k) { return new URLSearchParams(location.search).get(k); }
 function el(id) { return document.getElementById(id); }
+
+/* ===== 공통 페이저 — 기업 목록(10개 단위) · 상세의 주요 동향(5건 단위) 공용 ===== */
+// 페이지 번호 목록. 7페이지를 넘으면 현재 페이지 주변만 보이고 양끝은 생략(…)한다.
+function pageNums(total, cur) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  let s = Math.max(2, cur - 1), e = Math.min(total - 1, cur + 1);
+  if (cur <= 3) { s = 2; e = 4; }
+  if (cur >= total - 2) { s = total - 3; e = total - 1; }
+  const out = [1];
+  if (s > 2) out.push('…');
+  for (let i = s; i <= e; i++) out.push(i);
+  if (e < total - 1) out.push('…');
+  out.push(total);
+  return out;
+}
+
+function pagerHTML(total, cur) {
+  if (total <= 1) return '';
+  const arrow = (prev, page, on) =>
+    '<button type="button" ' + (on ? 'data-pg="' + page + '"' : 'disabled') +
+    ' aria-label="' + (prev ? '이전' : '다음') + ' 페이지" class="pg-btn w-9 h-9 rounded-full border flex items-center justify-center transition-colors ' +
+    (on ? 'bg-white border-ink/10 hover:border-lime' : 'border-ink/5 text-ink/25 cursor-default') + '">' + (prev ? '←' : '→') + '</button>';
+  const num = (p) => p === '…'
+    ? '<span class="w-9 h-9 flex items-center justify-center text-sm text-ink/40">…</span>'
+    : '<button type="button" data-pg="' + p + '" aria-current="' + (p === cur) + '" class="pg-btn w-9 h-9 rounded-full border text-sm flex items-center justify-center transition-colors ' +
+      (p === cur ? 'bg-lime border-lime font-semibold' : 'bg-white border-ink/10 hover:border-lime') + '">' + p + '</button>';
+  return '<div class="flex items-center justify-center gap-1.5 mt-5">' +
+    arrow(true, cur - 1, cur > 1) + pageNums(total, cur).map(num).join('') + arrow(false, cur + 1, cur < total) +
+    '</div>';
+}
+
+// 페이저를 그리고 클릭을 연결한다. onPick(페이지번호) 안에서 다시 렌더한다.
+function renderPager(box, total, cur, onPick) {
+  if (!box) return;
+  box.innerHTML = pagerHTML(total, cur);
+  box.querySelectorAll('.pg-btn[data-pg]').forEach((b) => b.onclick = () => onPick(Number(b.dataset.pg)));
+}
+
+// 페이지 이동 후 목록 머리로 되돌린다(sticky 헤더에 가리지 않게 scroll-mt-* 필요).
+function scrollToTop(id) {
+  const top = el(id);
+  if (top) top.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 async function init() {
   try { REPORTS = await API.all(); } catch { REPORTS = []; }
@@ -20,8 +65,9 @@ async function init() {
     return;
   }
 
-  el('cq').addEventListener('input', (e) => { cq = e.target.value.trim().toLowerCase(); renderGrid(); });
-  el('sortToggle').addEventListener('click', () => { sortBy = sortBy === 'latest' ? 'count' : 'latest'; renderGrid(); });
+  // 검색어·정렬·카테고리가 바뀌면 결과 집합이 달라지므로 1페이지로 되돌린다.
+  el('cq').addEventListener('input', (e) => { cq = e.target.value.trim().toLowerCase(); gridPage = 1; renderGrid(); });
+  el('sortToggle').addEventListener('click', () => { sortBy = sortBy === 'latest' ? 'count' : 'latest'; gridPage = 1; renderGrid(); });
   renderCatFilter();
   renderGrid();
 }
@@ -34,12 +80,14 @@ function renderCatFilter() {
   el('catFilter').innerHTML = chip('전체', null) + CATS.map((c) => chip(c, c)).join('');
   el('catFilter').querySelectorAll('.catchip').forEach((b) => b.onclick = () => {
     activeCat = b.dataset.c || null;
+    gridPage = 1;
     renderCatFilter();
     renderGrid();
   });
 }
 
-function renderGrid() {
+// scroll=true 면 페이지 이동으로 보고 목록 머리로 되돌린다(검색·필터 변경 시에는 이동 없음).
+function renderGrid(scroll) {
   let rows = ONT.companies.slice();
   if (activeCat) rows = rows.filter((c) => c.category === activeCat);
   if (cq) rows = rows.filter((c) => (c.name + ' ' + [...c.tags].join(' ') + ' ' + (c.latest || '')).toLowerCase().includes(cq));
@@ -48,9 +96,17 @@ function renderGrid() {
     || (sortBy === 'latest'
       ? (b.latestDate || '').localeCompare(a.latestDate || '') || b.count - a.count
       : b.count - a.count || (b.latestDate || '').localeCompare(a.latestDate || '')));
-  el('compCount').textContent = rows.length + '개 기업' + (activeCat ? ' · ' + activeCat : '');
+  const total = Math.ceil(rows.length / COMPANIES_PER_PAGE);
+  gridPage = Math.min(Math.max(1, gridPage), Math.max(1, total));
+  const start = (gridPage - 1) * COMPANIES_PER_PAGE;
+  const page = rows.slice(start, start + COMPANIES_PER_PAGE);
+  el('compCount').textContent = (total > 1 ? (start + 1) + '–' + (start + page.length) + ' / ' : '') +
+    rows.length + '개 기업' + (activeCat ? ' · ' + activeCat : '');
   el('sortToggle').textContent = '정렬: ' + (sortBy === 'latest' ? '최신순' : '등장순');
-  el('compGrid').innerHTML = rows.map(cardHTML).join('') || '<div class="text-sm text-ink/75 p-4">결과 없음</div>';
+  // 다크 featured 카드는 전체 1번째 기업에만 — 2페이지 이후 첫 카드는 일반 흰 카드.
+  el('compGrid').innerHTML = page.map((c, k) => cardHTML(c, start + k)).join('') || '<div class="text-sm text-ink/75 p-4">결과 없음</div>';
+  renderPager(el('compPager'), total, gridPage, (p) => { gridPage = p; renderGrid(true); });
+  if (scroll) scrollToTop('compGrid');
 }
 
 // Template index.html 의 에디토리얼 카드 스타일. 첫 카드는 다크 featured(light+dark 페어링).
@@ -84,10 +140,10 @@ const CHEV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke
 
 // 접힌 상태에서는 날짜 + 미리보기 한 줄만 보이고, 헤더를 누르면 본문이 열린다.
 // button 안에는 phrasing content 만 넣어야 하므로 div 대신 span + block/flex 클래스를 쓴다.
-function trendCardHTML(a, i) {
+// i = 전체 목록 기준 순번(최신 배지 판단), open = 처음부터 펼친 상태로 그릴지 여부.
+function trendCardHTML(a, i, open) {
   const body = entryDetailHTML(a); // 카테고리 블록 구성은 대시보드 카드와 공용(entry.js)
   const preview = (a.keyPoints && a.keyPoints[0]) || (a.implications && a.implications[0]) || '';
-  const open = i === 0; // 최신 1건만 펼친 상태로 시작
   const cardCls = 'trend-card bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 transition-shadow hover:shadow-ink/10';
   const dateRow =
     '<span class="flex items-center gap-2">' +
@@ -133,6 +189,29 @@ function bindTrendCards() {
   syncTrendAll();
 }
 
+/* ===== 주요 동향 페이지네이션 — 5건 단위 ===== */
+const TRENDS_PER_PAGE = 5;
+let trendItems = [], trendPage = 1;
+
+// 현재 페이지 카드 + 페이저를 다시 그린다. scroll=true 면 동향 섹션 머리로 되돌린다.
+function renderTrendPage(scroll) {
+  const list = el('trendList');
+  if (!list) return;
+  const total = Math.ceil(trendItems.length / TRENDS_PER_PAGE);
+  trendPage = Math.min(Math.max(1, trendPage), Math.max(1, total));
+  const start = (trendPage - 1) * TRENDS_PER_PAGE;
+  const rows = trendItems.slice(start, start + TRENDS_PER_PAGE);
+  // 페이지마다 첫 카드만 펼친 상태로 시작(최신 배지는 전체 1번째 건에만).
+  list.innerHTML = rows.map((a, k) => trendCardHTML(a, start + k, k === 0)).join('');
+  const range = el('trendRange');
+  if (range) range.textContent = total > 1
+    ? (start + 1) + '–' + (start + rows.length) + ' / ' + trendItems.length + '건'
+    : trendItems.length + '건';
+  renderPager(el('trendPager'), total, trendPage, (p) => { trendPage = p; renderTrendPage(true); });
+  bindTrendCards();
+  if (scroll) scrollToTop('trendTop');
+}
+
 function renderDetail(name) {
   const ap = [];
   REPORTS.forEach((r) => (r.companies || []).filter((c) => c.name === name).forEach((c) => ap.push({ date: r.date, ...c })));
@@ -141,7 +220,8 @@ function renderDetail(name) {
   const cat = ap[0] ? ap[0].category : '';
   const related = ONT.companies.filter((c) => c.name !== name && [...c.tags].some((t) => tags.includes(t))).slice(0, 6).map((c) => c.name);
 
-  const trends = ap.map(trendCardHTML).join('');
+  trendItems = ap;
+  trendPage = 1;
   // 연관 기업 — 우측 컬럼(회사정보·재무) 아래에 배치
   const relatedHTML = related.length
     ? '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-5">' +
@@ -162,22 +242,23 @@ function renderDetail(name) {
     // 2단: 좌(주요 동향 카드 2/3) · 우(회사정보+재무 비동기 로드 → 연관 기업)
     '<div class="grid lg:grid-cols-3 gap-6 items-start">' +
       '<div id="detailMain" class="lg:col-span-2">' +
-        '<div class="flex items-end gap-3 mb-4">' +
+        '<div id="trendTop" class="flex items-end gap-3 mb-4 scroll-mt-24">' +
           '<div class="min-w-0">' +
             '<p class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-1">Trends</p>' +
             '<h3 class="font-display font-bold text-2xl sm:text-3xl tracking-tight">주요 동향</h3>' +
           '</div>' +
-          '<span class="flex-none text-sm text-ink/55 ml-auto">' + ap.length + '건</span>' +
+          '<span id="trendRange" class="flex-none text-sm text-ink/55 ml-auto">' + ap.length + '건</span>' +
           (ap.length > 1 ? '<button id="trendAll" type="button" class="flex-none text-xs border border-ink/10 rounded-full px-3 py-1.5 hover:bg-ink hover:text-white transition-colors">모두 펼치기</button>' : '') +
         '</div>' +
-        '<div class="space-y-4">' + trends + '</div>' +
+        '<div id="trendList" class="space-y-4"></div>' +
+        '<div id="trendPager"></div>' +
       '</div>' +
       '<aside id="compSide" class="space-y-6">' +
         '<div id="compProfile" class="space-y-6"></div>' +
         relatedHTML +
       '</aside>' +
     '</div>';
-  bindTrendCards();
+  renderTrendPage(false);
   loadProfile(name);
   loadSummary(name);
 }
