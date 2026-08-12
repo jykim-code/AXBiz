@@ -139,17 +139,19 @@ async function loadSummary(name) {
   try { d = await API.companySummary(name); } catch { d = null; }
   if (!d || !d.available || !Array.isArray(d.flow) || !d.flow.length) { box.remove(); return; }
   box.classList.remove('hidden');
+  // 기간 라벨은 고정폭 좌측 컬럼(원장형)에 우측정렬 — 라벨 길이가 달라도 본문 시작선이 어긋나지 않는다.
+  // pt-[3px]는 11px 라벨과 14px 본문의 첫 줄 베이스라인을 맞추기 위한 값.
   const flow = d.flow.map((f) =>
-    '<li class="flex gap-2.5 text-sm text-ink/85 leading-relaxed">' +
-    (f.period ? '<span class="flex-none text-[10px] font-bold bg-beige border border-ink/5 rounded-full px-2 py-0.5 mt-0.5">' + escapeHtml(f.period) + '</span>' : '') +
-    '<span>' + escapeHtml(f.text) + '</span></li>').join('');
+    '<li class="grid grid-cols-[4.25rem_1fr] py-1.5">' +
+    '<span class="text-[11px] font-bold text-lime-600 text-right break-keep leading-relaxed pt-[3px] pr-3 border-r border-ink/10">' + escapeHtml(f.period || '') + '</span>' +
+    '<span class="text-sm text-ink/85 leading-relaxed pl-3.5">' + escapeHtml(f.text) + '</span></li>').join('');
   const ins = (d.insight || []).map((t) =>
     '<li class="text-sm text-white/85 leading-relaxed pl-3.5 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime">' + escapeHtml(t) + '</li>').join('');
   box.innerHTML =
     '<div class="grid lg:grid-cols-2 gap-6">' +
       '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-6">' +
         '<div class="flex items-center gap-2 mb-3"><div class="text-xs font-bold uppercase tracking-widest text-lime-600">핵심 흐름 요약</div><span class="text-[10px] text-ink/45 ml-auto">AI 요약 · ' + escapeHtml(d.dataDate || '') + ' 데이터 기준</span></div>' +
-        '<ul class="space-y-2.5">' + flow + '</ul></div>' +
+        '<ul class="-my-1.5">' + flow + '</ul></div>' +
       (ins ? '<div class="bg-ink text-white rounded-[24px] shadow-xl shadow-ink/20 p-6">' +
         '<div class="flex items-center gap-2 mb-3"><div class="text-xs font-bold uppercase tracking-widest text-lime">종합 한컴 인사이트</div><span class="text-[10px] text-white/40 ml-auto">AI 요약</span></div>' +
         '<ul class="space-y-2.5">' + ins + '</ul></div>' : '') +
