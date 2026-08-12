@@ -49,7 +49,7 @@ _(없음 — Phase 2 완료. 아래 ✅ 참고)_
 
 ### 🛠 운영·신뢰성
 - [ ] **의견함 고도화** — 의견 상태 변경(handled)·처리 알림 / 공개 폼 Cloudflare Turnstile(봇 방지)
-- [ ] `dart-corps.txt` 정기 갱신(신규 등록 법인 반영) — 현재 스냅샷
+- [x] `dart-corps.txt` 갱신 수단 확보 — `node scripts/refresh-dart-corps.mjs` (분기 1회 권장, `--check` 로 변경분만 확인 가능)
 - [ ] **보안** — OpenRouter API 키 rotate(노출 이력) / Rate Limiting 정밀화
 - [ ] (선택) `GET /api/companies` 그리드 서버화 / 관리자 활동 로그
 
@@ -129,7 +129,9 @@ _(없음 — Phase 2 완료. 아래 ✅ 참고)_
 - [x] `company_meta`(이름→corp_code 수동 매핑) + `company_profile` 캐시 테이블 / 시드: 네이버(00266961)·플래티어(01454341)·업스테이지(01786541)
 - [x] 기업 상세 UI: 회사 정보 카드 + 재무 카드(연도 요약 행 + 매출·영업이익 묶음 막대그래프, 인라인 SVG)
 - [x] **관리자 'DART 연결' 탭** — 검색→선택 자동완성(전체 11.8만 정적목록 `dart-corps.txt` 클라이언트 검색)으로 기업↔corp_code 매핑 + 대표자 등 overrides 보정. `/api/company-meta`(PIN)
-- [ ] (유지보수) `dart-corps.txt` 정기 갱신(신규 등록 법인 반영) — 현재 스냅샷
+- [x] (유지보수) `dart-corps.txt` 갱신 스크립트 — `scripts/refresh-dart-corps.mjs`. DART corpCode.xml 을 내려받아
+      ZIP 해제·XML 파싱 후 `code\tname\tstock` 으로 덮어쓴다. 키는 `DART_API_KEY`(env 또는 `.dev.vars`).
+      `--check` 는 신규·사명변경·종목코드변경만 출력하고 파일은 쓰지 않는다. 분기 1회 권장
 - [ ] (후속) 업계평균 대비, 해외 기업 재무(SEC 등)
 
 ### 기업 페이지 카드 그리드 (Phase 1)  ✅  _(2026-06-04)_

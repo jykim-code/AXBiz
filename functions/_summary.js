@@ -73,7 +73,12 @@ export async function generateAndStore(env, name) {
           ],
         }),
       });
-      if (!res.ok) continue;
+      // 비정상 응답을 조용히 넘기면 요약이 계속 GENERATING 에 머무는데 원인이 남지 않는다.
+      // 한도 초과(429)·모델 오류를 구분할 수 있게 상태와 본문 앞부분을 남긴다.
+      if (!res.ok) {
+        console.error('_summary: llm not ok', name, res.status, (await res.text().catch(() => '')).slice(0, 200));
+        continue;
+      }
       const data = await res.json();
       let txt = (data?.choices?.[0]?.message?.content || '').trim();
       txt = txt.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -81,11 +86,15 @@ export async function generateAndStore(env, name) {
       const flow = Array.isArray(obj.flow) ? obj.flow.filter((x) => x && x.text).slice(0, 6).map((x) => ({ period: String(x.period || '').slice(0, 20), text: String(x.text).slice(0, 300) })) : [];
       const insight = Array.isArray(obj.insight) ? obj.insight.filter(Boolean).slice(0, 4).map((x) => String(x).slice(0, 400)) : [];
       if (flow.length) parsed = { flow, insight };
+      else console.error('_summary: llm empty flow', name, txt.slice(0, 200));
     } catch (err) {
       console.error('_summary: llm', name, err);
     }
   }
-  if (!parsed) return null;
+  if (!parsed) {
+    console.error('_summary: give up', name, '시도 2회 실패');
+    return null;
+  }
 
   try {
     await env.DB
