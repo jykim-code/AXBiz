@@ -29,9 +29,14 @@ async function initGraph(reports) {
   if (typeof setStats === 'function') setStats(ont.stats.total, ont.stats.companies, ont.stats.dates, tags.length, ont.stats.tags);
   const tagSet = new Set(tags);
 
-  const els = [{ data: { id: 'AX', label: 'AX', type: 'ax', level: 0 } }];
-  ont.companies.forEach((c) => els.push({ data: { id: 'company:' + c.name, label: c.name, type: 'company', level: 1, deg: [...c.tags].filter((t) => tagSet.has(t)).length } }));
-  tags.forEach((t) => els.push({ data: { id: 'tag:' + t, label: '#' + t, type: 'tag', level: 2 } }));
+  // bw = 확대 전 기본 지름(px). 호버 판정 반경을 이 값으로 계산해, 포커스로 노드가 커져도
+  // 판정 범위가 함께 커지지 않게 한다(아래 nearestNode 참조).
+  const els = [{ data: { id: 'AX', label: 'AX', type: 'ax', level: 0, bw: 22 } }];
+  ont.companies.forEach((c) => {
+    const deg = [...c.tags].filter((t) => tagSet.has(t)).length;
+    els.push({ data: { id: 'company:' + c.name, label: c.name, type: 'company', level: 1, deg, bw: 12 + (Math.min(deg, 5) / 5) * 12 } });
+  });
+  tags.forEach((t) => els.push({ data: { id: 'tag:' + t, label: '#' + t, type: 'tag', level: 2, bw: 7 } }));
   ont.companies.forEach((c) => els.push({ data: { id: 'eax:' + c.name, source: 'AX', target: 'company:' + c.name, kind: 'hub' } }));
   tags.forEach((t) => ont.tagMap[t].forEach((n) => els.push({ data: { id: 'et:' + n + '::' + t, source: 'company:' + n, target: 'tag:' + t, kind: 'tag' } })));
 
@@ -43,7 +48,7 @@ async function initGraph(reports) {
       { selector: 'node', css: {
         label: 'data(label)', color: '#fff', 'font-size': 9, 'font-family': 'Inter, Pretendard',
         'text-valign': 'center', 'text-halign': 'right', 'text-margin-x': 3, 'text-events': 'yes',
-        'transition-property': 'width height border-width opacity background-opacity',
+        'transition-property': 'width height border-width outline-width opacity background-opacity',
         'transition-duration': reduce ? '0s' : '0.13s',
       } },
       { selector: 'node[type="ax"]', css: { 'background-color': '#c8f200', width: 22, height: 22, label: 'AX', color: '#111', 'text-halign': 'center', 'font-weight': 'bold' } },
@@ -53,15 +58,17 @@ async function initGraph(reports) {
       { selector: 'edge[kind="tag"]', css: { 'line-color': '#ffffff', 'line-opacity': 0.12 } },
       { selector: '.dim', css: { opacity: 0.12 } },
       { selector: '.hi', css: { opacity: 1, 'line-opacity': 0.9 } },
-      // 커서가 근접한 노드 하나만 확대 + 라벨을 어두운 판 위에 크게 올려 읽히게 한다.
+      // 커서가 근접한 노드 하나만 크게 확대(기본 대비 약 3배) + 라임 헤일로 + 라벨을 어두운 판 위에
+      // 크게 올려, 확대됐다는 것이 한눈에 보이게 한다.
       { selector: 'node.focus', css: {
-        'border-width': 3, 'border-color': '#ffffff', 'border-opacity': 0.9, 'z-index': 9999,
-        'font-weight': 'bold', 'text-margin-x': 7, 'text-background-color': '#111',
-        'text-background-opacity': 0.8, 'text-background-padding': 4, 'text-background-shape': 'roundrectangle',
+        'border-width': 4, 'border-color': '#ffffff', 'border-opacity': 0.95, 'z-index': 9999,
+        'outline-width': 10, 'outline-color': '#c8f200', 'outline-opacity': 0.28, 'outline-offset': 2,
+        'font-weight': 'bold', 'text-margin-x': 10, 'text-background-color': '#111',
+        'text-background-opacity': 0.85, 'text-background-padding': 5, 'text-background-shape': 'roundrectangle',
       } },
-      { selector: 'node.focus[type="company"]', css: { width: 'mapData(deg,0,5,24,42)', height: 'mapData(deg,0,5,24,42)' } },
-      { selector: 'node.focus[type="ax"]', css: { width: 34, height: 34 } },
-      { selector: 'node.focus[type="tag"]', css: { width: 16, height: 16, 'background-opacity': 1, opacity: 1 } },
+      { selector: 'node.focus[type="company"]', css: { width: 'mapData(deg,0,5,38,64)', height: 'mapData(deg,0,5,38,64)' } },
+      { selector: 'node.focus[type="ax"]', css: { width: 52, height: 52 } },
+      { selector: 'node.focus[type="tag"]', css: { width: 26, height: 26, 'background-opacity': 1, opacity: 1 } },
     ],
     // force(cose) 레이아웃 — 연결된 기업·태그가 서로 끌려 붙어 관계가 가깝게 보임(concentric 의 링 분리 해소)
     layout: {
@@ -98,13 +105,17 @@ async function initGraph(reports) {
 
   function nearestNode(rp) {
     if (!rp) return null;
+    const z = cy.zoom() || 1;
     let best = null, bestScore = Infinity;
     cy.nodes().forEach((n) => {
       const p = n.renderedPosition();
-      const r = n.renderedWidth() / 2 + HOVER_PAD;
+      // 판정 반경은 '확대 전' 크기(bw) 기준 — 포커스로 커진 크기를 쓰면 판정 범위가 계속 커진다.
+      // 단 포커스 중인 노드는 확대된 원 안쪽에서 포커스가 풀려 깜빡이지 않도록 실제 크기까지 인정한다.
+      const r = (n.data('bw') || 12) * z / 2 + HOVER_PAD;
       const d = Math.hypot(p.x - rp.x, p.y - rp.y);
-      if (d > r) return;
-      const score = d / r; // 거리를 노드 크기로 정규화 — 작은 태그점보다 큰 기업 노드를 먼저 잡는다
+      if (d > (n.hasClass('focus') ? Math.max(r, n.renderedWidth() / 2 + 4) : r)) return;
+      let score = d / r; // 거리를 노드 크기로 정규화 — 작은 태그점보다 큰 기업 노드를 먼저 잡는다
+      if (focused && focused.id() === n.id()) score *= 0.8; // 히스테리시스: 잡은 노드가 쉽게 풀리지 않게
       if (score < bestScore) { bestScore = score; best = n; }
     });
     return best;
@@ -112,7 +123,7 @@ async function initGraph(reports) {
   function applyFocusFont(n) {
     const z = cy.zoom() || 1;
     // 인라인 지정 — applyZoomLabels 가 넣는 기본 font-size 를 덮어쓴다
-    n.style('font-size', clampF(n.data('type') === 'tag' ? 15 : 18, z, 13, 40));
+    n.style('font-size', clampF(n.data('type') === 'tag' ? 20 : 24, z, 16, 52));
   }
   function clearFocus() {
     if (!focused) return;
