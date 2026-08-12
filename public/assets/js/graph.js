@@ -58,9 +58,9 @@ async function initGraph(reports) {
       { selector: 'edge[kind="tag"]', css: { 'line-color': '#ffffff', 'line-opacity': 0.12 } },
       { selector: '.dim', css: { opacity: 0.12 } },
       { selector: '.hi', css: { opacity: 1, 'line-opacity': 0.9 } },
-      // 중간 단계: 강조된 이웃 태그는 기본 7px 로는 너무 작아 라벨이 읽히지 않으므로 2배로 키운다.
-      // (포커스된 노드는 아래 .focus 규칙이 뒤에 있어 그쪽 크기가 적용된다)
-      { selector: 'node.hi[type="tag"]', css: { width: 14, height: 14, 'background-opacity': 0.95 } },
+      // 중간 단계: 강조된 이웃 태그를 조금 키운다. 크게 키우면 태그가 많은 기업에서 서로 겹치므로
+      // 시인성은 아래 호버 줌인(카메라)이 담당하고, 여기서는 최소한만 키운다.
+      { selector: 'node.hi[type="tag"]', css: { width: 10, height: 10, 'background-opacity': 0.95 } },
       // 커서가 근접한 노드 하나만 크게 확대(기본 대비 약 3배) + 라임 헤일로 + 라벨을 어두운 판 위에
       // 크게 올려, 확대됐다는 것이 한눈에 보이게 한다.
       { selector: 'node.focus', css: {
@@ -69,9 +69,10 @@ async function initGraph(reports) {
         'font-weight': 'bold', 'text-margin-x': 10, 'text-background-color': '#111',
         'text-background-opacity': 0.85, 'text-background-padding': 5, 'text-background-shape': 'roundrectangle',
       } },
-      { selector: 'node.focus[type="company"]', css: { width: 'mapData(deg,0,5,38,64)', height: 'mapData(deg,0,5,38,64)' } },
-      { selector: 'node.focus[type="ax"]', css: { width: 52, height: 52 } },
-      { selector: 'node.focus[type="tag"]', css: { width: 26, height: 26, 'background-opacity': 1, opacity: 1 } },
+      // 카메라 줌인이 배율을 담당하므로(줌 배수만큼 화면에서 더 커짐) 노드 자체 확대는 이전보다 낮춘다.
+      { selector: 'node.focus[type="company"]', css: { width: 'mapData(deg,0,5,32,52)', height: 'mapData(deg,0,5,32,52)' } },
+      { selector: 'node.focus[type="ax"]', css: { width: 44, height: 44 } },
+      { selector: 'node.focus[type="tag"]', css: { width: 18, height: 18, 'background-opacity': 1, opacity: 1 } },
     ],
     // force(cose) 레이아웃 — 연결된 기업·태그가 서로 끌려 붙어 관계가 가깝게 보임(concentric 의 링 분리 해소)
     layout: {
@@ -81,6 +82,7 @@ async function initGraph(reports) {
     },
     wheelSensitivity: 0.2,
     autoungrabify: true,
+    maxZoom: 3, // 호버 줌인이 이웃 2~3개짜리 기업에서 과도하게 확대되는 것을 막는 상한
   });
 
   // 줌 레벨별 라벨 가독성: 축소(overview) 시 라벨이 너무 작아 안 보이는 문제 해소.
@@ -157,6 +159,43 @@ async function initGraph(reports) {
     focused = n;
     el.style.cursor = 'pointer';
   }
+  /* ── 호버 줌인 ────────────────────────────────────────────────────────────
+     커서가 한 노드에 잠깐 머무르면 그 노드와 이웃(기업↔관련 태그)만 화면에 채워 보여준다.
+     즉시 줌하면 화면이 움직여 커서 아래 노드가 바뀌고 다시 줌이 걸리는 진동이 생기므로:
+       ① 250ms 체류 후에 실행  ② 줌 애니메이션 중에는 새 줌을 걸지 않음
+       ③ 포커스 재계산은 mousemove 에서만 하므로 카메라가 움직여도 저절로 재타깃되지 않음
+       ④ 노드 없는 곳에 400ms 머물거나 그래프를 벗어나면 원래 뷰로 복귀 */
+  const DWELL_MS = 250, VIEW_MS = reduce ? 0 : 300;
+  let baseView = null, dwellT = 0, outT = 0, zoomed = false, zooming = false;
+
+  function cancelRestore() { if (outT) { clearTimeout(outT); outT = 0; } }
+  function zoomToNeighborhood(n) {
+    cancelRestore();
+    if (!baseView) baseView = { zoom: cy.zoom(), pan: { ...cy.pan() } }; // 사용자가 맞춰둔 뷰를 기억
+    zooming = true;
+    cy.stop();
+    cy.animate({
+      fit: { eles: n.closedNeighborhood().nodes(), padding: 45 },
+      duration: VIEW_MS, easing: 'ease-out',
+      complete: () => { zooming = false; zoomed = true; applyZoomLabels(); if (focused) applyFocusFont(focused); },
+    });
+  }
+  function restoreView() {
+    cancelRestore();
+    clearTimeout(dwellT);
+    if (!zoomed && !zooming) return;
+    zoomed = false; zooming = false;
+    cy.stop();
+    const to = baseView;
+    baseView = null;
+    if (to) cy.animate({ zoom: to.zoom, pan: to.pan, duration: VIEW_MS, easing: 'ease-out', complete: applyZoomLabels });
+    else cy.fit(undefined, 28);
+  }
+  function scheduleRestore() {
+    if (outT || (!zoomed && !zooming)) return;
+    outT = setTimeout(() => { outT = 0; restoreView(); }, 400);
+  }
+
   // mousemove 는 초당 수십 번 오므로 프레임당 1회만 근접 계산(노드 수 × 프레임 비용 억제)
   let pendingRp = null, rafId = 0;
   cy.on('mousemove', (e) => {
@@ -165,10 +204,23 @@ async function initGraph(reports) {
     rafId = requestAnimationFrame(() => {
       rafId = 0;
       const n = nearestNode(pendingRp);
-      if (n) focusNode(n); else clearFocus();
+      if (!n) { clearFocus(); clearTimeout(dwellT); scheduleRestore(); return; }
+      cancelRestore();
+      const changed = !focused || focused.id() !== n.id();
+      focusNode(n);
+      if (!changed || zooming) return;
+      clearTimeout(dwellT);
+      dwellT = setTimeout(() => { // 같은 노드에 계속 머물러 있을 때만 줌인
+        if (!zooming && focused && focused.id() === n.id()) zoomToNeighborhood(n);
+      }, DWELL_MS);
     });
   });
-  el.addEventListener('mouseleave', () => { if (rafId) { cancelAnimationFrame(rafId); rafId = 0; } clearFocus(); });
+  el.addEventListener('mouseleave', () => {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    clearTimeout(dwellT);
+    clearFocus();
+    restoreView();
+  });
 
   function navigate(n) {
     const ty = n.data('type');
@@ -176,11 +228,14 @@ async function initGraph(reports) {
     else if (ty === 'tag') location.href = '/explore?tag=' + encodeURIComponent(String(n.data('label')).replace(/^#/, ''));
   }
   cy.on('tap', 'node', (e) => navigate(e.target));
-  // 배경 탭: 근접 노드가 있으면 그 노드로 이동(작은 노드를 정확히 누르지 않아도 되게), 없으면 화면 맞춤
+  // 배경 탭: 근접 노드가 있으면 그 노드로 이동(작은 노드를 정확히 누르지 않아도 되게),
+  //          없으면 호버 줌인 상태를 풀거나(원래 뷰 복귀) 화면 맞춤
   cy.on('tap', (e) => {
     if (e.target !== cy) return;
     const n = nearestNode(e.renderedPosition);
-    if (n) navigate(n); else cy.fit(undefined, 28);
+    if (n) { navigate(n); return; }
+    clearFocus();
+    if (zoomed || zooming) restoreView(); else cy.fit(undefined, 28);
   });
   setTimeout(() => { cy.resize(); cy.fit(undefined, 28); applyZoomLabels(); }, 100);
 }
