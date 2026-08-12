@@ -97,7 +97,57 @@ async function initGraph(reports) {
       cy.nodes('[type="company"]').style('font-size', clampF(12, z, 9, 28));
       cy.nodes('[type="ax"]').style('font-size', clampF(13, z, 11, 30));
       if (showTags) cy.nodes('[type="tag"]').removeStyle('label').style('font-size', clampF(10, z, 8, 20));
+      // NOTE: 이 줄은 실제로 라벨을 숨기지 못한다 — cytoscape 는 label 에 빈 문자열(공백도 동일)을
+      // 지정하면 무시하고 매핑값을 그대로 유지한다(pstyle('label') 로 확인). 즉 축소 상태에서도
+      // 태그 라벨이 계속 그려진다. 고치려면 text-opacity 0 을 써야 하는데, 그러면 태그 라벨이
+      // 사라지는 눈에 보이는 변화가 생기므로 현 동작을 유지하고 기록만 남긴다.
       else cy.nodes('[type="tag"]').style('label', '');
+    });
+    scheduleDeclutter();
+  }
+
+  /* ── 기업명 겹침 정리 ─────────────────────────────────────────────────────
+     기업명이 서로 겹쳐 읽기 어렵다는 피드백 대응. 라벨은 화면상 크기를 일정하게 유지하므로
+     (위 clampF) 레이아웃을 넓혀도 fit 으로 줌이 줄어 겹침이 그대로다. 그래서 겹치는 쪽 라벨을
+     숨기는 지도 라벨링 방식을 쓰되, '살짝 스치는' 정도는 그대로 두고 이름 면적의 절반 이상이
+     덮이는 경우만 숨긴다. 중요도 = 노드 크기(deg, 공유 태그 수) 순.
+     줌인하면 간격이 벌어져 숨었던 이름이 다시 나타나고, 호버해도 드러난다. */
+  const OVERLAP_MAX = 0.5; // 이름 면적 중 다른 이름에 덮인 비율의 한계
+  let declutterRaf = 0;
+  function scheduleDeclutter() {
+    if (declutterRaf) return;
+    declutterRaf = requestAnimationFrame(() => { declutterRaf = 0; declutterLabels(); });
+  }
+  const bbOf = (n, labels) => n.renderedBoundingBox({ includeEdges: false, includeLabels: labels !== false, includeOverlays: false });
+  // 라벨만의 상자. 기업 노드는 text-halign:right 이므로 노드 몸통 오른쪽 끝부터 전체 상자 끝까지가 글자 영역.
+  function labelBox(n) {
+    const full = bbOf(n), body = bbOf(n, false);
+    return { x1: body.x2, x2: full.x2, y1: full.y1, y2: full.y2 };
+  }
+  function overlapRatio(a, b) { // a 면적 중 b 와 겹치는 비율
+    const w = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1);
+    const h = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1);
+    if (w <= 0 || h <= 0) return 0;
+    const area = (a.x2 - a.x1) * (a.y2 - a.y1);
+    return area > 0 ? (w * h) / area : 0;
+  }
+  function declutterLabels() {
+    if (focused) return; // 호버 중에는 강조 로직이 라벨을 관리한다
+    const companies = cy.nodes('[type="company"]');
+    if (!companies.length) return;
+    // 첫 페인트 전이나 컨테이너 크기가 0 이면 라벨 상자가 퇴화(폭 0)해 모든 이름이 '겹침' 으로
+    // 판정된다. 그대로 두면 이름이 전부 사라지므로, 측정 가능할 때만 진행한다(기본값=표시).
+    const probe = companies[0];
+    probe.removeStyle('text-opacity');
+    const pb = labelBox(probe);
+    if (!(pb.x2 - pb.x1 > 1)) return;
+
+    const taken = []; // AX 허브는 'AX' 고정 문자열로 정보가 없어 자리를 선점시키지 않는다
+    companies.sort((a, b) => (b.data('deg') || 0) - (a.data('deg') || 0)).forEach((n) => {
+      n.removeStyle('text-opacity'); // 표시 상태로 되돌린 뒤 실제 글자 상자를 측정
+      const box = labelBox(n);
+      if (taken.some((t) => overlapRatio(box, t) > OVERLAP_MAX)) n.style('text-opacity', 0);
+      else taken.push(box);
     });
   }
   cy.on('zoom', () => { applyZoomLabels(); if (focused) applyFocusFont(focused); });
@@ -153,7 +203,10 @@ async function initGraph(reports) {
       // (기업에 호버하면 연결된 태그 이름들이 같이 읽히는 효과 — 태그마다 겨냥할 필요가 없다)
       nb.nodes('[type="tag"]').removeStyle('label').style('font-size', clampF(14, z, 11, 26));
       nb.nodes('[type="company"]').style('font-size', clampF(14, z, 11, 26));
-      n.addClass('focus').removeStyle('label');
+      // 겹침 정리로 숨은 기업명은 호버하면 드러난다. 태그에 호버하면 그 태그를 가진 기업들의
+      // 이름도 함께 드러난다(AX 허브는 이웃이 전체 기업이라 모두 열면 다시 겹치므로 제외).
+      if (n.data('type') !== 'ax') nb.nodes('[type="company"]').removeStyle('text-opacity');
+      n.addClass('focus').removeStyle('label').removeStyle('text-opacity');
       applyFocusFont(n); // 포커스 노드 본인은 가장 크게 — 이웃 폰트 지정 뒤에 덮어쓴다
     });
     focused = n;
@@ -237,5 +290,8 @@ async function initGraph(reports) {
     clearFocus();
     if (zoomed || zooming) restoreView(); else cy.fit(undefined, 28);
   });
+  // 레이아웃(cose)은 애니메이션으로 끝나므로 최종 좌표에서 한 번 더 맞추고 라벨을 정리한다.
+  cy.one('layoutstop', () => { cy.resize(); cy.fit(undefined, 28); applyZoomLabels(); });
   setTimeout(() => { cy.resize(); cy.fit(undefined, 28); applyZoomLabels(); }, 100);
+  setTimeout(scheduleDeclutter, 700); // 첫 페인트가 늦어 라벨 실측이 안 됐던 경우의 재시도
 }
