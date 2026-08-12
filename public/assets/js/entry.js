@@ -52,9 +52,9 @@ function enPoints(arr) {
   return h;
 }
 
-// 시사점·한컴 인사이트는 보통 1개 장문이라 점 없는 문단으로 둔다(점 하나만 찍히면 되레 산만함).
+// 시사점·한컴 인사이트는 항목이 하나여도 불릿으로 그린다.
+// 개수에 따라 문단/불릿이 갈리면 같은 카테고리가 날짜마다 다른 모양으로 보인다.
 function enProse(arr, dotCls, textCls) {
-  if (arr.length === 1) return '<p class="' + textCls + '">' + escapeHtml(arr[0]) + '</p>';
   return '<ul class="space-y-2">' + arr.map((x) =>
     '<li class="' + textCls + ' pl-3.5 relative before:content-[\'\'] before:absolute before:left-0 before:top-[9px] before:w-1.5 before:h-1.5 before:rounded-full ' + dotCls + '">' +
     escapeHtml(x) + '</li>').join('') + '</ul>';
