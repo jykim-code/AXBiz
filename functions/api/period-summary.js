@@ -7,6 +7,16 @@ const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 function sigOf(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h.toString(36); }
 const arr = (v) => (Array.isArray(v) ? v.map((x) => String(x || '').trim()).filter(Boolean) : []);
 
+// 끊긴 생성 판별. finish_reason 이 stop 이 아니면(length·error 등) 도중 중단이고,
+// stop 이라도 종결부호·종결어미 없이 끝나면 문장이 잘린 것으로 본다.
+// 기존 캐시 112건 중 110건이 온점으로 끝나고 길이는 29~271자였다.
+const MIN_LEN = 40;
+function isComplete(text, finishReason) {
+  if (!text || text.length < MIN_LEN) return false;
+  if (finishReason && finishReason !== 'stop') return false;
+  return /(?:[.!?]|다|음|함|됨|임|요)\s*$/.test(text);
+}
+
 const SYSTEM = `당신은 "AX Biz Radar"의 분석 도우미입니다.
 한 기업의 선택 기간 동향(여러 날짜의 항목)을 한국어로 **1~2문장**으로 종합하세요.
 규칙: 주어진 내용만 근거로(추측·과장 금지), 흐름·방향이 드러나게(예: "초반엔 A, 이후 B로 확대"), 군더더기 없이. 문장만 출력.`;
@@ -40,28 +50,39 @@ export async function onRequestPost({ request, env }) {
   } catch { /* 무시 */ }
 
   let summary = null;
-  try {
-    const res = await fetch(OPENROUTER_URL, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://ax-biz-radar.pages.dev', 'X-Title': 'AX Biz Radar' },
-      body: JSON.stringify({
-        model: env.OPENROUTER_MODEL,
-        temperature: 0.3,
-        max_tokens: 700,
-        reasoning: { enabled: false }, // 추론모델 토큰 낭비·빈 출력 방지
-        messages: [
-          { role: 'system', content: SYSTEM },
-          { role: 'user', content: `기업: ${name}\n기간: ${start} ~ ${end}\n\n${blocks}` },
-        ],
-      }),
-    });
-    if (res.ok) {
+  for (let attempt = 0; attempt < 2 && !summary; attempt++) {
+    try {
+      const res = await fetch(OPENROUTER_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://ax-biz-radar.pages.dev', 'X-Title': 'AX Biz Radar' },
+        body: JSON.stringify({
+          model: env.OPENROUTER_MODEL,
+          temperature: 0.3,
+          max_tokens: 700,
+          reasoning: { enabled: false }, // 추론모델 토큰 낭비·빈 출력 방지
+          messages: [
+            { role: 'system', content: SYSTEM },
+            { role: 'user', content: `기업: ${name}\n기간: ${start} ~ ${end}\n\n${blocks}` },
+          ],
+        }),
+      });
+      if (!res.ok) {
+        console.error('/api/period-summary openrouter', res.status, (await res.text().catch(() => '')).slice(0, 200));
+        continue;
+      }
       const data = await res.json();
-      summary = (data?.choices?.[0]?.message?.content || '').trim() || null;
-    } else {
-      console.error('/api/period-summary openrouter', res.status);
-    }
-  } catch (err) { console.error('/api/period-summary fetch', err); }
+      const choice = data?.choices?.[0];
+      const text = (choice?.message?.content || '').trim();
+      const reason = choice?.finish_reason || '';
+      // 생성이 중간에 끊긴 응답을 그대로 캐시하면 문장이 잘린 종합이 계속 노출된다
+      // (실측: "…확장한 데 이어" 42자에서 끊긴 값이 저장돼 있었음).
+      if (!isComplete(text, reason)) {
+        console.error('/api/period-summary incomplete', name, 'finish=' + reason, 'len=' + text.length, text.slice(-40));
+        continue;
+      }
+      summary = text;
+    } catch (err) { console.error('/api/period-summary fetch', err); }
+  }
 
   if (summary) {
     try {
