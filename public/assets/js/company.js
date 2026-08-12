@@ -79,25 +79,13 @@ function cardHTML(c, i) {
     '</div></a>';
 }
 
-const sec = (t, a) => (a && a.length)
-  ? '<div class="mt-3 first:mt-0"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-1.5">' + t + '</div><ul class="space-y-1.5">' +
-    a.map((x) => '<li class="text-sm opacity-80 pl-3 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-ink/30">' + escapeHtml(x) + '</li>').join('') + '</ul></div>'
-  : '';
-
 /* ===== 주요 동향 — 건별 카드(접기/펼치기) ===== */
 const CHEV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
 
 // 접힌 상태에서는 날짜 + 미리보기 한 줄만 보이고, 헤더를 누르면 본문이 열린다.
 // button 안에는 phrasing content 만 넣어야 하므로 div 대신 span + block/flex 클래스를 쓴다.
 function trendCardHTML(a, i) {
-  const src = safeUrl(a.sourceUrl), conf = safeUrl(a.confluenceUrl);
-  let links = '';
-  if (src) links += '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener noreferrer" class="text-xs border border-ink/10 rounded-full px-3 py-1.5 hover:bg-ink hover:text-white">출처 기사</a>';
-  if (conf) links += '<a href="' + escapeHtml(conf) + '" target="_blank" rel="noopener noreferrer" class="text-xs border border-ink/10 rounded-full px-3 py-1.5 hover:bg-ink hover:text-white">상세 모니터링</a>';
-  const body =
-    sec('주요 내용', a.keyPoints) + sec('시사점', a.implications) +
-    ((a.hancomInsight && a.hancomInsight.length) ? '<div class="bg-lime/10 border border-lime/40 rounded-xl p-3 mt-3"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-1.5">한컴 인사이트</div><ul class="space-y-1.5">' + a.hancomInsight.map((x) => '<li class="text-sm pl-3 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime-600">' + escapeHtml(x) + '</li>').join('') + '</ul></div>' : '') +
-    (links ? '<div class="flex flex-wrap gap-2 mt-3">' + links + '</div>' : '');
+  const body = entryDetailHTML(a); // 카테고리 블록 구성은 대시보드 카드와 공용(entry.js)
   const preview = (a.keyPoints && a.keyPoints[0]) || (a.implications && a.implications[0]) || '';
   const open = i === 0; // 최신 1건만 펼친 상태로 시작
   const cardCls = 'trend-card bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 transition-shadow hover:shadow-ink/10';

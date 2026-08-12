@@ -154,43 +154,7 @@ function buildGraph(reports) {
 }
 
 /* ===== 카드 ===== */
-function icon(t) {
-  if (t === 'link')
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
-  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
-}
-
-const bullets = (a) =>
-  '<ul class="space-y-2">' +
-  a
-    .map(
-      (x) =>
-        '<li class="text-sm leading-relaxed opacity-80 pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-ink/30">' +
-        escapeHtml(x) +
-        '</li>'
-    )
-    .join('') +
-  '</ul>';
-
-// 한 건(날짜)의 상세: 주요 내용 / 시사점 / 한컴 인사이트 / 링크
-function entryDetail(e) {
-  const src = safeUrl(e.sourceUrl), conf = safeUrl(e.confluenceUrl);
-  let h = '';
-  if (e.keyPoints && e.keyPoints.length)
-    h += '<div><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">주요 내용</div>' + bullets(e.keyPoints) + '</div>';
-  if (e.implications && e.implications.length)
-    h += '<div><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">시사점</div>' + bullets(e.implications) + '</div>';
-  if (e.hancomInsight && e.hancomInsight.length)
-    h += '<div class="bg-lime/15 border border-lime rounded-2xl p-4"><div class="text-xs font-bold uppercase tracking-widest text-lime-600 mb-2">한컴 인사이트</div><ul class="space-y-2">' +
-      e.hancomInsight.map((x) => '<li class="text-sm leading-relaxed pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime-600">' + escapeHtml(x) + '</li>').join('') + '</ul></div>';
-  if (src || conf) {
-    h += '<div class="flex flex-wrap gap-2 pt-1">';
-    if (src) h += '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener noreferrer" class="text-xs font-medium border border-ink/10 rounded-full px-3.5 py-2 flex items-center gap-1.5 hover:bg-ink hover:text-white transition-colors">' + icon('link') + ' 출처 기사</a>';
-    if (conf) h += '<a href="' + escapeHtml(conf) + '" target="_blank" rel="noopener noreferrer" class="text-xs font-medium border border-ink/10 rounded-full px-3.5 py-2 flex items-center gap-1.5 hover:bg-ink hover:text-white transition-colors">' + icon('doc') + ' 상세 모니터링</a>';
-    h += '</div>';
-  }
-  return h;
-}
+// 한 건(날짜)의 본문은 entry.js 의 entryDetailHTML — 기업 상세 페이지와 같은 카테고리 구성을 쓴다.
 
 // 옵션 1: 기업별 1카드. 접힘=최신 헤드라인+N건 / 펼침=기간 종합(다건) + 날짜별 타임라인
 function cardHTML(co) {
@@ -219,15 +183,15 @@ function cardHTML(co) {
       '<div class="bg-ink rounded-xl p-3"><p class="summary-text text-sm leading-relaxed text-white opacity-90">종합 생성 중…</p></div></div>';
   if (n > 1) {
     // 날짜별 미니 타임라인(최신순)
-    h += '<div class="space-y-5 border-l-2 border-lime/40 pl-5">';
+    h += '<div class="space-y-6 border-l-2 border-lime/40 pl-5">';
     entries.forEach((e) => {
       h += '<div class="relative"><div class="absolute -left-[27px] top-1.5 w-3 h-3 rounded-full bg-lime border-2 border-white"></div>' +
         '<div class="text-xs font-bold text-lime-600 mb-2">' + escapeHtml(e.date) + '</div>' +
-        '<div class="space-y-4">' + entryDetail(e) + '</div></div>';
+        entryDetailHTML(e) + '</div>';
     });
     h += '</div>';
   } else {
-    h += '<div class="space-y-5">' + entryDetail(latest) + '</div>';
+    h += entryDetailHTML(latest);
   }
   if (co.tags && co.tags.length)
     h += '<div class="flex flex-wrap gap-2">' + co.tags.map((t) => '<span class="text-xs opacity-80 bg-beige border border-ink/5 rounded-full px-3 py-1">#' + escapeHtml(t) + '</span>').join('') + '</div>';
@@ -388,6 +352,8 @@ function onCardActivate(e) {
   const card = e.target.closest('.card');
   if (!card) return;
   if (e.target.closest('a')) return; // 카드 내 링크는 그대로 동작
+  // 주요 내용 '더 보기'(details/summary)는 자체 토글이므로 카드를 접지 않는다.
+  if (e.target.closest('summary, [data-no-toggle]')) return;
   if (e.type === 'keydown') {
     if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
     e.preventDefault();
