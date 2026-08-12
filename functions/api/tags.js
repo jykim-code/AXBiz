@@ -2,8 +2,10 @@
 //   POST { name?, remove?: [], add?: [] }
 //   - name 있음: 해당 기업의 모든 항목에서 remove 태그 제거 + add 태그 추가
 //   - name 없음: 전역 — 모든 기업·날짜에서 remove 태그 제거 (전역 add 는 불허)
-//   reports 원본을 직접 수정하고 영향 날짜 목록을 반환한다.
-//   재색인은 호출 측(admin)이 날짜별로 수행(요청당 서브요청 한도 회피).
+//   reports 원본을 직접 수정하고, 파생 테이블(company_entries)까지 맞춘 뒤 영향 날짜를 반환한다.
+//   Vectorize 재색인만 호출 측(admin)이 날짜별로 수행한다(요청당 서브요청 한도 회피).
+import { rebuildCompanyEntries } from '../_entries.js';
+
 function timingSafeEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
   const enc = new TextEncoder();
@@ -83,6 +85,18 @@ export async function onRequestPost({ request, env }) {
     console.error('POST /api/tags: write', err);
     return Response.json({ error: 'DB_ERROR' }, { status: 500 });
   }
+
+  // reports 만 고치고 끝내면 기업별 페이지가 읽는 company_entries 가 낡은 태그를 계속 보여준다.
+  // 호출자(admin)가 영향 날짜를 재저장하지 않거나 중간에 실패하면 그대로 어긋난 채 남는다
+  // (실측: 95개 날짜 중 50개가 이 경로로 어긋나 있었다). 여기서 직접 맞춘다.
+  let entriesWarning;
+  try {
+    await rebuildCompanyEntries(env, affected);
+  } catch (err) {
+    console.error('POST /api/tags: entries', err);
+    entriesWarning = String((err && err.message) || err);
+  }
+
   // removed/added 를 함께 돌려줘 admin 이 "0건 변경"을 성공으로 오해하지 않게 한다.
-  return Response.json({ ok: true, affectedDates: affected.sort(), removed, added, matchedCompany });
+  return Response.json({ ok: true, affectedDates: affected.sort(), removed, added, matchedCompany, entriesWarning });
 }
