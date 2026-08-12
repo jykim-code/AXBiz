@@ -58,6 +58,9 @@ async function initGraph(reports) {
       { selector: 'edge[kind="tag"]', css: { 'line-color': '#ffffff', 'line-opacity': 0.12 } },
       { selector: '.dim', css: { opacity: 0.12 } },
       { selector: '.hi', css: { opacity: 1, 'line-opacity': 0.9 } },
+      // 중간 단계: 강조된 이웃 태그는 기본 7px 로는 너무 작아 라벨이 읽히지 않으므로 2배로 키운다.
+      // (포커스된 노드는 아래 .focus 규칙이 뒤에 있어 그쪽 크기가 적용된다)
+      { selector: 'node.hi[type="tag"]', css: { width: 14, height: 14, 'background-opacity': 0.95 } },
       // 커서가 근접한 노드 하나만 크게 확대(기본 대비 약 3배) + 라임 헤일로 + 라벨을 어두운 판 위에
       // 크게 올려, 확대됐다는 것이 한눈에 보이게 한다.
       { selector: 'node.focus', css: {
@@ -114,8 +117,10 @@ async function initGraph(reports) {
       const r = (n.data('bw') || 12) * z / 2 + HOVER_PAD;
       const d = Math.hypot(p.x - rp.x, p.y - rp.y);
       if (d > (n.hasClass('focus') ? Math.max(r, n.renderedWidth() / 2 + 4) : r)) return;
-      let score = d / r; // 거리를 노드 크기로 정규화 — 작은 태그점보다 큰 기업 노드를 먼저 잡는다
-      if (focused && focused.id() === n.id()) score *= 0.8; // 히스테리시스: 잡은 노드가 쉽게 풀리지 않게
+      // 커서에서 실제로 가장 가까운 노드를 잡는다. 거리를 노드 크기로 정규화하면 판정 반경이
+      // 작은 태그점이 옆에 붙은 기업 노드에 계속 밀려, 점 위에 정확히 올려야만 잡히게 된다.
+      let score = d;
+      if (focused && focused.id() === n.id()) score *= 0.85; // 히스테리시스: 잡은 노드가 쉽게 풀리지 않게
       if (score < bestScore) { bestScore = score; best = n; }
     });
     return best;
@@ -137,13 +142,17 @@ async function initGraph(reports) {
     if (focused && focused.id() === n.id()) return;
     cy.nodes().removeStyle('font-size'); // 직전 포커스의 확대 폰트 제거
     applyZoomLabels();                   // 라벨·폰트 기본값 복원 (batch 중첩을 피해 밖에서 호출)
+    const z = cy.zoom() || 1;
     cy.batch(() => {
       cy.elements().removeClass('hi focus').addClass('dim');
       const nb = n.closedNeighborhood();
       nb.removeClass('dim').addClass('hi');
-      nb.nodes('[type="tag"]').removeStyle('label'); // 강조된 이웃의 태그 라벨은 줌과 무관하게 표시
+      // 강조된 이웃은 라벨을 줌과 무관하게 표시하고, 기본 폰트로는 읽기 어려우니 함께 키운다.
+      // (기업에 호버하면 연결된 태그 이름들이 같이 읽히는 효과 — 태그마다 겨냥할 필요가 없다)
+      nb.nodes('[type="tag"]').removeStyle('label').style('font-size', clampF(14, z, 11, 26));
+      nb.nodes('[type="company"]').style('font-size', clampF(14, z, 11, 26));
       n.addClass('focus').removeStyle('label');
-      applyFocusFont(n);
+      applyFocusFont(n); // 포커스 노드 본인은 가장 크게 — 이웃 폰트 지정 뒤에 덮어쓴다
     });
     focused = n;
     el.style.cursor = 'pointer';
