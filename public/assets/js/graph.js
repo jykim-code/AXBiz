@@ -58,6 +58,9 @@ async function initGraph(reports) {
       { selector: 'edge[kind="tag"]', css: { 'line-color': '#ffffff', 'line-opacity': 0.12 } },
       { selector: '.dim', css: { opacity: 0.12 } },
       { selector: '.hi', css: { opacity: 1, 'line-opacity': 0.9 } },
+      // 중간 단계: 강조된 이웃 태그를 조금 키운다. 크게 키우면 태그가 많은 기업에서 서로 겹치므로
+      // 시인성은 아래 호버 줌인(카메라)이 담당하고, 여기서는 최소한만 키운다.
+      { selector: 'node.hi[type="tag"]', css: { width: 10, height: 10, 'background-opacity': 0.95 } },
       // 커서가 근접한 노드 하나만 크게 확대(기본 대비 약 3배) + 라임 헤일로 + 라벨을 어두운 판 위에
       // 크게 올려, 확대됐다는 것이 한눈에 보이게 한다.
       { selector: 'node.focus', css: {
@@ -66,9 +69,10 @@ async function initGraph(reports) {
         'font-weight': 'bold', 'text-margin-x': 10, 'text-background-color': '#111',
         'text-background-opacity': 0.85, 'text-background-padding': 5, 'text-background-shape': 'roundrectangle',
       } },
-      { selector: 'node.focus[type="company"]', css: { width: 'mapData(deg,0,5,38,64)', height: 'mapData(deg,0,5,38,64)' } },
-      { selector: 'node.focus[type="ax"]', css: { width: 52, height: 52 } },
-      { selector: 'node.focus[type="tag"]', css: { width: 26, height: 26, 'background-opacity': 1, opacity: 1 } },
+      // 카메라 줌인이 배율을 담당하므로(줌 배수만큼 화면에서 더 커짐) 노드 자체 확대는 이전보다 낮춘다.
+      { selector: 'node.focus[type="company"]', css: { width: 'mapData(deg,0,5,32,52)', height: 'mapData(deg,0,5,32,52)' } },
+      { selector: 'node.focus[type="ax"]', css: { width: 44, height: 44 } },
+      { selector: 'node.focus[type="tag"]', css: { width: 18, height: 18, 'background-opacity': 1, opacity: 1 } },
     ],
     // force(cose) 레이아웃 — 연결된 기업·태그가 서로 끌려 붙어 관계가 가깝게 보임(concentric 의 링 분리 해소)
     layout: {
@@ -78,6 +82,7 @@ async function initGraph(reports) {
     },
     wheelSensitivity: 0.2,
     autoungrabify: true,
+    maxZoom: 3, // 호버 줌인이 이웃 2~3개짜리 기업에서 과도하게 확대되는 것을 막는 상한
   });
 
   // 줌 레벨별 라벨 가독성: 축소(overview) 시 라벨이 너무 작아 안 보이는 문제 해소.
@@ -92,7 +97,57 @@ async function initGraph(reports) {
       cy.nodes('[type="company"]').style('font-size', clampF(12, z, 9, 28));
       cy.nodes('[type="ax"]').style('font-size', clampF(13, z, 11, 30));
       if (showTags) cy.nodes('[type="tag"]').removeStyle('label').style('font-size', clampF(10, z, 8, 20));
+      // NOTE: 이 줄은 실제로 라벨을 숨기지 못한다 — cytoscape 는 label 에 빈 문자열(공백도 동일)을
+      // 지정하면 무시하고 매핑값을 그대로 유지한다(pstyle('label') 로 확인). 즉 축소 상태에서도
+      // 태그 라벨이 계속 그려진다. 고치려면 text-opacity 0 을 써야 하는데, 그러면 태그 라벨이
+      // 사라지는 눈에 보이는 변화가 생기므로 현 동작을 유지하고 기록만 남긴다.
       else cy.nodes('[type="tag"]').style('label', '');
+    });
+    scheduleDeclutter();
+  }
+
+  /* ── 기업명 겹침 정리 ─────────────────────────────────────────────────────
+     기업명이 서로 겹쳐 읽기 어렵다는 피드백 대응. 라벨은 화면상 크기를 일정하게 유지하므로
+     (위 clampF) 레이아웃을 넓혀도 fit 으로 줌이 줄어 겹침이 그대로다. 그래서 겹치는 쪽 라벨을
+     숨기는 지도 라벨링 방식을 쓰되, '살짝 스치는' 정도는 그대로 두고 이름 면적의 절반 이상이
+     덮이는 경우만 숨긴다. 중요도 = 노드 크기(deg, 공유 태그 수) 순.
+     줌인하면 간격이 벌어져 숨었던 이름이 다시 나타나고, 호버해도 드러난다. */
+  const OVERLAP_MAX = 0.5; // 이름 면적 중 다른 이름에 덮인 비율의 한계
+  let declutterRaf = 0;
+  function scheduleDeclutter() {
+    if (declutterRaf) return;
+    declutterRaf = requestAnimationFrame(() => { declutterRaf = 0; declutterLabels(); });
+  }
+  const bbOf = (n, labels) => n.renderedBoundingBox({ includeEdges: false, includeLabels: labels !== false, includeOverlays: false });
+  // 라벨만의 상자. 기업 노드는 text-halign:right 이므로 노드 몸통 오른쪽 끝부터 전체 상자 끝까지가 글자 영역.
+  function labelBox(n) {
+    const full = bbOf(n), body = bbOf(n, false);
+    return { x1: body.x2, x2: full.x2, y1: full.y1, y2: full.y2 };
+  }
+  function overlapRatio(a, b) { // a 면적 중 b 와 겹치는 비율
+    const w = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1);
+    const h = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1);
+    if (w <= 0 || h <= 0) return 0;
+    const area = (a.x2 - a.x1) * (a.y2 - a.y1);
+    return area > 0 ? (w * h) / area : 0;
+  }
+  function declutterLabels() {
+    if (focused) return; // 호버 중에는 강조 로직이 라벨을 관리한다
+    const companies = cy.nodes('[type="company"]');
+    if (!companies.length) return;
+    // 첫 페인트 전이나 컨테이너 크기가 0 이면 라벨 상자가 퇴화(폭 0)해 모든 이름이 '겹침' 으로
+    // 판정된다. 그대로 두면 이름이 전부 사라지므로, 측정 가능할 때만 진행한다(기본값=표시).
+    const probe = companies[0];
+    probe.removeStyle('text-opacity');
+    const pb = labelBox(probe);
+    if (!(pb.x2 - pb.x1 > 1)) return;
+
+    const taken = []; // AX 허브는 'AX' 고정 문자열로 정보가 없어 자리를 선점시키지 않는다
+    companies.sort((a, b) => (b.data('deg') || 0) - (a.data('deg') || 0)).forEach((n) => {
+      n.removeStyle('text-opacity'); // 표시 상태로 되돌린 뒤 실제 글자 상자를 측정
+      const box = labelBox(n);
+      if (taken.some((t) => overlapRatio(box, t) > OVERLAP_MAX)) n.style('text-opacity', 0);
+      else taken.push(box);
     });
   }
   cy.on('zoom', () => { applyZoomLabels(); if (focused) applyFocusFont(focused); });
@@ -114,8 +169,10 @@ async function initGraph(reports) {
       const r = (n.data('bw') || 12) * z / 2 + HOVER_PAD;
       const d = Math.hypot(p.x - rp.x, p.y - rp.y);
       if (d > (n.hasClass('focus') ? Math.max(r, n.renderedWidth() / 2 + 4) : r)) return;
-      let score = d / r; // 거리를 노드 크기로 정규화 — 작은 태그점보다 큰 기업 노드를 먼저 잡는다
-      if (focused && focused.id() === n.id()) score *= 0.8; // 히스테리시스: 잡은 노드가 쉽게 풀리지 않게
+      // 커서에서 실제로 가장 가까운 노드를 잡는다. 거리를 노드 크기로 정규화하면 판정 반경이
+      // 작은 태그점이 옆에 붙은 기업 노드에 계속 밀려, 점 위에 정확히 올려야만 잡히게 된다.
+      let score = d;
+      if (focused && focused.id() === n.id()) score *= 0.85; // 히스테리시스: 잡은 노드가 쉽게 풀리지 않게
       if (score < bestScore) { bestScore = score; best = n; }
     });
     return best;
@@ -137,17 +194,61 @@ async function initGraph(reports) {
     if (focused && focused.id() === n.id()) return;
     cy.nodes().removeStyle('font-size'); // 직전 포커스의 확대 폰트 제거
     applyZoomLabels();                   // 라벨·폰트 기본값 복원 (batch 중첩을 피해 밖에서 호출)
+    const z = cy.zoom() || 1;
     cy.batch(() => {
       cy.elements().removeClass('hi focus').addClass('dim');
       const nb = n.closedNeighborhood();
       nb.removeClass('dim').addClass('hi');
-      nb.nodes('[type="tag"]').removeStyle('label'); // 강조된 이웃의 태그 라벨은 줌과 무관하게 표시
-      n.addClass('focus').removeStyle('label');
-      applyFocusFont(n);
+      // 강조된 이웃은 라벨을 줌과 무관하게 표시하고, 기본 폰트로는 읽기 어려우니 함께 키운다.
+      // (기업에 호버하면 연결된 태그 이름들이 같이 읽히는 효과 — 태그마다 겨냥할 필요가 없다)
+      nb.nodes('[type="tag"]').removeStyle('label').style('font-size', clampF(14, z, 11, 26));
+      nb.nodes('[type="company"]').style('font-size', clampF(14, z, 11, 26));
+      // 겹침 정리로 숨은 기업명은 호버하면 드러난다. 태그에 호버하면 그 태그를 가진 기업들의
+      // 이름도 함께 드러난다(AX 허브는 이웃이 전체 기업이라 모두 열면 다시 겹치므로 제외).
+      if (n.data('type') !== 'ax') nb.nodes('[type="company"]').removeStyle('text-opacity');
+      n.addClass('focus').removeStyle('label').removeStyle('text-opacity');
+      applyFocusFont(n); // 포커스 노드 본인은 가장 크게 — 이웃 폰트 지정 뒤에 덮어쓴다
     });
     focused = n;
     el.style.cursor = 'pointer';
   }
+  /* ── 호버 줌인 ────────────────────────────────────────────────────────────
+     커서가 한 노드에 잠깐 머무르면 그 노드와 이웃(기업↔관련 태그)만 화면에 채워 보여준다.
+     즉시 줌하면 화면이 움직여 커서 아래 노드가 바뀌고 다시 줌이 걸리는 진동이 생기므로:
+       ① 250ms 체류 후에 실행  ② 줌 애니메이션 중에는 새 줌을 걸지 않음
+       ③ 포커스 재계산은 mousemove 에서만 하므로 카메라가 움직여도 저절로 재타깃되지 않음
+       ④ 노드 없는 곳에 400ms 머물거나 그래프를 벗어나면 원래 뷰로 복귀 */
+  const DWELL_MS = 250, VIEW_MS = reduce ? 0 : 300;
+  let baseView = null, dwellT = 0, outT = 0, zoomed = false, zooming = false;
+
+  function cancelRestore() { if (outT) { clearTimeout(outT); outT = 0; } }
+  function zoomToNeighborhood(n) {
+    cancelRestore();
+    if (!baseView) baseView = { zoom: cy.zoom(), pan: { ...cy.pan() } }; // 사용자가 맞춰둔 뷰를 기억
+    zooming = true;
+    cy.stop();
+    cy.animate({
+      fit: { eles: n.closedNeighborhood().nodes(), padding: 45 },
+      duration: VIEW_MS, easing: 'ease-out',
+      complete: () => { zooming = false; zoomed = true; applyZoomLabels(); if (focused) applyFocusFont(focused); },
+    });
+  }
+  function restoreView() {
+    cancelRestore();
+    clearTimeout(dwellT);
+    if (!zoomed && !zooming) return;
+    zoomed = false; zooming = false;
+    cy.stop();
+    const to = baseView;
+    baseView = null;
+    if (to) cy.animate({ zoom: to.zoom, pan: to.pan, duration: VIEW_MS, easing: 'ease-out', complete: applyZoomLabels });
+    else cy.fit(undefined, 28);
+  }
+  function scheduleRestore() {
+    if (outT || (!zoomed && !zooming)) return;
+    outT = setTimeout(() => { outT = 0; restoreView(); }, 400);
+  }
+
   // mousemove 는 초당 수십 번 오므로 프레임당 1회만 근접 계산(노드 수 × 프레임 비용 억제)
   let pendingRp = null, rafId = 0;
   cy.on('mousemove', (e) => {
@@ -156,10 +257,23 @@ async function initGraph(reports) {
     rafId = requestAnimationFrame(() => {
       rafId = 0;
       const n = nearestNode(pendingRp);
-      if (n) focusNode(n); else clearFocus();
+      if (!n) { clearFocus(); clearTimeout(dwellT); scheduleRestore(); return; }
+      cancelRestore();
+      const changed = !focused || focused.id() !== n.id();
+      focusNode(n);
+      if (!changed || zooming) return;
+      clearTimeout(dwellT);
+      dwellT = setTimeout(() => { // 같은 노드에 계속 머물러 있을 때만 줌인
+        if (!zooming && focused && focused.id() === n.id()) zoomToNeighborhood(n);
+      }, DWELL_MS);
     });
   });
-  el.addEventListener('mouseleave', () => { if (rafId) { cancelAnimationFrame(rafId); rafId = 0; } clearFocus(); });
+  el.addEventListener('mouseleave', () => {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    clearTimeout(dwellT);
+    clearFocus();
+    restoreView();
+  });
 
   function navigate(n) {
     const ty = n.data('type');
@@ -167,11 +281,17 @@ async function initGraph(reports) {
     else if (ty === 'tag') location.href = '/explore?tag=' + encodeURIComponent(String(n.data('label')).replace(/^#/, ''));
   }
   cy.on('tap', 'node', (e) => navigate(e.target));
-  // 배경 탭: 근접 노드가 있으면 그 노드로 이동(작은 노드를 정확히 누르지 않아도 되게), 없으면 화면 맞춤
+  // 배경 탭: 근접 노드가 있으면 그 노드로 이동(작은 노드를 정확히 누르지 않아도 되게),
+  //          없으면 호버 줌인 상태를 풀거나(원래 뷰 복귀) 화면 맞춤
   cy.on('tap', (e) => {
     if (e.target !== cy) return;
     const n = nearestNode(e.renderedPosition);
-    if (n) navigate(n); else cy.fit(undefined, 28);
+    if (n) { navigate(n); return; }
+    clearFocus();
+    if (zoomed || zooming) restoreView(); else cy.fit(undefined, 28);
   });
+  // 레이아웃(cose)은 애니메이션으로 끝나므로 최종 좌표에서 한 번 더 맞추고 라벨을 정리한다.
+  cy.one('layoutstop', () => { cy.resize(); cy.fit(undefined, 28); applyZoomLabels(); });
   setTimeout(() => { cy.resize(); cy.fit(undefined, 28); applyZoomLabels(); }, 100);
+  setTimeout(scheduleDeclutter, 700); // 첫 페인트가 늦어 라벨 실측이 안 됐던 경우의 재시도
 }
