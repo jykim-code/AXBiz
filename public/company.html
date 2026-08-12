@@ -20,6 +20,19 @@
   body { background:#f7f5f0; color:#111; font-family:'Inter','Pretendard',sans-serif; -webkit-font-smoothing:antialiased; }
   h1,h2,h3,h4,h5,h6 { font-family:'Space Grotesk','Pretendard',sans-serif; }
   ::selection { background:#c8f200; color:#111; }
+  /* 주요 동향 카드 — 최신 1건만 펼친 상태로 시작, 헤더 클릭으로 토글.
+     동향이 많은 기업에서 페이지가 과도하게 길어지지 않게 하려는 목적. */
+  .trend-head { width:100%; text-align:left; padding:1.25rem; }
+  .trend-body { display:none; padding:0 1.25rem 1.25rem; }
+  .trend-card.is-open .trend-head { padding-bottom:.75rem; }
+  .trend-card.is-open .trend-body { display:block; }
+  .trend-card.is-open .trend-preview { display:none; }
+  .trend-card.is-open .trend-chevron { transform:rotate(180deg); }
+  @media (min-width:640px) {
+    .trend-head { padding:1.5rem; }
+    .trend-body { padding:0 1.5rem 1.5rem; }
+    .trend-card.is-open .trend-head { padding-bottom:.75rem; }
+  }
 </style>
 </head>
 <body class="min-h-screen bg-beige">
