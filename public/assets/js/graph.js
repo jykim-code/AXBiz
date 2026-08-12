@@ -48,8 +48,6 @@ async function initGraph(reports) {
       { selector: 'node', css: {
         label: 'data(label)', color: '#fff', 'font-size': 9, 'font-family': 'Inter, Pretendard',
         'text-valign': 'center', 'text-halign': 'right', 'text-margin-x': 3, 'text-events': 'yes',
-        // 다크 카드 배경색과 같은 외곽선 — 라임 노드·엣지나 남은 라벨 위에 겹쳐도 글자가 읽힌다
-        'text-outline-width': 2, 'text-outline-color': '#111', 'text-outline-opacity': 0.85,
         'transition-property': 'width height border-width outline-width opacity background-opacity',
         'transition-duration': reduce ? '0s' : '0.13s',
       } },
@@ -98,50 +96,8 @@ async function initGraph(reports) {
     cy.batch(() => {
       cy.nodes('[type="company"]').style('font-size', clampF(12, z, 9, 28));
       cy.nodes('[type="ax"]').style('font-size', clampF(13, z, 11, 30));
-      // 라벨 숨김은 text-opacity 로 한다. style('label','') 는 cytoscape 가 빈 문자열을 무시해
-      // 실제로는 라벨이 그대로 그려진다(공백 ' ' 도 동일). 확인: pstyle('label') 이 매핑값 유지.
-      if (showTags) cy.nodes('[type="tag"]').removeStyle('text-opacity').style('font-size', clampF(10, z, 8, 20));
-      else cy.nodes('[type="tag"]').style('text-opacity', 0);
-    });
-    scheduleDeclutter();
-  }
-
-  /* ── 라벨 겹침 정리(decluttering) ──────────────────────────────────────────
-     라벨은 화면상 크기를 일정하게 유지하므로(위 clampF) 노드를 멀리 떨어뜨려도 fit 으로
-     줌이 줄어들어 겹침이 그대로다. 그래서 레이아웃 대신 '겹치면 덜 중요한 쪽 라벨을 숨기는'
-     지도 라벨링 방식을 쓴다. 중요도 = 노드 크기(deg, 공유 태그 수) 순.
-     줌인하면 라벨 사이 간격이 벌어져 숨었던 이름이 다시 나타난다. 호버 시에는 강조 로직이
-     라벨을 관리하므로(이웃 라벨 강제 표시) 이 패스를 건너뛴다. */
-  const LABEL_GAP = 3; // 라벨 사이 최소 여백(px)
-  let declutterRaf = 0;
-  function scheduleDeclutter() {
-    if (declutterRaf) return;
-    declutterRaf = requestAnimationFrame(() => { declutterRaf = 0; declutterLabels(); });
-  }
-  const bbOf = (n, labels) => n.renderedBoundingBox({ includeEdges: false, includeLabels: labels !== false, includeOverlays: false });
-  const hits = (a, b) => !(a.x2 + LABEL_GAP < b.x1 || a.x1 - LABEL_GAP > b.x2 || a.y2 + LABEL_GAP < b.y1 || a.y1 - LABEL_GAP > b.y2);
-  function declutterLabels() {
-    if (focused) return;
-    const companies = cy.nodes('[type="company"]');
-    if (!companies.length) return;
-    // 라벨 실측이 불가능한 상태(첫 페인트 전, 컨테이너 크기 0 등)에서는 라벨 상자가 노드 크기와
-    // 같거나 0 으로 나와 모든 라벨이 '겹침'으로 판정된다. 그러면 이름이 전부 사라지므로
-    // 측정 가능 여부를 먼저 확인하고, 불가능하면 아무것도 숨기지 않고 물러난다(기본값=표시).
-    const probe = companies[0];
-    probe.removeStyle('text-opacity');
-    if (!(bbOf(probe).w > bbOf(probe, false).w + 1)) return;
-
-    const z = cy.zoom() || 1;
-    // AX 허브 라벨은 항상 그리되 자리를 선점하지 않는다. 'AX' 는 고정된 이름이라 정보가 없는데,
-    // 선점시키면 축소 상태에서 허브 옆 주요 기업의 이름이 대신 숨는다(우선순위 1위가 밀림).
-    const taken = [];
-    const order = companies.sort((a, b) => (b.data('deg') || 0) - (a.data('deg') || 0)).toArray();
-    if (z >= 0.85) order.push(...cy.nodes('[type="tag"]').toArray()); // 태그는 표시되는 줌에서만 대상
-    order.forEach((n) => {
-      n.removeStyle('text-opacity'); // 우선 표시 상태로 되돌린 뒤 실제 라벨 상자를 측정
-      const box = bbOf(n);
-      if (taken.some((t) => hits(box, t))) n.style('text-opacity', 0);
-      else taken.push(box);
+      if (showTags) cy.nodes('[type="tag"]').removeStyle('label').style('font-size', clampF(10, z, 8, 20));
+      else cy.nodes('[type="tag"]').style('label', '');
     });
   }
   cy.on('zoom', () => { applyZoomLabels(); if (focused) applyFocusFont(focused); });
@@ -195,12 +151,9 @@ async function initGraph(reports) {
       nb.removeClass('dim').addClass('hi');
       // 강조된 이웃은 라벨을 줌과 무관하게 표시하고, 기본 폰트로는 읽기 어려우니 함께 키운다.
       // (기업에 호버하면 연결된 태그 이름들이 같이 읽히는 효과 — 태그마다 겨냥할 필요가 없다)
-      nb.nodes('[type="tag"]').removeStyle('text-opacity').style('font-size', clampF(14, z, 11, 26));
+      nb.nodes('[type="tag"]').removeStyle('label').style('font-size', clampF(14, z, 11, 26));
       nb.nodes('[type="company"]').style('font-size', clampF(14, z, 11, 26));
-      // 태그에 호버하면 그 태그를 가진 기업 이름이 (겹침 정리로 숨었더라도) 드러난다.
-      // 단 AX 허브는 이웃이 전체 기업이라 모두 열면 다시 겹치므로 제외한다.
-      if (n.data('type') !== 'ax') nb.nodes('[type="company"]').removeStyle('text-opacity');
-      n.addClass('focus').removeStyle('text-opacity'); // 겹침 정리로 숨었던 라벨도 호버하면 보인다
+      n.addClass('focus').removeStyle('label');
       applyFocusFont(n); // 포커스 노드 본인은 가장 크게 — 이웃 폰트 지정 뒤에 덮어쓴다
     });
     focused = n;
@@ -284,8 +237,5 @@ async function initGraph(reports) {
     clearFocus();
     if (zoomed || zooming) restoreView(); else cy.fit(undefined, 28);
   });
-  // 레이아웃(cose)은 애니메이션으로 끝나므로, 최종 좌표에서 한 번 더 맞추고 라벨을 정리한다.
-  cy.one('layoutstop', () => { cy.resize(); cy.fit(undefined, 28); applyZoomLabels(); });
   setTimeout(() => { cy.resize(); cy.fit(undefined, 28); applyZoomLabels(); }, 100);
-  setTimeout(scheduleDeclutter, 700); // 첫 페인트가 늦어 라벨 실측이 안 됐던 경우의 재시도
 }
