@@ -4,6 +4,7 @@
 //   - 분기 추이: 1Q/반기/3Q/사업보고서는 "누적값" → 분기값은 차분으로 계산(최신 4분기)
 const DART = 'https://opendart.fss.or.kr/api';
 const CACHE_TTL_MS = 7 * 24 * 3600 * 1000; // 재무는 분기 갱신 → 7일 캐시
+const EMPTY_TTL_MS = 6 * 3600 * 1000;      // 재무가 빈 응답이면 6시간만 — DART 일시 장애 대비
 const REPRT = { 1: '11013', 2: '11012', 3: '11014', 4: '11011' };
 
 function num(s) {
@@ -45,19 +46,56 @@ function pickRows(list) {
   return cfs.length ? { rows: cfs, fs: '연결' } : { rows: list.filter((x) => x.fs_div === 'OFS'), fs: '별도' };
 }
 
+// 계정명 표기는 업종별로 갈린다. 지주·통신·금융은 '영업수익', IFRS 표시는 '수익(매출액)'을
+// 쓰는 곳이 있어 '매출액' 단일 일치로는 상장사인데도 재무가 비어 보인다.
+// exact 를 먼저 보고, 표기 변형(예: '매출액및지분법손익')은 include/exclude 로 걸러 잡는다.
+const ACCOUNTS = {
+  revenue: {
+    exact: ['매출액', '수익(매출액)', '영업수익', '매출'],
+    include: ['매출액', '영업수익', '영업수입'],
+    exclude: ['원가', '총이익', '이익률', '채권'],
+  },
+  operatingProfit: {
+    exact: ['영업이익', '영업이익(손실)', '영업손익', '영업이익(△손실)'],
+    include: ['영업이익', '영업손익'],
+    exclude: ['률', '율', '증가'],
+  },
+};
+
+// rows 에서 계정 행을 찾는다. 정확일치 우선, 실패 시 부분일치 폴백.
+function findAccount(rows, key) {
+  const spec = ACCOUNTS[key];
+  const nameOf = (x) => (x.account_nm || '').trim();
+  for (const nm of spec.exact) {
+    const r = rows.find((x) => nameOf(x) === nm);
+    if (r) return r;
+  }
+  return rows.find((x) => {
+    const n = nameOf(x);
+    return spec.include.some((k) => n.includes(k)) && !spec.exclude.some((k) => n.includes(k));
+  }) || null;
+}
+
+// 사업연도 후보: 사업보고서는 회계연도 종료 후 3개월 내 제출 → 연초에는 전년도분이 아직 없다.
+// 올해부터 3개년을 역순으로 시도해 가장 최신 확정본을 쓴다.
+function annualYears() {
+  const y = new Date().getUTCFullYear();
+  return [y, y - 1, y - 2, y - 3];
+}
+
 // 연도 요약: 최근 3개년 매출/영업이익 + 전년비. 사업보고서(11011) 최신 연도부터 시도.
 export async function fetchAnnual(env, corpCode) {
-  for (const year of [2025, 2024, 2023]) {
+  for (const year of annualYears()) {
     const d = await dartJson(env, 'fnlttSinglAcnt.json', { corp_code: corpCode, bsns_year: String(year), reprt_code: '11011' });
     if (d.status !== '000' || !Array.isArray(d.list) || !d.list.length) continue;
     const { rows, fs } = pickRows(d.list);
     if (!rows.length) continue;
-    const grab = (nm) => {
-      const r = rows.find((x) => (x.account_nm || '').trim() === nm);
+    const grab = (key) => {
+      const r = findAccount(rows, key);
       return r ? { cur: num(r.thstrm_amount), prev: num(r.frmtrm_amount), prev2: num(r.bfefrmtrm_amount) } : null;
     };
-    const rev = grab('매출액');
-    const op = grab('영업이익');
+    const rev = grab('revenue');
+    const op = grab('operatingProfit');
     if (!rev && !op) continue;
     const series = (g) => (g ? [
       { year: year - 2, value: g.prev2 },
@@ -82,12 +120,12 @@ async function cumAccounts(env, corpCode, year, q) {
   const d = await dartJson(env, 'fnlttSinglAcnt.json', { corp_code: corpCode, bsns_year: String(year), reprt_code: REPRT[q] });
   if (d.status !== '000' || !Array.isArray(d.list) || !d.list.length) return null;
   const { rows } = pickRows(d.list);
-  const get = (nm) => {
-    const r = rows.find((x) => (x.account_nm || '').trim() === nm);
+  const get = (key) => {
+    const r = findAccount(rows, key);
     return r ? num(r.thstrm_amount) : null;
   };
-  const rev = get('매출액');
-  const op = get('영업이익');
+  const rev = get('revenue');
+  const op = get('operatingProfit');
   if (rev == null && op == null) return null;
   return { rev, op };
 }
@@ -118,12 +156,16 @@ export async function fetchQuarterly(env, corpCode) {
 }
 
 // 회사개황 + 재무(연도 요약 + 분기 추이) (D1 캐시). 7일 이내 캐시 재사용.
+//   빈 결과는 짧게만 붙든다 — DART 가 일시적으로 재무를 안 주는 일이 있어(실측: 개황은
+//   정상인데 fnlttSinglAcnt 만 빈 응답) 7일 캐시에 걸리면 멀쩡한 상장사가 일주일 내내
+//   재무 없이 보인다.
 export async function getCompanyData(env, corpCode) {
   try {
     const row = await env.DB.prepare('SELECT profile, financials, fetched_at FROM company_profile WHERE corp_code = ?').bind(corpCode).first();
     if (row && row.fetched_at) {
       const age = Date.now() - Date.parse(row.fetched_at.replace(' ', 'T') + 'Z'); // D1 datetime('now')=UTC
-      if (Number.isFinite(age) && age >= 0 && age < CACHE_TTL_MS) {
+      const ttl = row.financials ? CACHE_TTL_MS : EMPTY_TTL_MS;
+      if (Number.isFinite(age) && age >= 0 && age < ttl) {
         return {
           company: row.profile ? JSON.parse(row.profile) : null,
           financials: row.financials ? JSON.parse(row.financials) : null,
@@ -149,4 +191,13 @@ export async function getCompanyData(env, corpCode) {
       .run();
   } catch { /* 캐시 쓰기 실패 무시 */ }
   return { company, financials, cached: false };
+}
+
+// 매핑을 고쳤을 때 옛 조회 결과(빈 응답 포함)가 최대 7일 남는 문제를 막는다.
+// 관리자가 연결을 저장·해제하는 시점에 해당 corp_code 캐시 행을 버린다.
+export async function invalidateCompanyCache(env, corpCode) {
+  if (!corpCode) return;
+  try {
+    await env.DB.prepare('DELETE FROM company_profile WHERE corp_code = ?').bind(corpCode).run();
+  } catch { /* 캐시 삭제 실패는 무시 — 다음 만료 때 갱신됨 */ }
 }

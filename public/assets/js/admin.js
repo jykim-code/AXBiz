@@ -391,6 +391,11 @@ async function loadCorps() {
   });
   return DART_CORPS;
 }
+// DART 에는 이름이 같은 법인이 여럿 있다('케이티' 상장 030200 / 비상장, '카카오' 6건).
+// 이름 완전일치를 상장 여부와 무관하게 맨 위에 두면 비상장 동명 법인이 먼저 선택돼
+// 재무·종목코드가 비어 보인다 — 모든 버킷에 상장 우선 정렬을 적용한다.
+const listedFirst = (arr) => arr.sort((a, b) => (b.stock ? 1 : 0) - (a.stock ? 1 : 0) || a.name.length - b.name.length);
+
 function searchCorps(q) {
   q = (q || '').trim().toLowerCase();
   if (q.length < 2) return [];
@@ -401,9 +406,7 @@ function searchCorps(q) {
     else if (n.startsWith(q)) starts.push(c);
     else if (n.includes(q) || (c.stock && c.stock === q)) contains.push(c);
   }
-  // 상장(stock 보유) 우선 정렬 보정
-  const rank = (arr) => arr.sort((a, b) => (b.stock ? 1 : 0) - (a.stock ? 1 : 0));
-  return exact.concat(rank(starts), rank(contains)).slice(0, 12);
+  return listedFirst(exact).concat(listedFirst(starts), listedFirst(contains)).slice(0, 12);
 }
 
 async function loadDartMappings() {
@@ -449,7 +452,11 @@ function dartRow(name, meta) {
     const c = row.dataset.corp;
     if (c) {
       const hit = DART_CORPS.find((x) => x.code === c);
-      current.innerHTML = '연결됨: <b>' + escapeHtml(hit ? hit.name : '') + '</b> <span class="opacity-50">' + escapeHtml(c) + (hit && hit.stock ? ' · ' + escapeHtml(hit.stock) : '') + '</span> <button type="button" class="dart-clear text-red-500 ml-1">해제</button>';
+      const badge = hit && hit.stock
+        ? '<span class="text-[10px] font-bold rounded-full px-1.5 py-0.5 bg-lime/25 text-lime-700 border border-lime/40">상장 ' + escapeHtml(hit.stock) + '</span>'
+        : '<span class="text-[10px] font-bold rounded-full px-1.5 py-0.5 bg-ink/5 text-ink/50 border border-ink/10">비상장</span>';
+      current.innerHTML = '연결됨: <b>' + escapeHtml(hit ? hit.name : '') + '</b> ' + badge +
+        ' <span class="opacity-50">' + escapeHtml(c) + '</span> <button type="button" class="dart-clear text-red-500 ml-1">해제</button>';
       const clr = current.querySelector('.dart-clear');
       if (clr) clr.onclick = () => { row.dataset.corp = ''; renderCurrent(); };
     } else {
@@ -465,9 +472,20 @@ function dartRow(name, meta) {
       const res = searchCorps(search.value);
       if (!res.length) { dropdown.classList.add('hidden'); dropdown.innerHTML = ''; return; }
       dropdown.innerHTML = '';
+      // 같은 이름이 둘 이상이면 상장 여부로 골라야 한다는 것을 먼저 알린다.
+      const dupes = res.filter((c) => c.name === res[0].name).length;
+      if (dupes > 1) {
+        dropdown.appendChild(el('div', {
+          class: 'px-3 py-2 text-[11px] bg-amber-50 text-amber-700 border-b border-amber-200',
+          text: '이름이 같은 법인 ' + dupes + '건 — 상장 배지와 종목코드로 확인 후 선택하세요.',
+        }));
+      }
       res.forEach((c) => {
         const item = el('button', { type: 'button', class: 'block w-full text-left px-3 py-2 text-sm hover:bg-beige' });
-        item.innerHTML = escapeHtml(c.name) + ' <span class="opacity-50 text-xs">' + escapeHtml(c.code) + (c.stock ? ' · ' + escapeHtml(c.stock) : '') + '</span>';
+        const badge = c.stock
+          ? '<span class="text-[10px] font-bold rounded-full px-1.5 py-0.5 bg-lime/25 text-lime-700 border border-lime/40 ml-1">상장 ' + escapeHtml(c.stock) + '</span>'
+          : '<span class="text-[10px] font-bold rounded-full px-1.5 py-0.5 bg-ink/5 text-ink/45 border border-ink/10 ml-1">비상장</span>';
+        item.innerHTML = escapeHtml(c.name) + badge + ' <span class="opacity-45 text-xs">' + escapeHtml(c.code) + '</span>';
         item.onclick = () => { row.dataset.corp = c.code; search.value = ''; dropdown.classList.add('hidden'); renderCurrent(); };
         dropdown.appendChild(item);
       });
@@ -480,14 +498,19 @@ function dartRow(name, meta) {
     status.style.color = '#111';
     status.textContent = '저장 중…';
     try {
-      await API.saveCompanyMeta({ name, corpCode: row.dataset.corp || '', overrides: { ceo: ceo.value.trim() } }, adminPin);
+      const r = await API.saveCompanyMeta({ name, corpCode: row.dataset.corp || '', overrides: { ceo: ceo.value.trim() } }, adminPin);
       status.style.color = '#7ba500';
-      status.textContent = '저장됨';
-      toast(name + ' 연결 저장', true);
+      // 서버가 DART 개황으로 확인한 법인명을 그대로 보여준다 — 정적 목록이 낙후돼도 실체가 드러난다.
+      const v = r && r.verified;
+      status.textContent = v
+        ? '저장됨 · ' + v.name + (v.stockCode ? ' (' + v.stockCode + ')' : ' (비상장)')
+        : '저장됨';
+      toast(name + ' 연결 저장' + (v ? ' → ' + v.name : ''), true);
     } catch (e) {
       if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
       status.style.color = '#dc2626';
-      status.textContent = '실패: ' + ((e.data && e.data.error) || e.status || e.message);
+      const code = (e.data && e.data.error) || e.status || e.message;
+      status.textContent = '실패: ' + (code === 'CORP_NOT_FOUND' ? 'DART에 없는 코드입니다' : code === 'DART_UNAVAILABLE' ? 'DART 조회 실패 — 잠시 후 재시도' : code);
     }
   };
   return row;
