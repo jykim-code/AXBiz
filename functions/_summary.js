@@ -66,6 +66,7 @@ export async function generateAndStore(env, name) {
           model: env.OPENROUTER_MODEL,
           temperature: 0.2,
           max_tokens: 800,
+          reasoning: { enabled: false }, // 추론모델 토큰 낭비·빈 출력 방지
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: `기업: ${name}\n\n<자료>\n${blocks}\n</자료>` },

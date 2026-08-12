@@ -48,6 +48,7 @@ export async function onRequestPost({ request, env }) {
         model: env.OPENROUTER_MODEL,
         temperature: 0.3,
         max_tokens: 700,
+        reasoning: { enabled: false }, // 추론모델 토큰 낭비·빈 출력 방지
         messages: [
           { role: 'system', content: SYSTEM },
           { role: 'user', content: `기업: ${name}\n기간: ${start} ~ ${end}\n\n${blocks}` },
