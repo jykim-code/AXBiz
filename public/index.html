@@ -34,7 +34,8 @@
   .col-scroll::-webkit-scrollbar-thumb { background: rgba(17,17,17,.12); border-radius: 8px; }
   /* max-height 컬랩스: 접힘 시 0 + overflow:hidden 으로 본문이 한 px도 새지 않음(grid 0fr의 min-content 누수 방지) */
   .card-body { max-height: 0; overflow: hidden; transition: max-height .45s ease; }
-  .card.open .card-body { max-height: 4000px; }
+  /* 카테고리 블록 구성 이후 한 건이 더 높아졌다. 월간 다건 카드(10건 이상)에서 본문이 잘리지 않게 여유를 둔다. */
+  .card.open .card-body { max-height: 12000px; }
   .card.open .chev { transform: rotate(180deg); }
   /* 다건 카드의 접힘 줄은 기간 종합과 같은 문장이므로: 접힘=3줄까지만, 펼침=숨김(다크 박스가 전문 담당) */
   .card-summary.is-period { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
@@ -204,6 +205,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
 <script src="assets/js/util.js"></script>
+<script src="assets/js/entry.js"></script>
 <script src="assets/js/api.js"></script>
 <script src="assets/js/ontology.js"></script>
 <script src="assets/js/graph.js"></script>
