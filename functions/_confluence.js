@@ -16,7 +16,17 @@ export function normDate(s) {
   return m ? `${m[1]}-${m[2]}-${m[3] || '01'}` : null;
 }
 
+// Basic 인증 헤더. 대시보드에 붙여넣을 때 섞여 들어오는 앞뒤 공백·개행을 제거하고
+// (공백 하나로도 401), 비ASCII가 있어도 btoa 가 던지지 않게 UTF-8 바이트로 인코딩한다.
+export function basicAuth(email, token) {
+  const bytes = new TextEncoder().encode(`${String(email).trim()}:${String(token).trim()}`);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return 'Basic ' + btoa(bin);
+}
+
 // URL → pageId: /pages/<id>/ · /wiki/x/<code>(리다이렉트 해석) · 숫자 ID
+// 단축링크 해석 중 인증이 막히면 { authError: 401|403 } — URL 형식 오류로 오진하지 않도록.
 export async function resolvePageId(url, auth) {
   const s = String(url || '').trim();
   if (/^\d{6,}$/.test(s)) return s;
@@ -26,11 +36,42 @@ export async function resolvePageId(url, auth) {
   if (m) {
     try {
       const r = await fetch(`${CONF_BASE}/x/${m[1]}`, { headers: { Authorization: auth } });
+      if (r.status === 401 || r.status === 403) return { authError: r.status };
       const m2 = String(r.url || '').match(/\/pages\/(\d+)/);
       if (m2) return m2[1];
     } catch { /* 아래 null */ }
   }
   return null;
+}
+
+// 401/403 → 어느 쪽을 손봐야 하는지 알려주는 응답. 401=자격증명, 403=호출 권한.
+// Atlassian 이 본문에 실어주는 message 를 반드시 함께 보여준다. 이걸 버리면
+// "스코프 토큰이라 거부" 와 "스페이스 권한 없음" 을 구분할 수 없다.
+function authFailure(status, detail) {
+  const raw = String(detail || '');
+  console.error('confluence: auth', status, raw.slice(0, 300));
+
+  let msg = '';
+  try {
+    const j = JSON.parse(raw);
+    msg = String(j?.message || j?.errors?.[0]?.title || '');
+  } catch { msg = raw.replace(/<[^>]+>/g, ' '); }
+  msg = msg.replace(/\s+/g, ' ').trim().slice(0, 200);
+
+  // "not permitted to use Confluence" / "cannot access Confluence"
+  //  → 인증 자체는 통과했고 호출 권한만 거부됨. 실제로 가장 흔한 원인은
+  //    CONFLUENCE_EMAIL 이 토큰 발급 계정과 다른 것(계정 불일치)이다.
+  const cannotUse = /not permitted to use confluence|cannot access confluence/i.test(raw);
+
+  let hint;
+  if (status === 401) {
+    hint = 'Confluence 인증 실패(401) — 토큰이 만료·오타이거나 계정 이메일이 다릅니다. API 토큰을 새로 발급해 CONFLUENCE_API_TOKEN 을 갱신하세요.';
+  } else if (cannotUse) {
+    hint = 'Confluence 호출 거부(403) — 인증은 통과했지만 이 계정으로는 Confluence 를 호출할 수 없습니다. ① CONFLUENCE_EMAIL 이 토큰을 발급한 계정의 이메일과 다른 경우가 가장 흔합니다(둘을 같은 계정으로 맞추세요). ② 스코프를 지정해 발급한 토큰은 사이트 주소 직접 호출이 막히므로 스코프 없는 클래식 토큰으로 재발급하세요. ③ 계정의 Confluence 라이선스가 해제된 경우도 같은 응답입니다.';
+  } else {
+    hint = 'Confluence 권한 없음(403) — 자격증명은 유효하나 토큰 소유 계정에 이 페이지/스페이스 읽기 권한이 없습니다. 해당 계정을 스페이스에 초대하세요.';
+  }
+  return { ok: false, status: 502, error: 'CONFLUENCE_AUTH', upstream: status, upstreamMessage: msg, hint };
 }
 
 // 한 행의 셀 추출 (header=true 면 <th>, 아니면 <td>)
@@ -89,21 +130,33 @@ export function parseTable(html) {
   return rows;
 }
 
+// 실패 결과 → HTTP 응답. import-confluence·dev/import·dev/import-daily 공용.
+// upstream 상태코드와 Atlassian 원문 메시지까지 관리자 화면으로 넘긴다.
+export function failureResponse(res) {
+  const body = { error: res.error };
+  if (res.hint) body.hint = res.hint;
+  if (res.upstream) body.upstream = res.upstream;
+  if (res.upstreamMessage) body.upstreamMessage = res.upstreamMessage;
+  return Response.json(body, { status: res.status || 400 });
+}
+
 // 페이지 조회 공용: URL → { ok, pageId, title, html, confUrl } | { ok:false, error, status, hint }
 export async function fetchPage(env, url) {
   if (!env.CONFLUENCE_EMAIL || !env.CONFLUENCE_API_TOKEN) {
     return { ok: false, status: 503, error: 'NOT_CONFIGURED', hint: 'CONFLUENCE_EMAIL / CONFLUENCE_API_TOKEN 시크릿 필요' };
   }
-  const auth = 'Basic ' + btoa(`${env.CONFLUENCE_EMAIL}:${env.CONFLUENCE_API_TOKEN}`);
-  const pageId = await resolvePageId(url, auth);
+  const auth = basicAuth(env.CONFLUENCE_EMAIL, env.CONFLUENCE_API_TOKEN);
+  const resolved = await resolvePageId(url, auth);
+  if (resolved && resolved.authError) return authFailure(resolved.authError, 'short-link resolve');
+  const pageId = resolved;
   if (!pageId) return { ok: false, status: 400, error: 'INVALID_URL', hint: '컨플 페이지 URL(/pages/<id>) 또는 /wiki/x/ 단축링크를 입력하세요' };
 
   let page;
   try {
     const r = await fetch(`${CONF_BASE}/rest/api/content/${pageId}?expand=body.storage,space`, { headers: { Authorization: auth, Accept: 'application/json' } });
-    if (r.status === 401 || r.status === 403) return { ok: false, status: 502, error: 'CONFLUENCE_AUTH', hint: 'API 토큰/권한을 확인하세요' };
-    if (r.status === 404) return { ok: false, status: 404, error: 'PAGE_NOT_FOUND' };
-    if (!r.ok) return { ok: false, status: 502, error: 'CONFLUENCE_ERROR' };
+    if (r.status === 401 || r.status === 403) return authFailure(r.status, await r.text().catch(() => ''));
+    if (r.status === 404) return { ok: false, status: 404, error: 'PAGE_NOT_FOUND', hint: '페이지를 찾을 수 없습니다 — URL의 페이지 ID를 확인하거나, 토큰 계정에 열람 권한이 있는지 확인하세요' };
+    if (!r.ok) return { ok: false, status: 502, error: 'CONFLUENCE_ERROR', hint: `Confluence 응답 오류(${r.status})` };
     page = await r.json();
   } catch (err) {
     console.error('fetchPage: fetch', err);
