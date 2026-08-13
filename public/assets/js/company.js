@@ -90,7 +90,13 @@ function renderCatFilter() {
 function renderGrid(scroll) {
   let rows = ONT.companies.slice();
   if (activeCat) rows = rows.filter((c) => c.category === activeCat);
-  if (cq) rows = rows.filter((c) => (c.name + ' ' + [...c.tags].join(' ') + ' ' + (c.latest || '')).toLowerCase().includes(cq));
+  // 이름 우선 매칭 — 검색어가 기업명에 걸리면 그 기업만 남긴다.
+  // (요약문에 그 이름이 언급된 다른 기업까지 섞여 나오던 문제)
+  // 이름에 걸리는 기업이 없을 때만 태그·내용 검색으로 넘어간다.
+  if (cq) {
+    const byName = rows.filter((c) => c.name.toLowerCase().includes(cq));
+    rows = byName.length ? byName : rows.filter((c) => ([...c.tags].join(' ') + ' ' + (c.latest || '')).toLowerCase().includes(cq));
+  }
   rows.sort((a, b) =>
     priorityIdx(a.name) - priorityIdx(b.name) // 국내 지정 순서 우선
     || (sortBy === 'latest'
