@@ -8,3 +8,14 @@ export function stripTrailingPeriod(s) {
   const t = String(s == null ? '' : s);
   return /다\.$/.test(t) ? t : t.replace(/\.+$/, '');
 }
+
+// em dash 금지: 연결에 쓰인 em dash 를 쉼표로 바꾼다("전략 수립—차량 데이터로" → "전략 수립, 차량 데이터로").
+// 생성 요약(_summary.js)이 프롬프트의 금지 지시를 무시하고 넣는 경우가 있어 기계적으로 정규화한다.
+// en dash(–)는 연도 범위("2025–2026")에 쓰일 수 있어 건드리지 않는다.
+export function replaceEmDash(s) {
+  return String(s == null ? '' : s)
+    .replace(/\s*—\s*/g, ', ')
+    .replace(/,\s*(?=,)/g, '') // "A, , B" 처럼 쉼표가 겹친 경우 정리
+    .replace(/^[\s,]+/, '')
+    .replace(/[\s,]+$/, '');
+}
