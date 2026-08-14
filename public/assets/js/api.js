@@ -164,6 +164,10 @@ const API = {
   pinnedTags() {
     return getJSON('/api/pinned-tags');
   },
+  // 기업 검색 별칭 (GET 공개) → { 기업명: [별칭...] }. 관리자가 /admin 에서 편집한 값.
+  companyAliases() {
+    return getJSON('/api/company-aliases');
+  },
   // 지식그래프 핀 태그 저장 (관리자, PIN)
   async savePinnedTags(tags, pin) {
     const res = await fetch('/api/pinned-tags', {

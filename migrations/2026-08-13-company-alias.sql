@@ -1,0 +1,77 @@
+-- 기업 검색 별칭을 D1 에서 관리한다. 관리자 페이지(DART 매핑 탭)에서 편집.
+--   적용: npx wrangler d1 execute ax-biz-radar --remote --command="..." (또는 --file)
+--   aliases: JSON 배열. NULL = 미설정(코드의 시드 사전 사용), '[]' = 별칭 없음으로 명시.
+ALTER TABLE company_meta ADD COLUMN aliases TEXT;
+
+-- 시드 — company-alias.js 사전을 그대로 옮긴다(기업 70개 / 별칭 160개).
+-- 이미 DART 매핑이 있는 행은 corp_code·overrides 를 건드리지 않고 aliases 만 채운다.
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('NVIDIA', '["엔비디아"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('Microsoft', '["마이크로소프트","MS","마소","애저","Azure"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('Google', '["구글","알파벳","Alphabet","딥마인드","DeepMind","제미나이","Gemini"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('OpenAI', '["오픈AI","오픈에이아이","챗GPT","ChatGPT"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('Anthropic', '["앤스로픽","앤트로픽","안트로픽","클로드","Claude"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('AWS', '["아마존웹서비스","아마존","Amazon","에이더블유에스"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('IBM', '["아이비엠"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('일본IBM', '["IBM Japan","IBM재팬","일본아이비엠"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('한국IBM', '["IBM Korea","IBM코리아","한국아이비엠"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('Cloudflare', '["클라우드플레어","클플"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('Cohere', '["코히어"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('Mistral AI', '["미스트랄","Mistral"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('DeepSeek', '["딥시크","딥식"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('문샷 AI','["문샷","Moonshot","키미","Kimi"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('메타', '["Meta","페이스북","Facebook","인스타그램","라마","Llama"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('세일즈포스', '["Salesforce"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('퍼플렉시티', '["Perplexity"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('일레븐랩스', '["ElevenLabs","11Labs"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('알리바바', '["Alibaba","알리","큐원","Qwen"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('샤오미', '["Xiaomi"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('삼성전자', '["Samsung","Samsung Electronics"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('삼성SDS', '["삼성에스디에스","Samsung SDS"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('LG', '["엘지"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('LG전자', '["엘지전자","LG Electronics"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('LG CNS', '["엘지CNS","엘지씨엔에스"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('LG유플러스', '["엘지유플러스","LGU+","LG U+","유플러스","LG Uplus"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('LG AI연구원', '["엘지AI연구원","엑사원","EXAONE"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('SK그룹', '["에스케이그룹"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('SK텔레콤', '["SKT","에스케이텔레콤","SK Telecom","에이닷"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('SK AX', '["에스케이AX","SK C&C","에스케이씨앤씨"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('KT', '["케이티"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('KT DS', '["케이티디에스","KT디에스"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('네이버', '["Naver"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('네이버클라우드', '["Naver Cloud","NCP"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('카카오', '["Kakao"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('다음', '["Daum"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('현대차그룹', '["현대자동차","현대차","현대자동차그룹","Hyundai"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('현대오토에버', '["오토에버","Hyundai Autoever","Autoever"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('포스코DX', '["포스코디엑스","POSCO DX","포스코ICT"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('롯데', '["Lotte"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('GS건설', '["지에스건설","GS E&C"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('우리은행', '["우리금융","Woori"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('폴라리스그룹', '["폴라리스","폴라리스오피스","Polaris"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('NC AI', '["엔씨AI","엔씨소프트","NCSOFT"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('NC AX', '["엔씨AX","엔씨에이엑스","NC IDS","엔씨아이디에스"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('파수 AI', '["파수","Fasoo"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('업스테이지', '["Upstage","솔라","Solar"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('리벨리온', '["Rebellions"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('퓨리오사AI', '["퓨리오사","FuriosaAI","Furiosa"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('뤼튼테크놀로지스', '["뤼튼","Wrtn"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('코난테크놀로지', '["코난","Konan"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('이스트소프트', '["ESTsoft","EST소프트"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('야놀자', '["Yanolja"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('포티투마루', '["42Maru","포티투 마루"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('올거나이즈', '["Allganize"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('라이너', '["Liner"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('메가존클라우드', '["메가존","Megazone"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('마키나락스', '["MakinaRocks"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('노타', '["Nota","노타AI"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('마인드로직','["Mindlogic"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('셀렉트스타', '["Selectstar","다투모","DATUMO"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('아크릴', '["Acryl"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('인이지', '["INEEJI"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('허드슨에이아이', '["허드슨","HudsonAI","Hudson AI"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('와이즈에이아이', '["와이즈AI","WiseAI","Wise AI"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('위세아이텍', '["위세","WISEiTECH"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('지오영', '["GeoYoung"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('플래티어', '["Plateer"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('피씨엔', '["PCN"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
+INSERT INTO company_meta (name, aliases, updated_at) VALUES ('BHSN', '["비에이치에스엔"]', datetime('now')) ON CONFLICT(name) DO UPDATE SET aliases = excluded.aliases, updated_at = datetime('now');
