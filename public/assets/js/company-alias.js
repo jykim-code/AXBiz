@@ -1,9 +1,12 @@
 /* 기업 검색 별칭 — 사용자가 실제로 입력하는 표기(한글 음차·영문·약칭·옛 사명)를 정식 사명에 연결한다.
    화면에는 노출하지 않고 검색에만 쓴다. 태그로 넣으면 카드·지식그래프에 그대로 드러나 목록이 지저분해진다.
 
+   진실원은 D1 company_meta.aliases 이고, 관리자 페이지(DART 매핑 탭)에서 편집한다.
+   아래 사전은 그 초기값(시드)이자 폴백이다 — /api/company-aliases 가 실패해도 검색이 죽지 않는다.
+   D1 에 그 기업 행이 있으면 D1 값이 이긴다(빈 배열이면 별칭 없음). applyCompanyAliases() 참고.
+
    규칙
    - 키는 보고서 데이터의 companies[].name 과 정확히 같아야 한다(다르면 그 줄은 그냥 무시된다).
-   - 새 기업을 추가하면 여기에도 한 줄 넣는다. 별칭이 필요 없으면 넣지 않아도 된다.
    - 대소문자·공백·중점·하이픈 차이는 검색 쪽에서 흡수하므로(tagNormKey), 여기서는 읽기 쉬운 형태로 적는다.
    - 정식명에 이미 들어 있는 문자열은 넣을 필요가 없다('삼성전자'에 '삼성', 'SK AX'에 'SK').
    - 제품·모델명은 그 이름으로 기업을 찾는 사람이 많은 것만 넣는다(엑사원, 솔라, 챗GPT). */
@@ -21,6 +24,7 @@ const COMPANY_ALIAS = {
   'Cloudflare': ['클라우드플레어', '클플'],
   'Cohere': ['코히어'],
   'Mistral AI': ['미스트랄', 'Mistral'],
+  'DeepSeek': ['딥시크', '딥식'],
   '문샷 AI': ['문샷', 'Moonshot', '키미', 'Kimi'],
   '메타': ['Meta', '페이스북', 'Facebook', '인스타그램', '라마', 'Llama'],
   '세일즈포스': ['Salesforce'],
@@ -70,6 +74,7 @@ const COMPANY_ALIAS = {
   '라이너': ['Liner'],
   '메가존클라우드': ['메가존', 'Megazone'],
   '마키나락스': ['MakinaRocks'],
+  '노타': ['Nota', '노타AI'],
   '마인드로직': ['Mindlogic'],
   '셀렉트스타': ['Selectstar', '다투모', 'DATUMO'],
   '아크릴': ['Acryl'],
@@ -83,6 +88,27 @@ const COMPANY_ALIAS = {
   'BHSN': ['비에이치에스엔'],
   // '클라이온' — 확인된 영문·약칭 표기가 없어 비워 둔다. 확인되면 여기에 추가.
 };
+
+/* 표기 정규화는 ontology.js 의 tagNormKey 를 쓴다. 다만 관리자 페이지는 사전만 읽으려고
+   이 파일을 싣고 ontology.js 는 싣지 않으므로, 없을 때를 대비해 같은 규칙을 한 번 더 둔다. */
+function aliasNormKey(s) {
+  if (typeof tagNormKey === 'function') return tagNormKey(s);
+  return String(s == null ? '' : s).toLowerCase().replace(/[\s·・\-_,.，、/()]/g, '');
+}
+
+/* D1(/api/company-aliases)에서 받은 별칭. 그 기업 항목이 있으면 시드 사전 대신 이것을 쓴다.
+   행이 없는 기업은 시드 사전을 그대로 쓰므로, 관리자가 손대지 않은 기업도 검색이 된다. */
+let ALIAS_FROM_DB = null;
+function applyCompanyAliases(map) {
+  ALIAS_FROM_DB = map && typeof map === 'object' && !Array.isArray(map) ? map : null;
+}
+function aliasesFor(name) {
+  if (ALIAS_FROM_DB && Object.prototype.hasOwnProperty.call(ALIAS_FROM_DB, name)) {
+    const list = ALIAS_FROM_DB[name];
+    return Array.isArray(list) ? list : [];
+  }
+  return COMPANY_ALIAS[name] || [];
+}
 
 /* 검색어가 기업명 또는 별칭에 걸리는가.
 
@@ -99,7 +125,7 @@ function matchesCompanyName(name, q) {
   const key = tagNormKey(q);
   if (String(name).toLowerCase().includes(raw)) return true;
   if (key && tagNormKey(name).startsWith(key)) return true;
-  return (COMPANY_ALIAS[name] || []).some((a) => {
+  return aliasesFor(name).some((a) => {
     const alias = String(a).toLowerCase();
     return alias.startsWith(raw) || (key && tagNormKey(a).startsWith(key));
   });

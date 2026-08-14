@@ -433,10 +433,23 @@ async function loadDartMappings() {
 function dartRow(name, meta) {
   let ovCeo = '';
   if (meta && meta.overrides) { try { ovCeo = JSON.parse(meta.overrides).ceo || ''; } catch { /* skip */ } }
+  // 별칭 — D1 company_meta.aliases. NULL 이면 코드의 시드 사전이 쓰이는 상태라 입력칸은 비워 둔다.
+  let aliasList = null;
+  if (meta && meta.aliases) { try { const j = JSON.parse(meta.aliases); if (Array.isArray(j)) aliasList = j; } catch { /* skip */ } }
   const search = el('input', { class: 'field dart-search', type: 'text', placeholder: 'DART 기업 검색 (이름/종목코드)…', autocomplete: 'off' });
   const dropdown = el('div', { class: 'dart-dd hidden absolute z-10 left-0 right-0 mt-1 bg-white border border-ink/10 rounded-xl shadow-xl max-h-56 overflow-auto' });
   const current = el('div', { class: 'text-xs mt-1' });
   const ceo = el('input', { class: 'field dart-ceo', type: 'text', placeholder: '대표자 보정(선택)', value: ovCeo });
+  const alias = el('input', {
+    class: 'field dart-alias', type: 'text', value: (aliasList || []).join(', '),
+    placeholder: '검색 별칭, 쉼표로 구분 (예: 엔비디아, NVIDIA코리아)',
+  });
+  const aliasHint = el('div', {
+    class: 'text-[11px] opacity-55 mt-1',
+    text: aliasList
+      ? '검색 별칭 — 비우고 저장하면 별칭 없음으로 처리됩니다.'
+      : '검색 별칭 — 미설정(코드 기본값 사용). 입력해 저장하면 이 값이 기본값을 대체합니다.',
+  });
   const status = el('span', { class: 'text-xs ml-1' });
   const saveBtn = el('button', { type: 'button', class: 'btn flex-none bg-ink text-white px-4 py-2 hover:bg-lime hover:text-ink', text: '저장' });
 
@@ -445,6 +458,7 @@ function dartRow(name, meta) {
     current,
     el('div', { class: 'relative mt-2' }, [search, dropdown]),
     el('div', { class: 'flex items-center gap-2 mt-2' }, [ceo, saveBtn, status]),
+    el('div', { class: 'mt-2 pt-2 border-t border-ink/5' }, [alias, aliasHint]),
   ]);
   row.dataset.corp = meta && meta.corp_code ? meta.corp_code : '';
 
@@ -498,14 +512,19 @@ function dartRow(name, meta) {
     status.style.color = '#111';
     status.textContent = '저장 중…';
     try {
-      const r = await API.saveCompanyMeta({ name, corpCode: row.dataset.corp || '', overrides: { ceo: ceo.value.trim() } }, adminPin);
+      const aliases = alias.value.split(',').map((a) => a.trim()).filter(Boolean);
+      const r = await API.saveCompanyMeta(
+        { name, corpCode: row.dataset.corp || '', overrides: { ceo: ceo.value.trim() }, aliases },
+        adminPin
+      );
       status.style.color = '#7ba500';
       // 서버가 DART 개황으로 확인한 법인명을 그대로 보여준다 — 정적 목록이 낙후돼도 실체가 드러난다.
       const v = r && r.verified;
-      status.textContent = v
+      status.textContent = (v
         ? '저장됨 · ' + v.name + (v.stockCode ? ' (' + v.stockCode + ')' : ' (비상장)')
-        : '저장됨';
-      toast(name + ' 연결 저장' + (v ? ' → ' + v.name : ''), true);
+        : '저장됨') + ' · 별칭 ' + aliases.length + '개';
+      aliasHint.textContent = '검색 별칭 — 비우고 저장하면 별칭 없음으로 처리됩니다.';
+      toast(name + ' 저장' + (v ? ' → ' + v.name : '') + (aliases.length ? ' · 별칭 ' + aliases.length + '개' : ''), true);
     } catch (e) {
       if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
       status.style.color = '#dc2626';

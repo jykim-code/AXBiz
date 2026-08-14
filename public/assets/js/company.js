@@ -55,7 +55,13 @@ function scrollToTop(id) {
 }
 
 async function init() {
-  try { REPORTS = await API.all(); } catch { REPORTS = []; }
+  // 별칭은 검색에만 쓰이므로 실패해도 진행한다 — 그 경우 company-alias.js 의 시드 사전으로 검색한다.
+  const [reports, aliases] = await Promise.all([
+    API.all().catch(() => []),
+    API.companyAliases().catch(() => null),
+  ]);
+  REPORTS = reports;
+  applyCompanyAliases(aliases);
   ONT = buildOntology(REPORTS);
 
   const name = getParam('name');

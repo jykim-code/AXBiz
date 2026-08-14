@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS company_meta (
   name       TEXT PRIMARY KEY,                 -- reports.companies[].name 과 매칭
   corp_code  TEXT,                             -- DART corp_code (8자리), NULL=미지정
   overrides  TEXT,                             -- 회사정보 보정 JSON(예: {"ceo":"..."}) — DART 오류·관리자 수정용
+  aliases    TEXT,                             -- 검색 별칭 JSON 배열(예: ["엔비디아"])
+                                               --   NULL=미설정(코드의 시드 사전 사용), '[]'=별칭 없음으로 명시
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
