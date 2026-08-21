@@ -952,10 +952,10 @@ function renderWeekly() {
   }
 
   h += '<div class="bg-white rounded-2xl border border-ink/5 shadow p-5">' +
-    '<div class="flex items-center justify-between mb-1.5"><div class="label">이번 주 한 줄</div>' +
+    '<div class="flex items-center justify-between mb-1.5"><div class="label">금주 정리 (페이지 최상단)</div>' +
     '<button type="button" id="wkAiOverview" class="text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
     '<textarea id="wkOverview" class="field" rows="2" maxlength="400">' + escapeHtml(p.overview || '') + '</textarea>' +
-    '<div class="flex items-center justify-between mt-4 mb-1.5"><div class="label">한컴 관점 이번 주 결론 · 한 줄 = 불릿 1개 (2~3개)</div>' +
+    '<div class="flex items-center justify-between mt-4 mb-1.5"><div class="label">금주 결론 · 한컴 관점 · 한 줄 = 불릿 1개 (2~3개)</div>' +
     '<button type="button" id="wkAiConclusion" class="text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
     '<textarea id="wkConclusion" class="field" rows="4" placeholder="한 줄에 하나씩">' + escapeHtml((p.hancomConclusion || []).join('\n')) + '</textarea>' +
     '</div>';

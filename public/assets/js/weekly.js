@@ -20,8 +20,8 @@ function statBox(value, unit, caption, extraCls) {
 // 주간 발행물에서 더 읽을 값이 있다. stats.delta 는 서버가 계속 계산하지만 화면에 쓰지 않는다.
 function statsHTML(s) {
   const nc = (s.newCompanies || []).length;
-  return '<div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-8">' +
-    statBox(s.total || 0, '건', '이번 주 동향') +
+  return '<div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">' +
+    statBox(s.total || 0, '건', '금주 동향') +
     statBox(s.companies || 0, '곳', '등장 기업') +
     statBox(nc, '곳', '신규 기업', nc > 0 ? 'text-lime-600' : 'text-ink/40') +
     statBox(s.picks || 0, '건', '주목 동향') +
@@ -29,8 +29,10 @@ function statsHTML(s) {
 }
 
 /* ===== 주목 동향 카드 =====
-   접힘 = 훑는 사람용(제목 + 왜 주목하나 + 주요내용 2불릿) / 펼침 = 대시보드 카드와 같은 전문.
-   접힘 미리보기는 펼치면 숨겨 같은 불릿이 두 번 보이지 않게 한다. */
+   **기본 펼침**이다(2026-08-21 사용자 지시). 단톡방에서 들어온 사람은 평소 대시보드를 보지 않으므로
+   이 페이지만 읽고 끝낼 수 있어야 한다 — 주요내용·시사점·한컴 인사이트를 클릭 없이 보여 준다.
+   접으면 훑기용 요약(제목 + 왜 주목하나 + 주요내용 2불릿)만 남는다. 접힘 미리보기는 펼친 상태에서
+   숨겨 같은 불릿이 두 번 보이지 않게 한다(CSS .wk-open .wk-preview). */
 const PREVIEW_POINTS = 2;
 
 function pickHTML(p, i) {
@@ -38,8 +40,8 @@ function pickHTML(p, i) {
   const preview = (p.keyPoints || []).slice(0, PREVIEW_POINTS);
   const detail = typeof entryDetailHTML === 'function' ? entryDetailHTML(p) : '';
 
-  let h = '<article class="wk-item bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 overflow-hidden">';
-  h += '<div class="wk-toggle p-5 sm:p-6 cursor-pointer" role="button" tabindex="0" aria-expanded="false">';
+  let h = '<article class="wk-item' + (detail ? ' wk-open' : '') + ' bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 overflow-hidden">';
+  h += '<div class="wk-toggle p-5 sm:p-6 cursor-pointer" role="button" tabindex="0" aria-expanded="' + (detail ? 'true' : 'false') + '">';
   h += '<div class="flex items-center gap-2 mb-2">' +
     '<span class="font-display font-bold text-lime-600 text-sm flex-none">' + (i + 1) + '</span>' +
     '<a href="/company?name=' + encodeURIComponent(p.company) + '" class="font-display font-bold text-lg tracking-tight hover:text-lime-600 min-w-0 truncate">' + escapeHtml(p.company) + '</a>' +
@@ -59,7 +61,7 @@ function pickHTML(p, i) {
       '<span class="text-[11px] opacity-75 bg-beige border border-ink/5 rounded-full px-2.5 py-0.5">#' + escapeHtml(t) + '</span>').join('') + '</div>';
   if (detail)
     h += '<div class="flex items-center gap-1 text-[11px] font-bold text-lime-600">' +
-      '<span class="wk-more">자세히</span>' +
+      '<span class="wk-more">접기</span>' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" class="wk-chev w-3.5 h-3.5 transition-transform"><path d="m6 9 6 6 6-6"/></svg></div>';
   h += '</div>';
   if (detail) h += '<div class="wk-body"><div class="px-5 sm:px-6 pb-6">' + detail + '</div></div>';
@@ -156,32 +158,33 @@ function renderEdition(d) {
     '<p class="text-sm text-ink/55 mt-2">' + escapeHtml(md(d.start) + ' ~ ' + md(d.end)) +
     (d.publishedAt ? ' · 발행 ' + escapeHtml(String(d.publishedAt).slice(0, 10)) : '') + '</p></div>';
 
-  h += statsHTML(s);
-
-  // 이번 주 한 줄
+  // 금주 정리 + 금주 결론을 최상단에 둔다(2026-08-21 사용자 지시).
+  // 단톡방에서 들어온 사람은 평소 대시보드를 보지 않으므로, 스크롤하지 않고도 한 주의 요지와
+  // 한컴 관점 결론까지 읽히게 한다. 수치와 개별 동향은 그 뒤에 온다.
   if (p.overview)
-    h += '<div class="bg-ink text-white rounded-[24px] p-6 sm:p-7">' +
-      '<div class="text-[10px] font-bold uppercase tracking-widest text-lime mb-2.5">이번 주 한 줄</div>' +
+    h += '<div class="bg-ink text-white rounded-[24px] p-6 sm:p-7 mb-4">' +
+      '<div class="text-[10px] font-bold uppercase tracking-widest text-lime mb-2.5">금주 정리</div>' +
       '<p class="text-lg sm:text-xl font-display font-semibold tracking-tight leading-snug">' + escapeHtml(p.overview) + '</p></div>';
 
-  // 주목 동향
+  if ((p.hancomConclusion || []).length)
+    h += '<div class="rounded-[24px] bg-lime/15 border border-lime p-5 sm:p-6 mb-8">' +
+      '<div class="text-[10px] font-bold uppercase tracking-widest text-lime-600 mb-3">금주 결론 · 한컴 관점</div>' +
+      '<ul class="space-y-2.5">' +
+      p.hancomConclusion.map((x) =>
+        '<li class="text-[14px] leading-[1.8] text-ink/90 pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-[11px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime-600">' +
+        escapeHtml(x) + '</li>').join('') + '</ul></div>';
+
+  h += statsHTML(s);
+
+  // 주목 동향 — 본문(주요내용·시사점·한컴 인사이트)까지 기본 펼침
   if (picks.length) {
     h += secHead('Picks', '주목 동향', s.total ? '전체 ' + s.total + '건 중 ' + picks.length + '건' : '');
     h += '<div class="space-y-4">' + picks.map(pickHTML).join('') + '</div>';
   }
 
-  // 한컴 관점 결론
-  if ((p.hancomConclusion || []).length) {
-    h += secHead('Hancom', '이번 주 결론', '');
-    h += '<div class="rounded-[24px] bg-lime/15 border border-lime p-5 sm:p-6"><ul class="space-y-2.5">' +
-      p.hancomConclusion.map((x) =>
-        '<li class="text-[14px] leading-[1.8] text-ink/90 pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-[11px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime-600">' +
-        escapeHtml(x) + '</li>').join('') + '</ul></div>';
-  }
-
   // 키워드
   if ((s.topTags || []).length) {
-    h += secHead('Keywords', '이번 주 키워드', '');
+    h += secHead('Keywords', '금주 키워드', '');
     h += '<div class="flex flex-wrap gap-2">' + s.topTags.map((t) =>
       '<span class="text-[13px] bg-white border border-ink/10 rounded-full pl-3.5 pr-2 py-1.5 inline-flex items-center gap-1.5">' +
       '#' + escapeHtml(t.tag) +
@@ -189,7 +192,7 @@ function renderEdition(d) {
       (t.isNew ? '<span class="text-[9px] font-bold bg-lime text-ink rounded-full px-1.5 py-0.5">NEW</span>' : '') +
       '</span>').join('') + '</div>';
     if ((s.newCompanies || []).length)
-      h += '<p class="text-xs text-ink/55 mt-3">이번 주 처음 편입된 기업: <b class="font-semibold text-ink/75">' + escapeHtml(s.newCompanies.join(', ')) + '</b></p>';
+      h += '<p class="text-xs text-ink/55 mt-3">금주 신규 편입 기업: <b class="font-semibold text-ink/75">' + escapeHtml(s.newCompanies.join(', ')) + '</b></p>';
   }
 
   // 그 외 동향
@@ -197,7 +200,7 @@ function renderEdition(d) {
     h += '<details class="mt-10 group">' +
       '<summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none flex items-center gap-2 border-b border-ink/10 pb-2.5">' +
       '<span class="text-[10px] font-bold uppercase tracking-widest text-lime-600">Others</span>' +
-      '<span class="font-display font-bold text-xl tracking-tight">이번 주 그 외 동향</span>' +
+      '<span class="font-display font-bold text-xl tracking-tight">금주 그 외 동향</span>' +
       '<span class="text-xs text-ink/45">' + others.length + '건</span>' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" class="w-4 h-4 ml-auto text-lime-600 transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6"/></svg>' +
       '</summary>' +
