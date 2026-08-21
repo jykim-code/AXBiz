@@ -14,7 +14,7 @@
 //  - 수치는 항상 코드 집계다. LLM 이 실패해도 수치와 주목 동향은 나온다.
 import { pinOk, forbidden } from '../_auth.js';
 import { entryKey } from '../_publish.js';
-import { stripTrailingPeriod, replaceEmDash, replaceAxisWord } from '../_style.js';
+import { stripTrailingPeriod, replaceEmDash, replaceAxisWord, hasAxisWord } from '../_style.js';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MAX_PICKS = 5;
@@ -220,6 +220,21 @@ ${STYLE}`,
 // reports 에서 승계한 본문에는 걸지 않는다 — 같은 항목이 대시보드와 주간 페이지에서 달라 보이면 안 된다.
 const llmStr = (v, len) => replaceAxisWord(str(v, len));
 
+// 금지 표현(「축」)이 남았으면 한 번 더 받아 본다. 마지막 시도 결과는 그대로 채택하고
+// 호출부가 관리자에게 알린다 — 무엇으로 바꿀지는 문맥마다 달라 기계가 정할 수 없고,
+// 이 화면에는 이유를 직접 쓰는 사람이 이미 붙어 있다.
+async function llmClean(env, system, user, maxTokens) {
+  let last = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const raw = await llm(env, system, user, maxTokens);
+    if (!raw) continue;
+    last = replaceAxisWord(raw);
+    if (!hasAxisWord(last)) return { text: last, warn: null };
+    console.error('/api/weekly axis word remains', 'attempt=' + attempt, last.slice(0, 80));
+  }
+  return { text: last, warn: last ? 'AXIS_WORD' : null };
+}
+
 async function llm(env, system, user, maxTokens) {
   if (!env.OPENROUTER_API_KEY || !env.OPENROUTER_MODEL) return null;
   try {
@@ -399,23 +414,23 @@ export async function onRequestPost({ request, env }) {
       if (kind === 'why') {
         const it = sanitizePick(body?.item);
         if (!it) return Response.json({ error: 'ITEM_REQUIRED' }, { status: 400 });
-        const text = await llm(env, PROMPTS.why, itemContext(it), 400);
-        return Response.json({ text: text ? llmStr(text, 300) : null });
+        const r = await llmClean(env, PROMPTS.why, itemContext(it), 400);
+        return Response.json({ text: r.text ? llmStr(r.text, 300) : null, warn: r.warn });
       }
       if (!picks.length) return Response.json({ error: 'PICKS_REQUIRED' }, { status: 400 });
 
       if (kind === 'overview') {
         const ctx = picks.map((p, i) => `${i + 1}) ${p.company}: ${p.title}${p.why ? ' / 주목 이유: ' + p.why : ''}`).join('\n');
-        const text = await llm(env, PROMPTS.overview, `기간: ${start} ~ ${end}\n\n${ctx}`, 500);
-        return Response.json({ text: text ? llmStr(text, 400) : null });
+        const r = await llmClean(env, PROMPTS.overview, `기간: ${start} ~ ${end}\n\n${ctx}`, 500);
+        return Response.json({ text: r.text ? llmStr(r.text, 400) : null, warn: r.warn });
       }
       // conclusion — 불릿 여러 개
       const ctx = picks.map((p) => `[${p.company}] ${p.title}\n한컴인사이트: ${p.hancomInsight.join(' / ') || '-'}\n주목 이유: ${p.why || '-'}`).join('\n\n');
-      const text = await llm(env, PROMPTS.conclusion, `기간: ${start} ~ ${end}\n\n${ctx}`, 700);
-      const items = text
-        ? text.split('\n').map((l) => llmStr(l.replace(/^[-·•*\s]+/, ''), 300)).filter(Boolean).slice(0, 3)
+      const rc = await llmClean(env, PROMPTS.conclusion, `기간: ${start} ~ ${end}\n\n${ctx}`, 700);
+      const items = rc.text
+        ? rc.text.split('\n').map((l) => llmStr(l.replace(/^[-·•*\s]+/, ''), 300)).filter(Boolean).slice(0, 3)
         : [];
-      return Response.json({ items });
+      return Response.json({ items, warn: rc.warn });
     }
 
     /* --- 초안 저장 (발행 상태는 건드리지 않는다) --- */

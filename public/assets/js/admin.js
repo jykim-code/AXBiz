@@ -842,6 +842,12 @@ let WK = null;      // 서버 초안 상태 {week,start,end,label,status,issueNo
 let WK_PICKS = [];  // 선택 항목(순서 유지) [{key,title,why}]
 
 const wkStatusLabel = (s) => (s === 'published' ? '발행됨' : s === 'draft' ? '초안 저장됨' : '아직 만들지 않음');
+
+// 서버가 두 번 받아 봐도 「축」 표현이 남은 경우. 무엇으로 바꿀지는 문맥마다 달라
+// 기계가 정할 수 없으므로 사람에게 넘긴다(CLAUDE.md 금지 표현).
+function wkWarnAxis(warn) {
+  if (warn === 'AXIS_WORD') toast('AI 초안에 금지 표현 「축」이 남아 있습니다. 경쟁 지점·비교 기준·차별화 요소로 직접 고쳐 주세요', false);
+}
 const wkCand = (key) => (WK && WK.candidates ? WK.candidates.find((c) => c.key === key) : null);
 
 function openWeeklyTab() {
@@ -1041,7 +1047,7 @@ function wkBind() {
       btn.textContent = '생성 중…'; btn.disabled = true;
       try {
         const r = await API.weeklyAction({ action: 'assist', kind: 'why', week: WK.week, item: Object.assign({}, c, { title: WK_PICKS[i].title }) }, adminPin);
-        if (r.text) { why.value = r.text; len.textContent = r.text.length; WK_PICKS[i].why = r.text; }
+        if (r.text) { why.value = r.text; len.textContent = r.text.length; WK_PICKS[i].why = r.text; wkWarnAxis(r.warn); }
         else toast('AI 초안을 받지 못했습니다. 직접 써 주세요', false);
       } catch (e) { toast('AI 초안 실패: ' + (e.status || e.message), false); }
       btn.textContent = 'AI 초안'; btn.disabled = false;
@@ -1060,7 +1066,7 @@ function wkBind() {
       try {
         const r = await API.weeklyAction({ action: 'assist', kind, week: WK.week, picks: payload.picks }, adminPin);
         const v = join ? (r.items || []).join('\n') : r.text;
-        if (v) el2.value = v; else toast('AI 초안을 받지 못했습니다. 직접 써 주세요', false);
+        if (v) { el2.value = v; wkWarnAxis(r.warn); } else toast('AI 초안을 받지 못했습니다. 직접 써 주세요', false);
       } catch (e) { toast('AI 초안 실패: ' + (e.status || e.message), false); }
       btn.textContent = 'AI 초안'; btn.disabled = false;
     });
