@@ -26,14 +26,12 @@
   body { background:#f7f5f0; color:#111; font-family:'Inter','Pretendard',sans-serif; -webkit-font-smoothing:antialiased; }
   h1,h2,h3,h4,h5,h6 { font-family:'Space Grotesk','Pretendard',sans-serif; }
   ::selection { background:#c8f200; color:#111; }
-  /* 접힘/펼침 — 대시보드 카드와 같은 max-height 컬랩스(본문이 한 px도 새지 않음) */
-  .wk-body { max-height: 0; overflow: hidden; transition: max-height .4s ease; }
-  .wk-open .wk-body { max-height: 6000px; }
-  .wk-open .wk-chev { transform: rotate(180deg); }
-  /* 접힘 미리보기(주요내용 2불릿)는 펼치면 숨긴다 — 펼침 본문이 같은 불릿을 전부 담는다 */
-  .wk-open .wk-preview { display: none; }
-  .wk-toggle:focus-visible { outline: 2px solid #7ba500; outline-offset: 2px; }
-  @media (prefers-reduced-motion: reduce) { .wk-body { transition: none; } }
+  /* 매거진 인덱스 조판(F안) — 카드(그림자·라운드 박스)를 쓰지 않고 굵은 선·얇은 선·활자 위계로만
+     구분한다. 대시보드가 카드 문법을 쓰는 것과 의도적으로 다르다: 이 화면은 「발행물」이다. */
+  .rule      { border-top:2px solid #111; }
+  .rule-thin { border-top:1px solid rgba(17,17,17,.14); }
+  /* 픽 섹션의 큰 순번 — 라이트 배경에서는 윤곽선만 남겨 본문을 가리지 않게 한다 */
+  .num-out   { -webkit-text-stroke:1.5px rgba(17,17,17,.22); color:transparent; }
 </style>
 </head>
 <body class="min-h-screen bg-beige">
@@ -44,7 +42,9 @@
     <span class="font-display font-semibold text-sm">위클리 픽</span>
   </header>
 
-  <main class="max-w-[820px] w-full mx-auto px-5 sm:px-8 py-8 sm:py-10">
+  <!-- 폭·여백은 각 블록이 스스로 잡는다. 픽 섹션이 전체폭 다크로 깔려야 하므로
+       main 에 max-width 를 두지 않는다. -->
+  <main>
     <div id="wkRoot">
       <div class="text-sm opacity-50 py-16 text-center">불러오는 중…</div>
     </div>

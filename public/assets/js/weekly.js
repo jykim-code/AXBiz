@@ -1,136 +1,148 @@
 /* 위클리 픽 — 단톡방 주 1회 공유용 발행물 페이지.
    이름 근거: 대시보드 항목에 「한컴 인사이트」가 있어 「주간 인사이트」와 겹쳐 읽혔다(2026-08-21 사용자 지시).
    「픽」이 이 페이지의 정체(사람이 골라 이유를 붙인 것)를 그대로 말한다.
-   대시보드(기업 축)와 달리 한 주를 발행물로 자른다: 선별 · 주목(Pick) 이유 · 교차 종합 · 회차 아카이브.
-   본문(주요내용·시사점·한컴 인사이트)은 entry.js 의 entryDetailHTML 을 그대로 재사용한다 —
-   대시보드 카드 펼침과 같은 구성이어야 두 화면이 어긋나지 않는다.
-   링크로 밖으로 내보내지 않고 카드 펼침으로 페이지 안에서 완결시킨다(실제로 링크는 잘 눌리지 않는다). */
 
+   조판은 F안 「매거진 인덱스」다(2026-08-21 사용자 선택, 기준 파일 weekly-preview-f.html).
+   카드(그림자·라운드 박스)를 쓰지 않고 굵은 선·얇은 선·활자 위계로만 구분한다. 대시보드가
+   카드 문법을 쓰는 것과 **의도적으로** 다르다 — 이 화면은 기업 축의 대시보드가 아니라 발행물이다.
+   그래서 본문도 entry.js 의 entryDetailHTML(베이지·라임 박스)을 쓰지 않고 3열 목록으로 직접 그린다.
+
+   순서: 헤더 → 금주 한 줄 요약 → 수치 4칸 → 기업 목차 → 한컴 관점 → 금주 한눈에 →
+         픽 전체폭 섹션(짝수 다크 반전) → 전체 보기 → 푸터 → 지난 회차 */
+
+const WRAP = 'max-w-[1000px] mx-auto px-5 sm:px-8';
 const md = (d) => (d && d.length >= 10 ? +d.slice(5, 7) + '/' + +d.slice(8, 10) : '');
 const shortLabel = (label) => String(label || '').replace(/^\d{4}년\s*/, ''); // '2026년 8월 3주' → '8월 3주'
+// 회차·순번 2자리 표기. pad2 는 util.js 에 이미 있어 여기서 다시 선언하면 같은 페이지에서
+// const 재선언 SyntaxError 가 나 페이지 전체가 죽는다 — 이름을 달리 둔다.
+const no2 = (n) => String(n).padStart(2, '0');
+const NEW_CO_MAX = 6; // 신규 편입 기업을 이만큼만 보이고 나머지는 토글로 펼친다
 
+// 본문 세 카테고리. 대시보드와 같은 순서·이름을 쓴다(정보 성격의 위계: 사실 → 해석 → 판단).
+const BODY = [
+  { k: 'keyPoints', label: '주요 내용' },
+  { k: 'implications', label: '시사점' },
+  { k: 'hancomInsight', label: '한컴 인사이트' },
+];
 
-/* ===== 상단 다크 히어로 =====
-   금주 한 줄 요약 · 한컴 관점 결론 · 수치를 한 덩어리로 담는다(2026-08-21 사용자 선택).
-   이전 구성은 다크 카드 → 라임 박스 → 흰 카드로 색 블록이 연달아 부딪쳤고, 라임 박스가
-   「금주 결론」·「주목(Pick) 이유」·「한컴 인사이트」 세 곳에 반복돼 라임이 가진 신호가 흐려졌다.
-   대시보드 지식그래프 카드의 문법(다크 바탕 + 라임 숫자 + 하단 통계 띠)을 그대로 차용해
-   두 화면이 같은 디자인 언어를 쓰게 한다. */
-function heroStat(value, unit, caption) {
-  return '<div>' +
-    '<div class="font-display font-bold text-3xl sm:text-4xl text-lime leading-none">' + escapeHtml(value) +
-    (unit ? '<span class="text-base font-semibold opacity-60 ml-0.5">' + escapeHtml(unit) + '</span>' : '') + '</div>' +
-    '<div class="text-[10px] font-semibold uppercase tracking-widest opacity-70 mt-2">' + escapeHtml(caption) + '</div></div>';
+/* ===== 헤더 ===== */
+function headerHTML(d) {
+  return '<div class="' + WRAP + ' pt-12">' +
+    '<div class="flex items-end justify-between rule-thin pb-4 mb-8">' +
+    '<div>' +
+    '<div class="text-[11px] font-bold uppercase tracking-[.2em] text-lime-600 mb-1.5">Weekly Picks' +
+    (d.issueNo ? ' No.' + no2(d.issueNo) : '') + '</div>' +
+    '<h1 class="text-[40px] sm:text-[52px] font-bold tracking-tighter leading-none">' + escapeHtml(d.label) + '</h1></div>' +
+    '<div class="text-right text-[12px] text-ink/45 leading-relaxed flex-none pl-4">' +
+    escapeHtml(md(d.start) + ' ~ ' + md(d.end)) +
+    (d.publishedAt ? '<br/>발행 ' + escapeHtml(String(d.publishedAt).slice(0, 10)) : '') +
+    '</div></div>';
 }
 
-// 전주 대비 증감은 쓰지 않는다(2026-08-21 사용자 지시). 데이터 수집일이 주마다 달라
-// 증감이 시장 변화가 아니라 수집량 차이를 보여 주는 경우가 있고, 「그 주에 새로 들어온 기업」이
-// 주간 발행물에서 더 읽을 값이 있다. stats.delta 는 서버가 계속 계산하지만 화면에 쓰지 않는다.
-function heroHTML(d, p, s) {
-  let h = '<div class="bg-ink text-white rounded-[28px] p-6 sm:p-8 relative overflow-hidden mb-4">' +
-    '<div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-lime/40 to-transparent"></div>' +
-    '<div class="flex items-baseline gap-2 mb-4">' +
-    '<span class="text-[11px] font-bold uppercase tracking-widest text-lime">Weekly Picks</span>' +
-    (d.issueNo ? '<span class="text-[11px] font-bold opacity-60">· ' + d.issueNo + '호</span>' : '') + '</div>';
-
-  // 요약 글자 크기는 본문보다 한 단만 크게 둔다(2026-08-21 사용자 지시: 이전 text-2xl 은 너무 컸다).
-  if (p.overview)
-    h += '<p class="text-[16px] sm:text-[17px] font-display font-semibold tracking-tight leading-[1.65]">' + escapeHtml(p.overview) + '</p>';
-
-  if ((p.hancomConclusion || []).length)
-    h += '<div class="mt-6">' +
-      '<div class="text-[10px] font-bold uppercase tracking-widest text-lime mb-2.5">한컴 관점</div>' +
-      '<ul class="space-y-2">' + p.hancomConclusion.map((x) =>
-        '<li class="text-[13.5px] leading-[1.75] text-white/85 pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-[10px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime">' +
-        escapeHtml(x) + '</li>').join('') + '</ul></div>';
-
-  const nc = (s.newCompanies || []).length;
-  h += '<div class="mt-7 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-5">' +
-    heroStat(s.total || 0, '건', '금주 동향') +
-    heroStat(s.companies || 0, '곳', '등장 기업') +
-    heroStat(nc, '곳', '신규 기업') +
-    heroStat(s.picks || 0, '건', 'Weekly Picks') +
+/* ===== 수치 =====
+   기업 목차 바로 앞에 둔다(2026-08-21 사용자 지시). 박스·칩을 쓰지 않고 세로 얇은 선으로만
+   나눈다 — 목차를 가로선으로 나누는 것과 같은 문법이다.
+   전주 대비 증감은 쓰지 않는다: 데이터 수집일이 주마다 달라 증감이 시장 변화가 아니라 수집량
+   차이를 보여 주는 경우가 있다(실측 -7건). stats.delta 는 서버가 계산하지만 화면에 쓰지 않는다. */
+function statsHTML(s) {
+  return '<div class="rule pt-5 mb-10 grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-ink/10">' +
+    [['금주 동향', s.total || 0], ['등장 기업', s.companies || 0],
+      ['신규 기업', (s.newCompanies || []).length], ['Weekly Picks', s.picks || 0]]
+      .map(([k, v], i) => '<div class="' + (i === 0 ? 'sm:pr-6' : 'sm:px-6') + ' py-3 sm:py-0">' +
+        '<div class="font-display font-bold text-[34px] sm:text-[40px] leading-none tracking-tighter">' + v + '</div>' +
+        '<div class="text-[10px] font-semibold uppercase tracking-widest text-ink/40 mt-2">' + k + '</div></div>').join('') +
     '</div>';
-  return h + '</div>';
 }
 
-/* ===== 금주 한눈에 (흰 카드) =====
-   키워드 · 신규 편입 기업 · 4주 추이를 라벨 + 내용 3행으로 둔다. 이전에는 실선으로 4단을 쌓아
-   입력 폼처럼 보였다. 수치는 히어로로 올라갔으므로 여기는 「부가 정보」 성격만 남는다. */
+/* ===== 기업 목차 — 무엇이 실렸는지 3초 안에 파악되게 ===== */
+function indexHTML(picks) {
+  return '<div class="rule pt-3">' + picks.map((p, i) =>
+    '<a href="#wk' + i + '" class="group flex items-baseline gap-4 py-3.5 rule-thin first:border-t-0 hover:bg-lime/20 transition-colors">' +
+    '<span class="font-display font-bold text-[13px] text-lime-600 w-6 flex-none">' + no2(i + 1) + '</span>' +
+    '<span class="font-display font-bold text-[20px] sm:text-[24px] tracking-tight flex-none">' + escapeHtml(p.company) + '</span>' +
+    '<span class="text-[13px] text-ink/55 hidden sm:block truncate flex-1">' + escapeHtml(p.title || '') + '</span>' +
+    '<span class="text-[11px] text-ink/35 ml-auto flex-none">' + escapeHtml(p.date || '') + '</span></a>').join('') + '</div>';
+}
+
+/* ===== 라벨 / 내용 2열 행 — 한컴 관점·금주 한눈에가 공유하는 문법 ===== */
+const labelRow = (label, sub, content) =>
+  '<div class="grid sm:grid-cols-[1fr,1fr] gap-x-10 gap-y-3 rule pt-5">' +
+  '<div><div class="text-[11px] font-bold uppercase tracking-widest text-lime-600 mb-2">' + escapeHtml(label) + '</div>' +
+  (sub ? '<p class="text-[13px] text-ink/45 leading-relaxed">' + escapeHtml(sub) + '</p>' : '') + '</div>' +
+  '<div>' + content + '</div></div>';
+
 const glanceRow = (label, content) =>
-  '<div class="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-4">' +
-  '<div class="text-[10px] font-bold uppercase tracking-widest text-ink/35 sm:w-20 sm:flex-none sm:pt-1">' + escapeHtml(label) + '</div>' +
+  '<div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-5 py-3 rule-thin first:border-t-0">' +
+  '<div class="text-[10px] font-bold uppercase tracking-widest text-ink/35 sm:w-24 sm:flex-none sm:pt-1">' + escapeHtml(label) + '</div>' +
   '<div class="flex-1 min-w-0">' + content + '</div></div>';
 
-// 막대 높이는 4주 최대값 기준 비율. 건수가 0인 주도 칸을 남겨 「비어 있던 주」가 보이게 한다.
+// 4주 추이 — 막대 대신 숫자와 연결선. 선으로 구분하는 이 화면의 문법과 맞춘다.
 function trendHTML(trend) {
   const t = (trend || []).filter((x) => x && x.start);
   if (t.length < 2) return '';
-  const max = Math.max(...t.map((x) => x.total || 0), 1);
-  return '<div class="flex items-end gap-2.5">' + t.map((x, i) => {
+  return '<div class="flex items-center gap-2">' + t.map((x, i) => {
     const last = i === t.length - 1;
-    const pct = Math.max(6, Math.round(((x.total || 0) / max) * 100));
-    return '<div class="flex flex-col items-center gap-1">' +
-      '<div class="text-[10px] font-display font-bold ' + (last ? 'text-ink' : 'text-ink/35') + '">' + (x.total || 0) + '</div>' +
-      '<div class="w-8 h-8 flex items-end"><div class="w-full rounded-t-[3px] ' + (last ? 'bg-lime' : 'bg-ink/[.12]') + '" style="height:' + pct + '%"></div></div>' +
-      '<div class="text-[9px] ' + (last ? 'font-semibold text-ink/60' : 'text-ink/30') + '">' + escapeHtml(md(x.start)) + '</div>' +
-      '</div>';
+    return (i ? '<span class="w-5 border-t border-ink/20 flex-none"></span>' : '') +
+      '<span class="font-display font-bold text-[15px] ' + (last ? 'text-ink' : 'text-ink/40') + '">' + (x.total || 0) +
+      '<span class="block text-[9px] font-sans font-normal ' + (last ? 'text-ink/50' : 'text-ink/25') + ' mt-0.5">' +
+      escapeHtml(md(x.start)) + '</span></span>';
   }).join('') + '</div>';
 }
 
-/* ===== 주목 동향 카드 =====
-   **기본 펼침**이다(2026-08-21 사용자 지시). 단톡방에서 들어온 사람은 평소 대시보드를 보지 않으므로
-   이 페이지만 읽고 끝낼 수 있어야 한다 — 주요내용·시사점·한컴 인사이트를 클릭 없이 보여 준다.
-   접으면 훑기용 요약(제목 + 주목(Pick) 이유 + 주요내용 2불릿)만 남는다. 접힘 미리보기는 펼친 상태에서
-   숨겨 같은 불릿이 두 번 보이지 않게 한다(CSS .wk-open .wk-preview). */
-const PREVIEW_POINTS = 2;
-const NEW_CO_MAX = 6; // 금주 한눈에의 신규 편입 기업 칩 상한
+/* ===== 픽 — 전체폭 섹션. 짝수 섹션을 다크로 반전해 리듬을 만든다 ===== */
+const EXT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 inline-block ml-0.5 -mt-0.5"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>';
 
 function pickHTML(p, i) {
-  const cat = p.category ? '<span class="text-[10px] font-bold text-lime-600 bg-lime/15 rounded-full px-2 py-0.5 flex-none">' + escapeHtml(p.category) + '</span>' : '';
-  const preview = (p.keyPoints || []).slice(0, PREVIEW_POINTS);
-  const detail = typeof entryDetailHTML === 'function' ? entryDetailHTML(p) : '';
+  const dark = i % 2 === 1;
+  const linkCls = 'underline underline-offset-2 ' + (dark ? 'decoration-white/30 hover:text-lime' : 'decoration-ink/25 hover:text-lime-600');
+  const src = safeUrl(p.sourceUrl), conf = safeUrl(p.confluenceUrl);
 
-  let h = '<article class="wk-item' + (detail ? ' wk-open' : '') + ' bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 overflow-hidden">';
-  h += '<div class="wk-toggle p-5 sm:p-6 cursor-pointer" role="button" tabindex="0" aria-expanded="' + (detail ? 'true' : 'false') + '">';
-  h += '<div class="flex items-center gap-2 mb-2">' +
-    '<span class="font-display font-bold text-lime-600 text-sm flex-none">' + (i + 1) + '</span>' +
-    '<a href="/company?name=' + encodeURIComponent(p.company) + '" class="font-display font-bold text-lg tracking-tight hover:text-lime-600 min-w-0 truncate">' + escapeHtml(p.company) + '</a>' +
-    cat + '<span class="text-[11px] text-ink/45 font-medium ml-auto flex-none">' + escapeHtml(p.date || '') + '</span></div>';
-  if (p.title) h += '<p class="text-[15px] font-bold leading-snug mb-3">' + escapeHtml(p.title) + '</p>';
+  let h = '<section id="wk' + i + '" class="mt-12 py-10 ' + (dark ? 'bg-ink text-white' : '') + '">' +
+    '<div class="' + WRAP + ' grid sm:grid-cols-[120px,1fr] gap-x-8">' +
+    '<div class="font-display font-bold text-[72px] leading-none ' + (dark ? 'text-lime/30' : 'num-out') + '">' + no2(i + 1) + '</div>' +
+    '<div>';
+
+  h += '<div class="flex items-baseline gap-3 mb-2">' +
+    '<a href="/company?name=' + encodeURIComponent(p.company) + '" class="text-[28px] sm:text-[34px] font-display font-bold tracking-tight leading-none hover:text-lime-600">' +
+    escapeHtml(p.company) + '</a>' +
+    '<span class="text-[11px] ' + (dark ? 'text-white/45' : 'text-ink/40') + ' flex-none">' +
+    escapeHtml([p.category, p.date].filter(Boolean).join(' · ')) + '</span></div>';
+
+  if (p.title) h += '<p class="text-[17px] font-semibold leading-snug mb-4 max-w-[50ch]">' + escapeHtml(p.title) + '</p>';
+
   // 「주목(Pick) 이유」 — 이 페이지의 알맹이. 사람이 판단해 쓴 한 줄이며 대시보드에 없는 유일한 정보다.
+  // 박스를 쓰지 않고 라임 좌측 바로 표시한다(카드 문법을 쓰지 않는다는 원칙).
   if (p.why)
-    h += '<div class="rounded-2xl bg-lime/15 border border-lime p-3.5 mb-3">' +
-      '<div class="text-[10px] font-bold tracking-widest text-lime-600 mb-1">주목(Pick) 이유</div>' +
-      '<p class="text-[13.5px] leading-[1.75] text-ink/90">' + escapeHtml(p.why) + '</p></div>';
-  if (preview.length)
-    h += '<ul class="wk-preview space-y-1.5 mb-3">' + preview.map((x) =>
-      '<li class="text-[13px] leading-[1.7] text-ink/70 pl-3 relative before:content-[\'\'] before:absolute before:left-0 before:top-[9px] before:w-1 before:h-1 before:rounded-full before:bg-ink/30">' +
-      escapeHtml(x) + '</li>').join('') + '</ul>';
-  if ((p.tags || []).length)
-    h += '<div class="flex flex-wrap gap-1.5 mb-3">' + p.tags.map((t) =>
-      '<span class="text-[11px] opacity-75 bg-beige border border-ink/5 rounded-full px-2.5 py-0.5">#' + escapeHtml(t) + '</span>').join('') + '</div>';
-  if (detail)
-    h += '<div class="flex items-center gap-1 text-[11px] font-bold text-lime-600">' +
-      '<span class="wk-more">접기</span>' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" class="wk-chev w-3.5 h-3.5 transition-transform"><path d="m6 9 6 6 6-6"/></svg></div>';
-  h += '</div>';
-  if (detail) h += '<div class="wk-body"><div class="px-5 sm:px-6 pb-6">' + detail + '</div></div>';
-  return h + '</article>';
-}
+    h += '<div class="mb-6 pl-4 border-l-2 border-lime max-w-[56ch]">' +
+      '<div class="text-[10px] font-bold tracking-widest ' + (dark ? 'text-lime' : 'text-lime-600') + ' mb-1">주목(Pick) 이유</div>' +
+      '<p class="text-[14px] leading-[1.75]">' + escapeHtml(p.why) + '</p></div>';
 
-/* ===== 섹션 머리 ===== */
-const secHead = (eyebrow, title, aside) =>
-  '<div class="flex items-end justify-between border-b border-ink/10 pb-2.5 mb-4 mt-10">' +
-  '<div class="flex items-baseline gap-2.5">' +
-  (eyebrow ? '<span class="text-[10px] font-bold uppercase tracking-widest text-lime-600">' + escapeHtml(eyebrow) + '</span>' : '') +
-  '<h2 class="font-display font-bold text-xl tracking-tight">' + escapeHtml(title) + '</h2></div>' +
-  (aside ? '<span class="text-xs text-ink/45">' + escapeHtml(aside) + '</span>' : '') + '</div>';
+  // 본문 3열 — 항상 펼쳐 둔다. 단톡방에서 들어온 사람은 평소 대시보드를 보지 않으므로
+  // 이 페이지만 읽고 끝낼 수 있어야 한다(2026-08-21 사용자 지시).
+  const cols = BODY.filter((b) => (p[b.k] || []).length);
+  if (cols.length)
+    h += '<div class="grid sm:grid-cols-3 gap-x-6 gap-y-4">' + cols.map((b) =>
+      '<div><div class="text-[10px] font-bold uppercase tracking-widest ' + (dark ? 'text-lime' : 'text-ink/35') + ' mb-1.5">' + b.label + '</div>' +
+      '<ul class="space-y-1.5 text-[12.5px] leading-[1.7] ' + (dark ? 'text-white/75' : 'text-ink/80') + '">' +
+      p[b.k].map((x) => '<li>' + escapeHtml(x) + '</li>').join('') + '</ul></div>').join('') + '</div>';
+
+  if ((p.tags || []).length)
+    h += '<div class="text-[11px] ' + (dark ? 'text-white/30' : 'text-ink/35') + ' mt-4">' +
+      p.tags.map((t) => '#' + escapeHtml(t)).join(' ') + '</div>';
+
+  if (src || conf)
+    h += '<div class="flex flex-wrap gap-x-5 gap-y-1 text-[12px] mt-3">' +
+      (src ? '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener noreferrer" class="' + linkCls + '">출처 기사' + EXT_ICON + '</a>' : '') +
+      (conf ? '<a href="' + escapeHtml(conf) + '" target="_blank" rel="noopener noreferrer" class="' + linkCls + '">상세 모니터링' + EXT_ICON + '</a>' : '') +
+      '</div>';
+
+  return h + '</div></div></section>';
+}
 
 /* ===== 지난 회차 ===== */
 function prevHTML(prev) {
   if (!prev || !prev.length) return '';
-  return '<div class="mt-10 pt-6 border-t border-ink/10">' +
+  return '<div class="' + WRAP + ' mt-10 rule pt-4">' +
     '<div class="text-[10px] font-bold uppercase tracking-widest text-lime-600 mb-3">지난 회차</div>' +
     '<div class="space-y-1.5">' + prev.map((p) =>
       '<a href="/weekly?w=' + encodeURIComponent(p.week) + '" class="flex items-baseline gap-2.5 group">' +
@@ -143,19 +155,19 @@ function prevHTML(prev) {
 
 /* ===== 공유 텍스트 =====
    단톡방에서 실제로 읽히는 것은 붙여넣은 텍스트다(링크 클릭률은 낮다).
-   「주목(Pick) 이유」가 그대로 → 줄로 들어가 관리자가 쓴 한 줄이 페이지와 텍스트 양쪽을 채운다. */
+   「주목(Pick) 이유」가 그대로 → 줄로 들어가 관리자가 쓴 한 줄이 페이지와 텍스트 양쪽을 채운다.
+   버튼은 관리자 화면에만 있고(2026-08-21 사용자 지시) 이 함수는 그쪽에서 호출한다. */
 function shareText(d) {
   const s = d.stats || {}, p = d.payload || {};
   const picks = p.picks || [];
   const head = '[AX Biz Radar] 위클리 픽' + (d.issueNo ? ' ' + d.issueNo + '호' : '') + ' · ' + shortLabel(d.label);
   const nc = (s.newCompanies || []).length;
-  const nums = '동향 ' + (s.total || 0) + '건 중 주목 ' + picks.length + '건' +
-    (nc ? ' · 신규 기업 ' + nc + '곳' : '');
+  const nums = '동향 ' + (s.total || 0) + '건 중 주목 ' + picks.length + '건' + (nc ? ' · 신규 기업 ' + nc + '곳' : '');
   const body = picks.map((x, i) =>
     (i + 1) + ') ' + x.company + '  ' + (x.title || '') + (x.why ? '\n   → ' + x.why : '')).join('\n');
   const kw = (s.topTags || []).slice(0, 4).map((t) => '#' + t.tag + (t.isNew ? '(NEW)' : '')).join(' ');
   const url = location.origin + '/weekly?w=' + encodeURIComponent(d.week);
-  return [head, nums, '', body, '', kw ? '키워드 ' + kw : '', url].filter((x) => x !== null).join('\n').replace(/\n{3,}/g, '\n\n');
+  return [head, nums, '', body, '', kw ? '키워드 ' + kw : '', url].join('\n').replace(/\n{3,}/g, '\n\n');
 }
 
 async function copyToClipboard(text) {
@@ -182,85 +194,71 @@ async function copyToClipboard(text) {
 function renderEdition(d) {
   const s = d.stats || {}, p = d.payload || {};
   const picks = p.picks || [];
-  let h = '';
+  let h = headerHTML(d);
 
-  // 헤더 — 회차 표기는 다크 히어로가 담당하므로 여기는 주차와 기간만 둔다.
-  // 기간·발행일은 맨 텍스트로 두면 제목에 딸린 부스러기처럼 보여, 아이콘을 붙인 칩으로 만든다
-  // (페이지 전체가 라운드 칩을 쓰므로 같은 문법이다).
-  const chip = (icon, text, strong) =>
-    '<span class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ' +
-    (strong ? 'bg-white border-ink/10 font-semibold' : 'bg-transparent border-ink/[.08] text-ink/50') + '">' +
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 ' +
-    (strong ? 'text-lime-600' : 'text-ink/35') + '">' + icon + '</svg>' + escapeHtml(text) + '</span>';
-  const ICON_CAL = '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>';
-  const ICON_SEND = '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>';
+  // 금주 한 줄 요약 — 이 페이지에서 가장 큰 본문 활자
+  h += '<div class="' + WRAP + '">';
+  if (p.overview)
+    h += '<p class="text-[19px] sm:text-[22px] font-display font-medium leading-[1.55] max-w-[40ch] mb-10">' + escapeHtml(p.overview) + '</p>';
 
-  // 제목과 같은 행에 둔다(2026-08-21 사용자 지시). 좁은 화면에서는 자연히 다음 줄로 넘어간다.
-  h += '<div class="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-2">' +
-    '<h1 class="text-3xl sm:text-4xl font-display font-bold tracking-tight leading-tight">' + escapeHtml(d.label) + '</h1>' +
-    chip(ICON_CAL, md(d.start) + ' ~ ' + md(d.end), true) +
-    (d.publishedAt ? chip(ICON_SEND, '발행 ' + md(String(d.publishedAt).slice(0, 10)), false) : '') +
-    '</div>';
+  h += statsHTML(s);
+  if (picks.length) h += indexHTML(picks);
 
+  // 한컴 관점
+  if ((p.hancomConclusion || []).length)
+    h += '<div class="mt-10">' + labelRow('한컴 관점', '금주 픽에서 도출한 결론',
+      '<div class="space-y-3">' + p.hancomConclusion.map((x) =>
+        '<p class="text-[14px] leading-[1.7]">' + escapeHtml(x) + '</p>').join('') + '</div>') + '</div>';
 
-  // 다크 히어로 — 금주 한 줄 요약 + 한컴 관점 + 수치를 한 덩어리로
-  h += heroHTML(d, p, s);
-
-  // 금주 한눈에 — 키워드 · 신규 편입 기업 · 4주 추이 (라벨 + 내용 3행)
+  /* 금주 한눈에 — 키워드 · 신규 편입 기업 · 4주 추이.
+     수치 4칸은 목차 앞에 두라는 지시였으므로(그 앞에 다른 것을 끼우지 않는다) 이 셋은
+     한컴 관점 다음, 픽 섹션 앞에 둔다. 상단이 무거워지지 않으면서 픽보다는 위에 온다. */
   const rows = [];
   if ((s.topTags || []).length)
     rows.push(glanceRow('키워드',
-      '<div class="flex flex-wrap gap-1.5">' + s.topTags.map((t) =>
-        '<span class="text-[12.5px] bg-beige border border-ink/[.07] rounded-full pl-3 pr-2 py-1 inline-flex items-center gap-1.5">' +
-        '#' + escapeHtml(t.tag) +
-        '<span class="text-[10px] font-bold text-ink/35">' + (t.count || 0) + '</span>' +
-        (t.isNew ? '<span class="text-[9px] font-bold bg-lime text-ink rounded-full px-1.5">NEW</span>' : '') +
-        '</span>').join('') + '</div>'));
-  // 신규 기업이 두 자릿수인 주가 있어(실측 11곳) 칩이 여러 줄로 번진다.
-  // 6곳까지 보이고 나머지는 토글로 펼친다(2026-08-21 사용자 지시: 「외 N곳」 표기 대신 펼치기).
+      '<p class="text-[13.5px] leading-[1.9]">' + s.topTags.map((t) =>
+        '<span class="whitespace-nowrap">#' + escapeHtml(t.tag) +
+        '<span class="text-ink/35 ml-0.5 text-[11px]">' + (t.count || 0) + '</span>' +
+        (t.isNew ? '<span class="text-lime-600 text-[9px] font-bold uppercase tracking-widest ml-1">new</span>' : '') +
+        '</span>').join('<span class="text-ink/20 mx-2">·</span>') + '</p>'));
   if ((s.newCompanies || []).length) {
-    const chip = (n) =>
-      '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-[12.5px] font-display font-semibold bg-lime/20 border border-lime rounded-full px-2.5 py-1 hover:bg-lime transition-colors">' +
-      escapeHtml(n) + '</a>';
+    const link = (n) => '<a href="/company?name=' + encodeURIComponent(n) +
+      '" class="font-display font-semibold hover:text-lime-600">' + escapeHtml(n) + '</a>';
     const shown = s.newCompanies.slice(0, NEW_CO_MAX);
     const rest = s.newCompanies.slice(NEW_CO_MAX);
     rows.push(glanceRow('신규 기업 ' + s.newCompanies.length,
-      '<div class="flex flex-wrap gap-1.5">' + shown.map(chip).join('') +
+      '<p class="text-[13.5px] leading-[1.9]">' + shown.map(link).join('<span class="text-ink/25">, </span>') +
       (rest.length
-        // display:contents 라 펼쳐도 칩이 같은 줄 흐름에 이어 붙는다
-        ? '<span id="wkNcMore" class="hidden contents">' + rest.map(chip).join('') + '</span>' +
-          '<button type="button" id="wkNcToggle" class="text-[12.5px] font-semibold text-lime-600 hover:text-ink border border-ink/10 rounded-full px-2.5 py-1">+' + rest.length + '곳</button>'
-        : '') + '</div>'));
+        // display:contents 라 펼쳐도 같은 줄 흐름에 이어 붙는다
+        ? '<span id="wkNcMore" class="hidden contents"><span class="text-ink/25">, </span>' +
+          rest.map(link).join('<span class="text-ink/25">, </span>') + '</span>' +
+          '<button type="button" id="wkNcToggle" class="text-[12px] font-semibold text-lime-600 hover:text-ink underline underline-offset-2 ml-2">+' + rest.length + '곳</button>'
+        : '') + '</p>'));
   }
   const tr = trendHTML(s.trend);
   if (tr) rows.push(glanceRow('4주 추이', tr));
-  if (rows.length)
-    h += '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-5 sm:p-6 mb-8 space-y-4">' +
-      rows.join('') + '</div>';
+  if (rows.length) h += '<div class="mt-10 rule pt-2">' + rows.join('') + '</div>';
 
-  // Weekly Picks — 본문(주요내용·시사점·한컴 인사이트)까지 기본 펼침
-  if (picks.length) {
-    h += secHead('', 'Weekly Picks', s.total ? '전체 ' + s.total + '건 중 ' + picks.length + '건' : '');
-    h += '<div class="space-y-4">' + picks.map(pickHTML).join('') + '</div>';
-  }
+  h += '</div>'; // WRAP 닫기 — 아래 픽 섹션은 전체폭
+
+  h += picks.map(pickHTML).join('');
 
   // 고르지 않은 나머지는 이 페이지에 싣지 않고 대시보드로 넘긴다(2026-08-21 사용자 지시).
   // 발행물은 고른 것만 보여 주고, 전체 목록은 원래 그것을 담당하는 화면이 맡는다.
+  h += '<div class="' + WRAP + ' mt-12">';
   if ((s.total || 0) > picks.length)
-    h += '<a href="/?date=' + encodeURIComponent(d.start || '') +
-      '" class="mt-6 flex items-center gap-2 bg-white rounded-2xl border border-ink/5 px-5 py-4 hover:border-lime-600 transition-colors group">' +
-      '<span class="text-sm">금주 동향 <b class="font-semibold">' + (s.total || 0) + '건</b> 전체를 대시보드에서 보기</span>' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 ml-auto text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>';
+    h += '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="rule pt-4 flex items-center gap-2 group">' +
+      '<span class="text-[14px] font-semibold group-hover:text-lime-600">금주 동향 ' + (s.total || 0) + '건 전체를 대시보드에서 보기</span>' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>';
 
-  // 푸터 — 다음 동선. 공유 텍스트 복사는 관리자 화면에만 둔다(2026-08-21 사용자 지시).
-  h += '<div class="mt-12 pt-7 border-t border-ink/10">' +
-    '<div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">' +
+  // 푸터 — 다음 동선. 대시보드보다 기업·검색을 앞세운다(대시보드는 실제로 잘 읽히지 않는다).
+  h += '<div class="mt-6 rule-thin pt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">' +
     '<a href="/company" class="font-semibold hover:text-lime-600">기업 찾아보기 →</a>' +
-    '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a>' +
-    '</div></div>';
+    '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a></div>';
+  h += '</div>';
 
   h += prevHTML(d.prev);
-  return h;
+  return h + '<div class="h-14"></div>';
 }
 
 /* ===== 빈 상태 ===== */
@@ -268,32 +266,15 @@ function renderEmpty(d) {
   const msg = d.reason === 'NOT_PUBLISHED'
     ? (d.label ? escapeHtml(d.label) + '은 아직 발행되지 않았습니다' : '아직 발행되지 않은 주차입니다')
     : '아직 발행된 위클리 픽이 없습니다';
-  return '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-8 sm:p-10 text-center">' +
-    '<div class="text-[11px] font-bold uppercase tracking-widest text-lime-600 mb-3">Weekly Picks</div>' +
-    '<p class="font-display font-bold text-xl tracking-tight mb-2">' + msg + '</p>' +
+  return '<div class="' + WRAP + ' pt-16">' +
+    '<div class="text-[11px] font-bold uppercase tracking-[.2em] text-lime-600 mb-3">Weekly Picks</div>' +
+    '<div class="rule pt-6">' +
+    '<p class="font-display font-bold text-[26px] tracking-tight mb-2">' + msg + '</p>' +
     '<p class="text-sm text-ink/55">발행되면 이 주소에서 바로 볼 수 있습니다</p>' +
-    '<div class="flex flex-wrap justify-center gap-x-5 gap-y-2 mt-6 text-sm">' +
+    '<div class="flex flex-wrap gap-x-6 gap-y-2 mt-6 text-[14px]">' +
     '<a href="/" class="font-semibold hover:text-lime-600">대시보드 →</a>' +
-    '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a></div></div>' +
-    prevHTML(d.prev);
-}
-
-/* ===== 펼침 토글 (이벤트 위임 + 키보드) ===== */
-function onToggle(e) {
-  const head = e.target.closest('.wk-toggle');
-  if (!head) return;
-  if (e.target.closest('a')) return;                        // 카드 내 링크는 그대로 동작
-  if (e.target.closest('summary, [data-no-toggle]')) return; // 「N개 더 보기」는 자체 토글
-  if (e.type === 'keydown') {
-    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
-    e.preventDefault();
-  }
-  const item = head.closest('.wk-item');
-  if (!item || !item.querySelector('.wk-body')) return;
-  const open = item.classList.toggle('wk-open');
-  head.setAttribute('aria-expanded', open ? 'true' : 'false');
-  const more = item.querySelector('.wk-more');
-  if (more) more.textContent = open ? '접기' : '자세히';
+    '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a></div></div></div>' +
+    prevHTML(d.prev) + '<div class="h-14"></div>';
 }
 
 /* ===== 발행 전 미리보기 =====
@@ -317,7 +298,8 @@ function draftToEdition(d) {
 }
 
 const previewBanner = () =>
-  '<div class="bg-ink text-lime rounded-2xl px-5 py-3 mb-6 text-sm font-semibold">발행 전 미리보기입니다. 이 화면은 아직 공개되지 않았습니다</div>';
+  '<div class="bg-ink text-lime"><div class="' + WRAP + ' py-3 text-sm font-semibold">' +
+  '발행 전 미리보기입니다. 이 화면은 아직 공개되지 않았습니다</div></div>';
 
 /* ===== 초기화 ===== */
 async function initWeekly() {
@@ -333,9 +315,9 @@ async function initWeekly() {
     data = isPreview ? draftToEdition(await API.weeklyPreview(w)) : await API.weekly(w);
   } catch (e) {
     // 미리보기는 PIN 이 있어야 한다. 관리자 콘솔의 [미리보기 ↗] 로 열면 PIN 이 이미 저장돼 있다.
-    root.innerHTML = isPreview && e && e.status === 403
-      ? '<div class="text-sm text-center py-16">미리보기 권한이 없습니다. <a href="/admin/" class="text-lime-600 font-semibold hover:underline">관리자 콘솔</a>의 [미리보기 ↗] 버튼으로 열어 주세요.</div>'
-      : '<div class="text-sm text-center py-16">불러오지 못했습니다. <a href="/" class="text-lime-600 font-semibold hover:underline">대시보드로</a></div>';
+    root.innerHTML = '<div class="' + WRAP + ' text-sm text-center py-16">' + (isPreview && e && e.status === 403
+      ? '미리보기 권한이 없습니다. <a href="/admin/" class="text-lime-600 font-semibold hover:underline">관리자 콘솔</a>의 [미리보기 ↗] 버튼으로 열어 주세요.'
+      : '불러오지 못했습니다. <a href="/" class="text-lime-600 font-semibold hover:underline">대시보드로</a>') + '</div>';
     return;
   }
   if (!data || !data.available) {
@@ -345,9 +327,6 @@ async function initWeekly() {
   root.innerHTML = (data.isPreview ? previewBanner() : '') + renderEdition(data);
   // 브라우저 탭·링크 미리보기에 회차가 드러나게(정적 OG 는 Phase 2 에서 회차별로 주입)
   document.title = '위클리 픽' + (data.issueNo ? ' ' + data.issueNo + '호' : '') + ' · ' + shortLabel(data.label) + ' — AX Biz Radar';
-
-  root.addEventListener('click', onToggle);
-  root.addEventListener('keydown', onToggle);
 
   // 신규 기업 초과분 펼치기
   const ncBtn = document.getElementById('wkNcToggle');
