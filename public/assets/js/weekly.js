@@ -57,6 +57,7 @@ function trendHTML(trend) {
    접으면 훑기용 요약(제목 + 왜 주목하나 + 주요내용 2불릿)만 남는다. 접힘 미리보기는 펼친 상태에서
    숨겨 같은 불릿이 두 번 보이지 않게 한다(CSS .wk-open .wk-preview). */
 const PREVIEW_POINTS = 2;
+const NEW_CO_MAX = 6; // 금주 한눈에의 신규 편입 기업 칩 상한
 
 function pickHTML(p, i) {
   const cat = p.category ? '<span class="text-[10px] font-bold text-lime-600 bg-lime/15 rounded-full px-2 py-0.5 flex-none">' + escapeHtml(p.category) + '</span>' : '';
@@ -230,12 +231,19 @@ function renderEdition(d) {
         '<span class="text-[11px] font-bold text-ink/40">' + (t.count || 0) + '</span>' +
         (t.isNew ? '<span class="text-[9px] font-bold bg-lime text-ink rounded-full px-1.5 py-0.5">NEW</span>' : '') +
         '</span>').join('') + '</div></div>';
-  if ((s.newCompanies || []).length)
+  // 신규 기업이 두 자릿수인 주가 있어(실측 11곳) 칩이 세 줄까지 번진다. 6곳까지만 보이고 나머지는 수로 접는다.
+  if ((s.newCompanies || []).length) {
+    const shown = s.newCompanies.slice(0, NEW_CO_MAX);
+    const rest = s.newCompanies.length - shown.length;
     h += '<div class="mt-5 pt-5 border-t border-ink/[.07]">' +
-      '<div class="text-[10px] font-bold uppercase tracking-widest text-ink/40 mb-2">금주 신규 편입 기업</div>' +
-      '<div class="flex flex-wrap gap-2">' + s.newCompanies.map((n) =>
+      '<div class="text-[10px] font-bold uppercase tracking-widest text-ink/40 mb-2">금주 신규 편입 기업 ' +
+      '<span class="text-ink/30">' + s.newCompanies.length + '곳</span></div>' +
+      '<div class="flex flex-wrap gap-2">' + shown.map((n) =>
         '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-[13px] font-display font-semibold bg-lime/20 border border-lime rounded-full px-3 py-1 hover:bg-lime transition-colors">' +
-        escapeHtml(n) + '</a>').join('') + '</div></div>';
+        escapeHtml(n) + '</a>').join('') +
+      (rest > 0 ? '<span class="text-[13px] text-ink/45 px-2 py-1">외 ' + rest + '곳</span>' : '') +
+      '</div></div>';
+  }
   h += trendHTML(s.trend) + '</div>';
 
   // 주목 픽 — 본문(주요내용·시사점·한컴 인사이트)까지 기본 펼침

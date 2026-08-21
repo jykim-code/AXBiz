@@ -88,6 +88,11 @@ function toItem(date, c) {
   };
 }
 
+// 주제가 아니라 상태를 표시하는 메타 태그. 금주 키워드 목록에서 뺀다 — 빼지 않으면 「신규편입」이
+// 1위로 올라와(실측: 한 주 9건) 바로 아래 「신규 편입 기업 N곳」과 같은 말을 두 번 하게 된다.
+// 항목 자체의 태그 칩에는 그대로 남는다. 원본 데이터를 고치는 것이 아니라 집계에서만 제외한다.
+const META_TAGS = new Set(['신규편입', 'AX신규진입']);
+
 /* ===== 수치 집계 (코드) =====
    그 주 전체 기준으로 센다 — 「20건 중 3건을 골랐다」가 드러나야 선별이 신뢰받는다.
    신규(태그·기업) 판정은 기간 시작 이전 전체 이력이 필요하므로 관리자 경로에서만 계산하고,
@@ -143,6 +148,7 @@ async function collect(env, start, end) {
   const newTags = [...new Set(items.flatMap((i) => i.tags))].filter((t) => !seenTag.has(t));
   const newCompanies = [...new Set(items.map((i) => i.company))].filter((n) => !seenCompany.has(n));
   const topTags = Object.keys(tagFreq)
+    .filter((t) => !META_TAGS.has(t))
     .sort((a, b) => tagFreq[b] - tagFreq[a] || a.localeCompare(b))
     .slice(0, 6)
     .map((t) => ({ tag: t, count: tagFreq[t], isNew: newTags.includes(t) }));
