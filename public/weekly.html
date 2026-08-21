@@ -32,6 +32,13 @@
   .wk-open .wk-chev { transform: rotate(180deg); }
   /* 접힘 미리보기(주요내용 2불릿)는 펼치면 숨긴다 — 펼침 본문이 같은 불릿을 전부 담는다 */
   .wk-open .wk-preview { display: none; }
+  /* 형광펜 강조 — 관리자가 ==강조== 로 감싼 구간. 라임 띠 + ink 글씨라 다크 히어로와 라이트 박스
+     양쪽에서 읽힌다. box-decoration-break 로 줄바꿈될 때도 띠가 이어진다. */
+  .wk-hl {
+    background: #c8f200; color: #111; font-weight: 600;
+    padding: 0 .18em; border-radius: 2px;
+    -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  }
   .wk-toggle:focus-visible { outline: 2px solid #7ba500; outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) { .wk-body { transition: none; } }
 </style>

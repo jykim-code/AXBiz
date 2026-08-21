@@ -9,6 +9,13 @@
 const md = (d) => (d && d.length >= 10 ? +d.slice(5, 7) + '/' + +d.slice(8, 10) : '');
 const shortLabel = (label) => String(label || '').replace(/^\d{4}년\s*/, ''); // '2026년 8월 3주' → '8월 3주'
 
+/* 형광펜 강조 — 관리자가 사람 손으로 쓴 문장에서 ==강조== 로 감싼 구간을 라임 띠로 그린다.
+   무엇이 중요한지는 기계가 정할 수 없으므로 표시를 사람이 남기고 렌더만 여기서 한다.
+   escapeHtml 을 먼저 걸고 그 결과에서 == 를 찾으므로 입력으로 태그가 새지 않는다. */
+function hlText(s) {
+  return escapeHtml(s).replace(/==([^=]{1,200})==/g, '<span class="wk-hl">$1</span>');
+}
+
 /* ===== 상단 다크 히어로 =====
    금주 한 줄 요약 · 한컴 관점 결론 · 수치를 한 덩어리로 담는다(2026-08-21 사용자 선택).
    이전 구성은 다크 카드 → 라임 박스 → 흰 카드로 색 블록이 연달아 부딪쳤고, 라임 박스가
@@ -32,22 +39,23 @@ function heroHTML(d, p, s) {
     '<span class="text-[11px] font-bold uppercase tracking-widest text-lime">Weekly Picks</span>' +
     (d.issueNo ? '<span class="text-[11px] font-bold opacity-60">· ' + d.issueNo + '호</span>' : '') + '</div>';
 
+  // 요약 글자 크기는 본문보다 한 단만 크게 둔다(2026-08-21 사용자 지시: 이전 text-2xl 은 너무 컸다).
   if (p.overview)
-    h += '<p class="text-xl sm:text-2xl font-display font-semibold tracking-tight leading-snug">' + escapeHtml(p.overview) + '</p>';
+    h += '<p class="text-[16px] sm:text-[17px] font-display font-semibold tracking-tight leading-[1.65]">' + hlText(p.overview) + '</p>';
 
   if ((p.hancomConclusion || []).length)
     h += '<div class="mt-6">' +
       '<div class="text-[10px] font-bold uppercase tracking-widest text-lime mb-2.5">한컴 관점</div>' +
       '<ul class="space-y-2">' + p.hancomConclusion.map((x) =>
         '<li class="text-[13.5px] leading-[1.75] text-white/85 pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-[10px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime">' +
-        escapeHtml(x) + '</li>').join('') + '</ul></div>';
+        hlText(x) + '</li>').join('') + '</ul></div>';
 
   const nc = (s.newCompanies || []).length;
   h += '<div class="mt-7 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-5">' +
     heroStat(s.total || 0, '건', '금주 동향') +
     heroStat(s.companies || 0, '곳', '등장 기업') +
     heroStat(nc, '곳', '신규 기업') +
-    heroStat(s.picks || 0, '건', '주목 픽') +
+    heroStat(s.picks || 0, '건', 'Weekly Picks') +
     '</div>';
   return h + '</div>';
 }
@@ -100,7 +108,7 @@ function pickHTML(p, i) {
   if (p.why)
     h += '<div class="rounded-2xl bg-lime/15 border border-lime p-3.5 mb-3">' +
       '<div class="text-[10px] font-bold tracking-widest text-lime-600 mb-1">주목(Pick) 이유</div>' +
-      '<p class="text-[13.5px] leading-[1.75] text-ink/90">' + escapeHtml(p.why) + '</p></div>';
+      '<p class="text-[13.5px] leading-[1.75] text-ink/90">' + hlText(p.why) + '</p></div>';
   if (preview.length)
     h += '<ul class="wk-preview space-y-1.5 mb-3">' + preview.map((x) =>
       '<li class="text-[13px] leading-[1.7] text-ink/70 pl-3 relative before:content-[\'\'] before:absolute before:left-0 before:top-[9px] before:w-1 before:h-1 before:rounded-full before:bg-ink/30">' +
@@ -117,37 +125,11 @@ function pickHTML(p, i) {
   return h + '</article>';
 }
 
-/* ===== 그 외 동향 (접힘 안에서 각각 펼침) =====
-   본문은 **펼칠 때 만든다**. 데이터가 늘어 한 주 30건대가 되면서 본문을 미리 그리면 초기 HTML 이
-   188KB 까지 갔다(주목 동향 3건 + 그 외 30건). 접혀 있어도 HTML 은 전부 내려가므로,
-   원본만 들고 있다가 첫 펼침에 그린다. 화면에 보이는 것은 같고 초기 무게만 줄어든다. */
-let OTHERS = [];
-
-// 펼칠 내용이 있는지 — entryDetailHTML 을 만들지 않고 판정한다(그 함수와 같은 기준).
-const hasDetail = (e) => !!(
-  (e.keyPoints || []).length || (e.implications || []).length || (e.hancomInsight || []).length ||
-  e.sourceUrl || e.confluenceUrl
-);
-
-function otherHTML(o, i) {
-  const detail = hasDetail(o);
-  let h = '<div class="wk-item bg-white rounded-2xl border border-ink/5 overflow-hidden" data-oi="' + i + '">';
-  h += '<div class="wk-toggle px-4 py-3 cursor-pointer" role="button" tabindex="0" aria-expanded="false">' +
-    '<div class="flex items-baseline gap-2">' +
-    '<a href="/company?name=' + encodeURIComponent(o.company) + '" class="font-display font-semibold text-[15px] tracking-tight hover:text-lime-600 flex-none">' + escapeHtml(o.company) + '</a>' +
-    '<span class="text-[11px] text-ink/40 flex-none">' + escapeHtml(o.date || '') + '</span>' +
-    (detail ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" class="wk-chev w-3.5 h-3.5 text-lime-600 ml-auto flex-none transition-transform"><path d="m6 9 6 6 6-6"/></svg>' : '') +
-    '</div>' +
-    (o.title ? '<p class="text-[13px] leading-snug text-ink/70 mt-1">' + escapeHtml(o.title) + '</p>' : '') +
-    '</div>';
-  return h + '</div>'; // .wk-body 는 첫 펼침에 만든다
-}
-
 /* ===== 섹션 머리 ===== */
 const secHead = (eyebrow, title, aside) =>
   '<div class="flex items-end justify-between border-b border-ink/10 pb-2.5 mb-4 mt-10">' +
   '<div class="flex items-baseline gap-2.5">' +
-  '<span class="text-[10px] font-bold uppercase tracking-widest text-lime-600">' + escapeHtml(eyebrow) + '</span>' +
+  (eyebrow ? '<span class="text-[10px] font-bold uppercase tracking-widest text-lime-600">' + escapeHtml(eyebrow) + '</span>' : '') +
   '<h2 class="font-display font-bold text-xl tracking-tight">' + escapeHtml(title) + '</h2></div>' +
   (aside ? '<span class="text-xs text-ink/45">' + escapeHtml(aside) + '</span>' : '') + '</div>';
 
@@ -205,8 +187,7 @@ async function copyToClipboard(text) {
 /* ===== 발행본 렌더 ===== */
 function renderEdition(d) {
   const s = d.stats || {}, p = d.payload || {};
-  const picks = p.picks || [], others = p.others || [];
-  OTHERS = others; // 펼칠 때 본문을 만들 원본
+  const picks = p.picks || [];
   let h = '';
 
   // 헤더 — 회차 표기는 다크 히어로가 담당하므로 여기는 주차와 기간만 둔다
@@ -219,7 +200,7 @@ function renderEdition(d) {
   if (p.bridge) {
     const ref = p.bridgeRef && p.bridgeRef.issueNo ? p.bridgeRef.issueNo + '호 대비' : '지난 회차 대비';
     h += '<div class="mb-6 pl-4 border-l-2 border-lime text-[13.5px] leading-[1.7] text-ink/70">' +
-      '<span class="font-semibold text-lime-600">' + escapeHtml(ref) + '</span> ' + escapeHtml(p.bridge) + '</div>';
+      '<span class="font-semibold text-lime-600">' + escapeHtml(ref) + '</span> ' + hlText(p.bridge) + '</div>';
   }
 
   // 다크 히어로 — 금주 한 줄 요약 + 한컴 관점 + 수치를 한 덩어리로
@@ -235,15 +216,21 @@ function renderEdition(d) {
         '<span class="text-[10px] font-bold text-ink/35">' + (t.count || 0) + '</span>' +
         (t.isNew ? '<span class="text-[9px] font-bold bg-lime text-ink rounded-full px-1.5">NEW</span>' : '') +
         '</span>').join('') + '</div>'));
-  // 신규 기업이 두 자릿수인 주가 있어(실측 11곳) 칩이 여러 줄로 번진다. 6곳까지만 보이고 나머지는 수로 접는다.
+  // 신규 기업이 두 자릿수인 주가 있어(실측 11곳) 칩이 여러 줄로 번진다.
+  // 6곳까지 보이고 나머지는 토글로 펼친다(2026-08-21 사용자 지시: 「외 N곳」 표기 대신 펼치기).
   if ((s.newCompanies || []).length) {
+    const chip = (n) =>
+      '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-[12.5px] font-display font-semibold bg-lime/20 border border-lime rounded-full px-2.5 py-1 hover:bg-lime transition-colors">' +
+      escapeHtml(n) + '</a>';
     const shown = s.newCompanies.slice(0, NEW_CO_MAX);
-    const rest = s.newCompanies.length - shown.length;
+    const rest = s.newCompanies.slice(NEW_CO_MAX);
     rows.push(glanceRow('신규 기업 ' + s.newCompanies.length,
-      '<div class="flex flex-wrap gap-1.5">' + shown.map((n) =>
-        '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-[12.5px] font-display font-semibold bg-lime/20 border border-lime rounded-full px-2.5 py-1 hover:bg-lime transition-colors">' +
-        escapeHtml(n) + '</a>').join('') +
-        (rest > 0 ? '<span class="text-[12.5px] text-ink/40 px-1.5 py-1">외 ' + rest + '곳</span>' : '') + '</div>'));
+      '<div class="flex flex-wrap gap-1.5">' + shown.map(chip).join('') +
+      (rest.length
+        // display:contents 라 펼쳐도 칩이 같은 줄 흐름에 이어 붙는다
+        ? '<span id="wkNcMore" class="hidden contents">' + rest.map(chip).join('') + '</span>' +
+          '<button type="button" id="wkNcToggle" class="text-[12.5px] font-semibold text-lime-600 hover:text-ink border border-ink/10 rounded-full px-2.5 py-1">+' + rest.length + '곳</button>'
+        : '') + '</div>'));
   }
   const tr = trendHTML(s.trend);
   if (tr) rows.push(glanceRow('4주 추이', tr));
@@ -251,32 +238,25 @@ function renderEdition(d) {
     h += '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-5 sm:p-6 mb-8 space-y-4">' +
       rows.join('') + '</div>';
 
-  // 주목 픽 — 본문(주요내용·시사점·한컴 인사이트)까지 기본 펼침
+  // Weekly Picks — 본문(주요내용·시사점·한컴 인사이트)까지 기본 펼침
   if (picks.length) {
-    h += secHead('Picks', '주목 픽', s.total ? '전체 ' + s.total + '건 중 ' + picks.length + '건' : '');
+    h += secHead('', 'Weekly Picks', s.total ? '전체 ' + s.total + '건 중 ' + picks.length + '건' : '');
     h += '<div class="space-y-4">' + picks.map(pickHTML).join('') + '</div>';
   }
 
-  // 그 외 동향
-  if (others.length) {
-    h += '<details class="mt-10 group">' +
-      '<summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none flex items-center gap-2 border-b border-ink/10 pb-2.5">' +
-      '<span class="text-[10px] font-bold uppercase tracking-widest text-lime-600">Others</span>' +
-      '<span class="font-display font-bold text-xl tracking-tight">금주 그 외 동향</span>' +
-      '<span class="text-xs text-ink/45">' + others.length + '건</span>' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" class="w-4 h-4 ml-auto text-lime-600 transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6"/></svg>' +
-      '</summary>' +
-      '<div class="space-y-2 mt-4">' + others.map(otherHTML).join('') + '</div></details>';
-  }
+  // 고르지 않은 나머지는 이 페이지에 싣지 않고 대시보드로 넘긴다(2026-08-21 사용자 지시).
+  // 발행물은 고른 것만 보여 주고, 전체 목록은 원래 그것을 담당하는 화면이 맡는다.
+  if ((s.total || 0) > picks.length)
+    h += '<a href="/?date=' + encodeURIComponent(d.start || '') +
+      '" class="mt-6 flex items-center gap-2 bg-white rounded-2xl border border-ink/5 px-5 py-4 hover:border-lime-600 transition-colors group">' +
+      '<span class="text-sm">금주 동향 <b class="font-semibold">' + (s.total || 0) + '건</b> 전체를 대시보드에서 보기</span>' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 ml-auto text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>';
 
-  // 푸터 — 공유 텍스트 복사 + 다음 동선(대시보드보다 기업·검색을 앞세운다)
+  // 푸터 — 다음 동선. 공유 텍스트 복사는 관리자 화면에만 둔다(2026-08-21 사용자 지시).
   h += '<div class="mt-12 pt-7 border-t border-ink/10">' +
-    '<button id="wkCopy" class="w-full sm:w-auto bg-ink text-lime font-semibold text-sm rounded-full px-7 py-3.5 hover:opacity-90 transition">공유 텍스트 복사</button>' +
-    '<span id="wkCopyMsg" class="text-sm text-lime-600 font-semibold ml-3"></span>' +
-    '<div class="flex flex-wrap items-center gap-x-5 gap-y-2 mt-5 text-sm">' +
+    '<div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">' +
     '<a href="/company" class="font-semibold hover:text-lime-600">기업 찾아보기 →</a>' +
     '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a>' +
-    '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="text-xs text-ink/45 hover:text-ink">대시보드에서 이 주 보기</a>' +
     '</div></div>';
 
   h += prevHTML(d.prev);
@@ -309,27 +289,7 @@ function onToggle(e) {
     e.preventDefault();
   }
   const item = head.closest('.wk-item');
-  if (!item) return;
-
-  // 그 외 동향은 본문이 아직 없다 — 첫 펼침에 만든다.
-  let body = item.querySelector('.wk-body');
-  if (!body) {
-    const oi = item.getAttribute('data-oi');
-    if (oi == null) return;
-    const o = OTHERS[+oi];
-    if (!o || !hasDetail(o) || typeof entryDetailHTML !== 'function') return;
-    body = document.createElement('div');
-    body.className = 'wk-body';
-    body.innerHTML = '<div class="px-4 pb-4">' + entryDetailHTML(o) + '</div>';
-    item.appendChild(body);
-    // 붙인 직후 같은 프레임에 클래스를 주면 max-height 전환이 생략된다. 다음 프레임으로 넘긴다.
-    requestAnimationFrame(() => {
-      item.classList.add('wk-open');
-      head.setAttribute('aria-expanded', 'true');
-    });
-    return;
-  }
-
+  if (!item || !item.querySelector('.wk-body')) return;
   const open = item.classList.toggle('wk-open');
   head.setAttribute('aria-expanded', open ? 'true' : 'false');
   const more = item.querySelector('.wk-more');
@@ -338,18 +298,15 @@ function onToggle(e) {
 
 /* ===== 발행 전 미리보기 =====
    관리자가 발행 버튼을 누르기 전에 실제 화면을 확인하는 경로(?draft=1, 저장된 PIN 필요).
-   초안에는 「그 외 동향」 스냅샷이 아직 없으므로(발행 시점에 고정된다) 후보에서 계산해 채운다.
    ⚠ 기존 데이터 검수용 `?preview=1` 은 쓰지 않는다. 그 값은 dev-toolbar 배너를 띄우고
      「전체 배포 ▶」 버튼까지 노출하는데, 그 버튼은 보고서 draft 를 배포하는 것이라
      주간 발행과 무관하고 이 화면에서 누르면 의도치 않은 배포가 된다. */
 function draftToEdition(d) {
   const picks = (d.payload && d.payload.picks) || [];
-  const picked = new Set(picks.map((p) => p.key));
-  const stats = Object.assign({}, d.stats, { picks: picks.length });
   return {
     available: true, isPreview: true,
     week: d.week, issueNo: d.issueNo, start: d.start, end: d.end, label: d.label, publishedAt: null,
-    stats,
+    stats: Object.assign({}, d.stats, { picks: picks.length }),
     payload: {
       bridge: (d.payload && d.payload.bridge) || '',
       // 초안에는 이은 회차가 아직 굳지 않았다(발행 시 확정) — 미리보기에서는 서버가 준 직전 회차를 쓴다
@@ -357,7 +314,6 @@ function draftToEdition(d) {
       overview: (d.payload && d.payload.overview) || '',
       hancomConclusion: (d.payload && d.payload.hancomConclusion) || [],
       picks,
-      others: (d.candidates || []).filter((c) => !picked.has(c.key)),
     },
     prev: [],
   };
@@ -396,16 +352,13 @@ async function initWeekly() {
   root.addEventListener('click', onToggle);
   root.addEventListener('keydown', onToggle);
 
-  const btn = document.getElementById('wkCopy');
-  if (btn) {
-    btn.addEventListener('click', async () => {
-      const msg = document.getElementById('wkCopyMsg');
-      const ok = await copyToClipboard(shareText(data));
-      if (msg) {
-        msg.textContent = ok ? '복사되었습니다' : '복사에 실패했습니다';
-        msg.className = 'text-sm font-semibold ml-3 ' + (ok ? 'text-lime-600' : 'text-red-500');
-        setTimeout(() => { msg.textContent = ''; }, 2500);
-      }
+  // 신규 기업 초과분 펼치기
+  const ncBtn = document.getElementById('wkNcToggle');
+  if (ncBtn) {
+    ncBtn.addEventListener('click', () => {
+      const more = document.getElementById('wkNcMore');
+      if (more) more.classList.remove('hidden');
+      ncBtn.remove();
     });
   }
 }

@@ -919,7 +919,8 @@ function wkPickHTML(p, i) {
     '<div class="label normal-case">주목(Pick) 이유 <span class="text-red-500">필수</span> · 60~140자</div>' +
     '<button type="button" class="wk-ai text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
     '<textarea class="field wk-why" rows="2" maxlength="300">' + escapeHtml(why) + '</textarea>' +
-    '<div class="text-[11px] opacity-45 mt-1"><span class="wk-len">' + why.length + '</span>자</div>' +
+    '<div class="text-[11px] opacity-45 mt-1"><span class="wk-len">' + why.length + '</span>자 · ' +
+    '<code class="bg-beige px-1 rounded">==강조==</code> 로 감싸면 형광펜</div>' +
     '</div>';
 }
 
@@ -965,6 +966,7 @@ function renderWeekly() {
     '<div class="flex items-center justify-between mt-4 mb-1.5"><div class="label">한컴 관점 · 한 줄 = 불릿 1개 (2~3개)</div>' +
     '<button type="button" id="wkAiConclusion" class="text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
     '<textarea id="wkConclusion" class="field" rows="4" placeholder="한 줄에 하나씩">' + escapeHtml((p.hancomConclusion || []).join('\n')) + '</textarea>' +
+    '<p class="text-[11px] opacity-45 mt-2">중요한 구간은 <code class="bg-beige px-1 rounded">==강조==</code> 로 감싸면 발행 화면에서 형광펜으로 표시됩니다 (이어지는 한 줄·한 줄 요약·결론·주목(Pick) 이유에 적용)</p>' +
     '</div>';
 
   h += '<div class="flex flex-wrap items-center gap-3 mt-5 pt-5 border-t border-ink/10">' +
@@ -1138,7 +1140,7 @@ async function wkPublish() {
   if (!(await wkSaveDraft(false))) return;
   try {
     const r = await API.weeklyAction({ action: 'publish', week: WK.week }, adminPin);
-    toast(r.issueNo + '호 발행 완료 (주목 ' + r.picks + '건 · 그 외 ' + r.others + '건)', true);
+    toast(r.issueNo + '호 발행 완료 (금주 ' + r.total + '건 중 ' + r.picks + '건 선정)', true);
     loadWeekly();
   } catch (e) {
     if (e.message === 'WHY_REQUIRED') { toast('「주목(Pick) 이유」가 빈 항목이 있습니다: ' + ((e.data && e.data.companies) || []).join(', '), false); return; }

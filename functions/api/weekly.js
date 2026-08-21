@@ -502,10 +502,9 @@ export async function onRequestPost({ request, env }) {
       const issueNo = Number.isInteger(body?.issueNo) && body.issueNo > 0
         ? await resolveIssueNo(env, week, body.issueNo)
         : (row ? row.issue_no : null);
-      // 발행본을 다시 저장하는 경우 발행 시점에만 굳는 값(그 외 동향 스냅샷·이은 회차)을 잃지 않도록 유지한다.
+      // 발행본을 다시 저장하는 경우 발행 시점에만 굳는 값(이은 회차)을 잃지 않도록 유지한다.
       if (row && row.status === 'published') {
         const cur = parseJson(row.payload, {});
-        if (Array.isArray(cur.others)) payload.others = cur.others;
         if (cur.bridgeRef) payload.bridgeRef = cur.bridgeRef;
       }
       if (row) {
@@ -531,9 +530,9 @@ export async function onRequestPost({ request, env }) {
       const missing = picks.filter((p) => !p.why).map((p) => p.company);
       if (missing.length) return Response.json({ error: 'WHY_REQUIRED', companies: missing }, { status: 400 });
 
-      const { items, stats } = await collect(env, start, end);
-      const picked = new Set(picks.map((p) => p.key));
-      const others = items.filter((it) => !picked.has(it.key)).map((it) => { const { score, ...rest } = it; return rest; });
+      // 고르지 않은 나머지는 발행본에 싣지 않는다(2026-08-21 사용자 지시: 전체 목록은 대시보드가 담당).
+      // 30건대의 본문을 payload 에 복사하지 않게 되어 발행본이 크게 가벼워진다.
+      const { stats } = await collect(env, start, end);
       stats.picks = picks.length;
 
       const issueNo = await resolveIssueNo(env, week, row.issue_no);
@@ -544,7 +543,7 @@ export async function onRequestPost({ request, env }) {
         bridgeRef: pe ? { week: pe.week, issueNo: pe.issue_no } : null,
         overview: str(payload.overview, 400),
         hancomConclusion: arr(payload.hancomConclusion, 3, 300),
-        picks, others,
+        picks,
       };
       await env.DB.prepare(
         `UPDATE weekly_edition
@@ -552,7 +551,7 @@ export async function onRequestPost({ request, env }) {
                 published_at = COALESCE(published_at, datetime('now')), updated_at = datetime('now')
           WHERE week = ?`
       ).bind(issueNo, JSON.stringify(stats), JSON.stringify(finalPayload), week).run();
-      return Response.json({ ok: true, week, issueNo, picks: picks.length, others: others.length });
+      return Response.json({ ok: true, week, issueNo, picks: picks.length, total: stats.total });
     }
 
     if (action === 'unpublish') {
