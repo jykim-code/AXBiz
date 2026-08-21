@@ -354,67 +354,29 @@ function variantE() {
 }
 
 /* ============================================================
-   F. 매거진 인덱스 + 다크 수치 밴드 — C 의 골격에 E 의 수치 영역을 전체폭 다크 밴드로 끼운다.
-      요약(라이트) → 수치(다크) → 목차(라이트) → 섹션(짝수 다크)로 명암이 번갈아 리듬이 된다.
+   F. C + 수치 — C 그대로에, 기업 목차 바로 앞에 수치값 한 줄을 넣는다.
+      C 의 어휘를 벗어나지 않는다: 다크 밴드·칩·막대 없이 세로 얇은 선으로만 나눈다.
    ============================================================ */
 function variantF() {
-  let h = '<div class="pt-12 pb-0">';
+  let h = '<div class="py-12">';
 
-  // 헤더 + 요약 (C)
+  // 헤더 + 요약 (C 와 동일. 우측 메타에서 건수는 뺀다 — 아래 수치 줄과 겹친다)
   h += '<div class="max-w-[1000px] mx-auto px-5 sm:px-8">';
   h += '<div class="flex items-end justify-between rule-thin pb-4 mb-8">' +
     '<div><div class="text-[11px] font-bold uppercase tracking-[.2em] text-lime-600 mb-1.5">Weekly Picks No.' + pad2(D.issueNo) + '</div>' +
     '<h1 class="text-[40px] sm:text-[52px] font-bold tracking-tighter leading-none">' + esc(D.label) + '</h1></div>' +
     '<div class="text-right text-[12px] text-ink/45 leading-relaxed">' + D.range + '<br/>발행 ' + D.published + '</div></div>';
-  h += '<p class="text-[20px] sm:text-[24px] font-display font-medium leading-[1.5] max-w-[38ch] mb-12">' + esc(D.overview) + '</p>';
-  h += '</div>';
+  h += '<p class="text-[20px] sm:text-[24px] font-display font-medium leading-[1.5] max-w-[38ch] mb-10">' + esc(D.overview) + '</p>';
 
-  /* 다크 수치 밴드 — E 의 「대형 라임 숫자」만 가져오고, 나머지는 C 의 어휘로 쓴다.
-     C 의 문법 = 선으로 나눈 행 + 좌측 라벨 / 우측 내용 + 활자 위계. 그래서
-     칩(라운드 필)·막대 그래프를 쓰지 않고, 세로 얇은 선으로 지표를 나누고
-     추이는 숫자와 연결선으로, 키워드·기업명은 인라인 텍스트로 둔다. */
-  const fRow = (label, content, cls) =>
-    '<div class="rule-dark ' + (cls || 'py-4') + ' grid sm:grid-cols-[110px,1fr] gap-x-6 gap-y-1.5">' +
-    '<div class="text-[10px] font-bold uppercase tracking-widest text-lime sm:pt-1">' + label + '</div>' +
-    '<div>' + content + '</div></div>';
-
-  h += '<div class="bg-ink text-white">' +
-    '<div class="max-w-[1000px] mx-auto px-5 sm:px-8 py-10">';
-
-  // 지표 — 세로 얇은 선으로만 나눈 4열 (박스·칩 없음)
-  h += '<div class="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/[.12] pb-9">' +
+  // 수치 — 기업 목차 바로 앞. 박스 없이 세로 얇은 선으로만 나눈다(C 가 목차를 가로선으로 나누는 것과 같은 문법)
+  h += '<div class="rule pt-5 mb-10 grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-ink/10">' +
     [['금주 동향', D.stats.total], ['등장 기업', D.stats.companies], ['신규 기업', D.stats.newCo], ['Weekly Picks', D.stats.picks]]
-      .map(([k, v], i) => '<div class="' + (i === 0 ? 'sm:pr-6' : 'sm:px-6') + ' py-4 sm:py-0">' +
-        '<div class="font-display font-bold text-[44px] sm:text-[52px] text-lime leading-none tracking-tighter">' + v + '</div>' +
-        '<div class="text-[10px] uppercase tracking-widest text-white/45 mt-2.5">' + k + '</div></div>').join('') + '</div>';
-
-  // 추이 — 막대 대신 숫자 + 연결선
-  h += fRow('최근 4주',
-    '<div class="flex items-center gap-2 text-[15px] font-display font-bold">' +
-    D.trend.map((t, i) => {
-      const last = i === D.trend.length - 1;
-      return (i ? '<span class="w-6 border-t border-white/20"></span>' : '') +
-        '<span class="' + (last ? 'text-lime' : 'text-white/45') + '">' + t.n +
-        '<span class="block text-[9px] font-sans font-normal ' + (last ? 'text-white/60' : 'text-white/25') + ' mt-0.5">' + t.d + '</span></span>';
-    }).join('') + '</div>');
-
-  // 키워드 — 칩 대신 인라인 텍스트
-  h += fRow('금주 키워드',
-    '<p class="text-[14px] leading-[1.9] text-white/85">' +
-    D.tags.map((t) => '<span class="whitespace-nowrap">#' + t.t +
-      '<span class="text-white/30 ml-0.5 text-[11px]">' + t.n + '</span>' +
-      (t.isNew ? '<span class="text-lime text-[9px] font-bold uppercase tracking-widest ml-1">new</span>' : '') + '</span>').join('<span class="text-white/20 mx-2">·</span>') + '</p>');
-
-  // 신규 편입 기업 — 칩 대신 쉼표 나열
-  h += fRow('신규 편입',
-    '<p class="text-[14px] leading-[1.8] font-display font-semibold text-white/90">' +
-    esc(D.newCompanies.slice(0, 6).join(', ')) +
-    (D.newCompanies.length > 6 ? '<span class="font-sans font-normal text-white/40"> 외 ' + (D.newCompanies.length - 6) + '곳</span>' : '') + '</p>');
-
-  h += '</div></div>';
+      .map(([k, v], i) => '<div class="' + (i === 0 ? 'sm:pr-6' : 'sm:px-6') + ' py-3 sm:py-0">' +
+        '<div class="font-display font-bold text-[34px] sm:text-[40px] leading-none tracking-tighter">' + v + '</div>' +
+        '<div class="text-[10px] font-semibold uppercase tracking-widest text-ink/40 mt-2">' + k + '</div></div>').join('') + '</div>';
 
   // 목차 + 한컴 관점 (C)
-  h += '<div class="max-w-[1000px] mx-auto px-5 sm:px-8 pt-12">';
+  h += '';
   h += '<div class="rule pt-3">' + D.picks.map((p, i) =>
     '<a href="#f' + i + '" class="group flex items-baseline gap-4 py-3.5 rule-thin first:border-t-0 hover:bg-lime/20 transition-colors">' +
     '<span class="font-display font-bold text-[13px] text-lime-600 w-6">' + pad2(i + 1) + '</span>' +
@@ -455,8 +417,8 @@ function variantF() {
 
 /* ===== 스위처 ===== */
 const VARIANTS = [
-  { key: 'F', name: 'C + 다크 수치', fn: variantF, bg: 'bg-beige',
-    note: 'C(매거진 인덱스) 골격에 E 의 수치 영역을 전체폭 다크 밴드로 끼운 안. 요약(라이트) → 수치(다크) → 목차(라이트) → 픽 섹션(짝수 다크)으로 명암이 번갈아 리듬이 된다. 다크 밴드에 대형 라임 숫자·키워드·4주 추이·신규 편입 기업을 한 덩어리로 담았다.' },
+  { key: 'F', name: 'C + 수치', fn: variantF, bg: 'bg-beige',
+    note: 'C 그대로에, 기업 목차 바로 앞에 수치값 한 줄을 넣은 안. C 의 어휘를 벗어나지 않도록 박스·칩·막대를 쓰지 않고 세로 얇은 선으로만 나눴다(C 가 목차를 가로선으로 나누는 것과 같은 문법). 헤더 우측 메타에서 건수는 뺐다 — 이 줄과 겹친다.' },
   { key: 'A', name: '에디토리얼', fn: variantA, bg: 'bg-beige',
     note: '신문·잡지 조판. 박스와 그림자를 전혀 쓰지 않고 굵은 선·얇은 선·활자 크기로만 구분한다. 본문을 2단으로 흘려 길이가 부담스럽지 않다. 「발행물」 느낌이 가장 강하지만 모바일에서 2단이 1단으로 접혀 길어진다.' },
   { key: 'B', name: '타임라인', fn: variantB, bg: 'bg-beige',
