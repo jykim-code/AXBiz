@@ -222,7 +222,7 @@ const API = {
     return data;
   },
 
-  // ===== 주간 인사이트 =====
+  // ===== 위클리 픽 =====
   // 발행본 조회 (공개). w 없으면 최신 회차. { available, week, issueNo, label, stats, payload, prev[] }
   weekly(w) {
     return getJSON('/api/weekly' + (w ? '?w=' + encodeURIComponent(w) : ''));

@@ -1,4 +1,6 @@
-/* 주간 인사이트 — 단톡방 주 1회 공유용 발행물 페이지.
+/* 위클리 픽 — 단톡방 주 1회 공유용 발행물 페이지.
+   이름 근거: 대시보드 항목에 「한컴 인사이트」가 있어 「주간 인사이트」와 겹쳐 읽혔다(2026-08-21 사용자 지시).
+   「픽」이 이 페이지의 정체(사람이 골라 이유를 붙인 것)를 그대로 말한다.
    대시보드(기업 축)와 달리 한 주를 발행물로 자른다: 선별 · 왜 주목하나 · 교차 종합 · 회차 아카이브.
    본문(주요내용·시사점·한컴 인사이트)은 entry.js 의 entryDetailHTML 을 그대로 재사용한다 —
    대시보드 카드 펼침과 같은 구성이어야 두 화면이 어긋나지 않는다.
@@ -24,8 +26,29 @@ function statsHTML(s) {
     statBox(s.total || 0, '건', '금주 동향') +
     statBox(s.companies || 0, '곳', '등장 기업') +
     statBox(nc, '곳', '신규 기업', nc > 0 ? 'text-lime-600' : 'text-ink/40') +
-    statBox(s.picks || 0, '건', '주목 동향') +
+    statBox(s.picks || 0, '건', '주목 픽') +
     '</div>';
+}
+
+/* ===== 최근 4주 추이 =====
+   대시보드에 추이가 없어 이 페이지의 시각적 차별 지점이 된다. 막대 높이는 4주 최대값 기준 비율.
+   건수가 0인 주도 칸을 남겨 「비어 있던 주」가 보이게 한다. */
+function trendHTML(trend) {
+  const t = (trend || []).filter((x) => x && x.start);
+  if (t.length < 2) return '';
+  const max = Math.max(...t.map((x) => x.total || 0), 1);
+  const bars = t.map((x, i) => {
+    const last = i === t.length - 1;
+    const pct = Math.max(4, Math.round(((x.total || 0) / max) * 100));
+    return '<div class="flex-1 flex flex-col items-center gap-1.5">' +
+      '<div class="text-[10px] font-display font-bold ' + (last ? 'text-ink' : 'text-ink/40') + '">' + (x.total || 0) + '</div>' +
+      '<div class="w-full h-14 flex items-end"><div class="w-full rounded-t-[4px] ' + (last ? 'bg-lime' : 'bg-ink/10') + '" style="height:' + pct + '%"></div></div>' +
+      '<div class="text-[10px] ' + (last ? 'font-semibold text-ink/70' : 'text-ink/35') + '">' + escapeHtml(md(x.start)) + '</div>' +
+      '</div>';
+  }).join('');
+  return '<div class="mt-5 pt-5 border-t border-ink/[.07]">' +
+    '<div class="text-[10px] font-bold uppercase tracking-widest text-ink/40 mb-2.5">최근 4주 동향 건수</div>' +
+    '<div class="flex items-end gap-2">' + bars + '</div></div>';
 }
 
 /* ===== 주목 동향 카드 =====
@@ -122,7 +145,7 @@ function prevHTML(prev) {
 function shareText(d) {
   const s = d.stats || {}, p = d.payload || {};
   const picks = p.picks || [];
-  const head = '[AX Biz Radar] 주간 인사이트' + (d.issueNo ? ' ' + d.issueNo + '호' : '') + ' · ' + shortLabel(d.label);
+  const head = '[AX Biz Radar] 위클리 픽' + (d.issueNo ? ' ' + d.issueNo + '호' : '') + ' · ' + shortLabel(d.label);
   const nc = (s.newCompanies || []).length;
   const nums = '동향 ' + (s.total || 0) + '건 중 주목 ' + picks.length + '건' +
     (nc ? ' · 신규 기업 ' + nc + '곳' : '');
@@ -161,13 +184,20 @@ function renderEdition(d) {
   let h = '';
 
   // 헤더
-  h += '<div class="mb-7">' +
+  h += '<div class="mb-5">' +
     '<div class="flex items-baseline gap-2 mb-2.5">' +
-    '<span class="text-[11px] font-bold uppercase tracking-widest text-lime-600">Weekly Insight</span>' +
+    '<span class="text-[11px] font-bold uppercase tracking-widest text-lime-600">Weekly Picks</span>' +
     (d.issueNo ? '<span class="text-[11px] font-bold text-ink/50">· ' + d.issueNo + '호</span>' : '') + '</div>' +
     '<h1 class="text-3xl sm:text-4xl font-display font-bold tracking-tight leading-tight">' + escapeHtml(d.label) + '</h1>' +
     '<p class="text-sm text-ink/55 mt-2">' + escapeHtml(md(d.start) + ' ~ ' + md(d.end)) +
     (d.publishedAt ? ' · 발행 ' + escapeHtml(String(d.publishedAt).slice(0, 10)) : '') + '</p></div>';
+
+  // 지난 회차와 이어지는 한 줄 — 회차가 이어지는 발행물이라는 신호. 대시보드는 회차 개념이 없어 못 하는 것.
+  if (p.bridge) {
+    const ref = p.bridgeRef && p.bridgeRef.issueNo ? p.bridgeRef.issueNo + '호 대비' : '지난 회차 대비';
+    h += '<div class="mb-6 pl-4 border-l-2 border-lime text-[13.5px] leading-[1.7] text-ink/70">' +
+      '<span class="font-semibold text-lime-600">' + escapeHtml(ref) + '</span> ' + escapeHtml(p.bridge) + '</div>';
+  }
 
   // 금주 정리 + 금주 결론을 최상단에 둔다(2026-08-21 사용자 지시).
   // 단톡방에서 들어온 사람은 평소 대시보드를 보지 않으므로, 스크롤하지 않고도 한 주의 요지와
@@ -185,25 +215,33 @@ function renderEdition(d) {
         '<li class="text-[14px] leading-[1.8] text-ink/90 pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-[11px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime-600">' +
         escapeHtml(x) + '</li>').join('') + '</ul></div>';
 
-  h += statsHTML(s);
+  // 금주 한눈에 — 수치 · 키워드 · 신규 편입 기업 · 4주 추이를 한 카드에 모아 주목 픽 위에 둔다.
+  // 「수치 말고도 대시보드에 없는 포인트를 상단에」(2026-08-21 사용자 지시)에 대한 답이며,
+  // 넷을 따로 흩어 놓으면 상단이 벽처럼 보여 한 덩어리로 묶었다.
+  h += '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-5 sm:p-6 mb-8">' +
+    '<div class="text-[10px] font-bold uppercase tracking-widest text-lime-600 mb-3.5">금주 한눈에</div>' +
+    statsHTML(s);
+  if ((s.topTags || []).length)
+    h += '<div class="mt-5 pt-5 border-t border-ink/[.07]">' +
+      '<div class="text-[10px] font-bold uppercase tracking-widest text-ink/40 mb-2.5">금주 키워드</div>' +
+      '<div class="flex flex-wrap gap-2">' + s.topTags.map((t) =>
+        '<span class="text-[13px] bg-beige border border-ink/[.07] rounded-full pl-3.5 pr-2 py-1.5 inline-flex items-center gap-1.5">' +
+        '#' + escapeHtml(t.tag) +
+        '<span class="text-[11px] font-bold text-ink/40">' + (t.count || 0) + '</span>' +
+        (t.isNew ? '<span class="text-[9px] font-bold bg-lime text-ink rounded-full px-1.5 py-0.5">NEW</span>' : '') +
+        '</span>').join('') + '</div></div>';
+  if ((s.newCompanies || []).length)
+    h += '<div class="mt-5 pt-5 border-t border-ink/[.07]">' +
+      '<div class="text-[10px] font-bold uppercase tracking-widest text-ink/40 mb-2">금주 신규 편입 기업</div>' +
+      '<div class="flex flex-wrap gap-2">' + s.newCompanies.map((n) =>
+        '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-[13px] font-display font-semibold bg-lime/20 border border-lime rounded-full px-3 py-1 hover:bg-lime transition-colors">' +
+        escapeHtml(n) + '</a>').join('') + '</div></div>';
+  h += trendHTML(s.trend) + '</div>';
 
-  // 주목 동향 — 본문(주요내용·시사점·한컴 인사이트)까지 기본 펼침
+  // 주목 픽 — 본문(주요내용·시사점·한컴 인사이트)까지 기본 펼침
   if (picks.length) {
-    h += secHead('Picks', '주목 동향', s.total ? '전체 ' + s.total + '건 중 ' + picks.length + '건' : '');
+    h += secHead('Picks', '주목 픽', s.total ? '전체 ' + s.total + '건 중 ' + picks.length + '건' : '');
     h += '<div class="space-y-4">' + picks.map(pickHTML).join('') + '</div>';
-  }
-
-  // 키워드
-  if ((s.topTags || []).length) {
-    h += secHead('Keywords', '금주 키워드', '');
-    h += '<div class="flex flex-wrap gap-2">' + s.topTags.map((t) =>
-      '<span class="text-[13px] bg-white border border-ink/10 rounded-full pl-3.5 pr-2 py-1.5 inline-flex items-center gap-1.5">' +
-      '#' + escapeHtml(t.tag) +
-      '<span class="text-[11px] font-bold text-ink/40">' + (t.count || 0) + '</span>' +
-      (t.isNew ? '<span class="text-[9px] font-bold bg-lime text-ink rounded-full px-1.5 py-0.5">NEW</span>' : '') +
-      '</span>').join('') + '</div>';
-    if ((s.newCompanies || []).length)
-      h += '<p class="text-xs text-ink/55 mt-3">금주 신규 편입 기업: <b class="font-semibold text-ink/75">' + escapeHtml(s.newCompanies.join(', ')) + '</b></p>';
   }
 
   // 그 외 동향
@@ -236,9 +274,9 @@ function renderEdition(d) {
 function renderEmpty(d) {
   const msg = d.reason === 'NOT_PUBLISHED'
     ? (d.label ? escapeHtml(d.label) + '은 아직 발행되지 않았습니다' : '아직 발행되지 않은 주차입니다')
-    : '아직 발행된 주간 인사이트가 없습니다';
+    : '아직 발행된 위클리 픽이 없습니다';
   return '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-8 sm:p-10 text-center">' +
-    '<div class="text-[11px] font-bold uppercase tracking-widest text-lime-600 mb-3">Weekly Insight</div>' +
+    '<div class="text-[11px] font-bold uppercase tracking-widest text-lime-600 mb-3">Weekly Picks</div>' +
     '<p class="font-display font-bold text-xl tracking-tight mb-2">' + msg + '</p>' +
     '<p class="text-sm text-ink/55">발행되면 이 주소에서 바로 볼 수 있습니다</p>' +
     '<div class="flex flex-wrap justify-center gap-x-5 gap-y-2 mt-6 text-sm">' +
@@ -300,6 +338,9 @@ function draftToEdition(d) {
     week: d.week, issueNo: d.issueNo, start: d.start, end: d.end, label: d.label, publishedAt: null,
     stats,
     payload: {
+      bridge: (d.payload && d.payload.bridge) || '',
+      // 초안에는 이은 회차가 아직 굳지 않았다(발행 시 확정) — 미리보기에서는 서버가 준 직전 회차를 쓴다
+      bridgeRef: d.prevEdition ? { week: d.prevEdition.week, issueNo: d.prevEdition.issueNo } : null,
       overview: (d.payload && d.payload.overview) || '',
       hancomConclusion: (d.payload && d.payload.hancomConclusion) || [],
       picks,
@@ -337,7 +378,7 @@ async function initWeekly() {
   }
   root.innerHTML = (data.isPreview ? previewBanner() : '') + renderEdition(data);
   // 브라우저 탭·링크 미리보기에 회차가 드러나게(정적 OG 는 Phase 2 에서 회차별로 주입)
-  document.title = '주간 인사이트' + (data.issueNo ? ' ' + data.issueNo + '호' : '') + ' · ' + shortLabel(data.label) + ' — AX Biz Radar';
+  document.title = '위클리 픽' + (data.issueNo ? ' ' + data.issueNo + '호' : '') + ' · ' + shortLabel(data.label) + ' — AX Biz Radar';
 
   root.addEventListener('click', onToggle);
   root.addEventListener('keydown', onToggle);

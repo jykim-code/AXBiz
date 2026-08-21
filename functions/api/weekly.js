@@ -1,4 +1,4 @@
-// /api/weekly — 주간 인사이트 발행물 (단톡방 주 1회 공유용)
+// /api/weekly — 위클리 픽 발행물 (단톡방 주 1회 공유용)
 //   GET  ?w=2026-W34        (공개) 그 주차 발행본. w·n·date 가 없으면 최신 발행 회차
 //   GET  ?n=12              (공개) 회차 번호로 조회
 //   GET  ?date=2026-08-19   (공개) 그 날짜가 속한 주차로 정규화
@@ -93,27 +93,34 @@ function toItem(date, c) {
    신규(태그·기업) 판정은 기간 시작 이전 전체 이력이 필요하므로 관리자 경로에서만 계산하고,
    결과는 발행 시 stats 로 고정된다(공개 조회는 이 계산을 하지 않는다). */
 async function collect(env, start, end) {
-  const prevStart = fmt(shift(utc(start), -7));
   const rows = (await env.DB.prepare('SELECT date, companies FROM reports WHERE date <= ? ORDER BY date ASC').bind(end).all()).results || [];
 
   const items = [];
   const seenCompany = new Set(), seenTag = new Set(); // 기간 시작 이전 이력
-  let prevTotal = 0;
+  const countByDate = {};
   for (const r of rows) {
     const list = parseJson(r.companies, []);
     if (!Array.isArray(list)) continue;
+    countByDate[r.date] = (countByDate[r.date] || 0) + list.length;
     if (r.date >= start && r.date <= end) {
       for (const c of list) if (c && c.name) items.push(toItem(r.date, c));
       continue;
     }
-    // 이전 주(직전 7일)는 전주 대비 비교용으로 건수만 센다
-    if (r.date >= prevStart && r.date < start) prevTotal += list.length;
     for (const c of list) {
       if (!c || !c.name) continue;
       seenCompany.add(c.name);
       for (const t of (c.tags || [])) seenTag.add(t);
     }
   }
+
+  // 최근 4주 건수 추이(오래된 주부터). 대시보드에 추이가 없어 주간 발행물의 차별 지점이 된다.
+  const rangeTotal = (s, e) => Object.keys(countByDate).reduce((n, d) => (d >= s && d <= e ? n + countByDate[d] : n), 0);
+  const trend = [];
+  for (let k = 3; k >= 0; k--) {
+    const ws = fmt(shift(utc(start), -7 * k));
+    trend.push({ start: ws, total: rangeTotal(ws, fmt(shift(utc(ws), 6))) });
+  }
+  const prevTotal = trend.length > 1 ? trend[trend.length - 2].total : 0;
 
   // key 중복 제거. key 는 화면의 선택 상태·저장된 픽을 잇는 신원이라 겹치면 다른 항목이 선택된다.
   // 같은 날 같은 기업의 두 동향이 출처 URL 을 공유하거나 본문이 같으면 entryKey 가 같아진다
@@ -144,8 +151,9 @@ async function collect(env, start, end) {
     total: items.length,
     companies: Object.keys(countByCompany).length,
     prevTotal,
-    delta: items.length - prevTotal,
+    delta: items.length - prevTotal, // 화면에는 쓰지 않는다(신규 기업 수로 교체됨)
     daysWithData: days.size,
+    trend,
     topTags,
     newTags,
     newCompanies,
@@ -179,7 +187,7 @@ const STYLE = `문체 규칙(보고서 항목과 동일)
 - 「축」(대응 축·경쟁 축) 표현을 쓰지 않고 경쟁 지점·비교 기준·차별화 요소로 구체화한다`;
 
 const PROMPTS = {
-  why: `당신은 "AX Biz Radar" 주간 인사이트의 편집자입니다.
+  why: `당신은 "AX Biz Radar" 위클리 픽의 편집자입니다.
 주어진 동향 한 건이 왜 주목할 만한지 한 줄로 쓰세요. 한컴 Agentic OS(AI 오케스트레이션 AX 플랫폼) 관점에서
 경쟁 지점·시장 변화의 의미를 짚습니다.
 
@@ -191,7 +199,7 @@ ${STYLE}
 
 문장만 출력하고 다른 텍스트를 붙이지 않는다.`,
 
-  overview: `당신은 "AX Biz Radar" 주간 인사이트의 편집자입니다.
+  overview: `당신은 "AX Biz Radar" 위클리 픽의 편집자입니다.
 이번 주 주목 동향들을 묶어 한 주의 흐름을 1~2문장으로 쓰세요.
 
 - 개별 기업 나열이 아니라 공통 흐름·방향이 드러나게 쓴다
@@ -202,7 +210,19 @@ ${STYLE}
 
 문장만 출력하고 다른 텍스트를 붙이지 않는다.`,
 
-  conclusion: `당신은 "AX Biz Radar" 주간 인사이트의 편집자입니다.
+  bridge: `당신은 "AX Biz Radar" 위클리 픽의 편집자입니다.
+지난 회차와 금주를 잇는 한 줄을 쓰세요. 회차가 이어지는 발행물이라는 것이 드러나야 합니다.
+
+- 「지난 회차는 A, 금주는 B」 구조로 흐름의 변화 또는 이어짐을 드러낸다
+- 80~140자 한 문장
+- 지난 회차 정리와 금주 주목 동향만 근거로 하고 추측하지 않는다
+- 지난 회차와 금주가 같은 흐름이면 이어짐을, 달라졌으면 무엇이 바뀌었는지를 쓴다
+
+${STYLE}
+
+문장만 출력하고 다른 텍스트를 붙이지 않는다.`,
+
+  conclusion: `당신은 "AX Biz Radar" 위클리 픽의 편집자입니다.
 이번 주 동향에서 한컴 Agentic OS 관점의 결론을 뽑으세요.
 
 한컴 Agentic OS 는 기업의 모든 시스템과 데이터를 연결하고 여러 AI 에이전트의 협업으로 실제 업무 수행을
@@ -271,6 +291,17 @@ const itemContext = (it) =>
   `주요내용: ${it.keyPoints.join(' / ') || '-'}\n시사점: ${it.implications.join(' / ') || '-'}\n` +
   `한컴인사이트: ${it.hancomInsight.join(' / ') || '-'}\n태그: ${it.tags.join(', ') || '-'}`;
 
+// 직전 발행 회차 — 「지난 회차와 이어지는 한 줄」의 근거이자 화면의 회차 표기용.
+async function prevEdition(env, start) {
+  try {
+    return await env.DB.prepare(
+      `SELECT week, issue_no, json_extract(payload, '$.overview') AS overview
+         FROM weekly_edition WHERE status = 'published' AND range_end < ?
+        ORDER BY range_end DESC LIMIT 1`
+    ).bind(start).first();
+  } catch { return null; }
+}
+
 /* ===== GET ===== */
 function editionResponse(row, prev) {
   return Response.json({
@@ -327,11 +358,19 @@ export async function onRequestGet({ request, env }) {
         const mx = await env.DB.prepare('SELECT MAX(issue_no) AS m FROM weekly_edition').first();
         issueNo = ((mx && mx.m) || 0) + 1;
       }
+      const pe = await prevEdition(env, start);
       return Response.json({
         available: true, week, start, end, label: weekLabel(week),
         status: row ? row.status : 'none',
         issueNo, stats, candidates: items,
-        payload: { overview: payload.overview || '', hancomConclusion: payload.hancomConclusion || [], picks: payload.picks || [] },
+        // 「지난 회차와 이어지는 한 줄」을 쓸 근거. 첫 회차면 null 이라 화면에서 그 입력을 감춘다.
+        prevEdition: pe ? { week: pe.week, issueNo: pe.issue_no, label: weekLabel(pe.week), overview: pe.overview || '' } : null,
+        payload: {
+          bridge: payload.bridge || '',
+          overview: payload.overview || '',
+          hancomConclusion: payload.hancomConclusion || [],
+          picks: payload.picks || [],
+        },
       });
     }
 
@@ -419,6 +458,16 @@ export async function onRequestPost({ request, env }) {
       }
       if (!picks.length) return Response.json({ error: 'PICKS_REQUIRED' }, { status: 400 });
 
+      if (kind === 'bridge') {
+        const pe = await prevEdition(env, start);
+        // 첫 회차거나 지난 회차에 정리가 없으면 이을 것이 없다 — 없는 연결을 지어내지 않는다.
+        if (!pe || !pe.overview) return Response.json({ text: null, reason: 'NO_PREV_EDITION' });
+        const ctx = `지난 회차(${pe.issue_no}호 ${weekLabel(pe.week)}) 정리: ${pe.overview}\n\n` +
+          `금주 주목 동향\n` + picks.map((p, i) => `${i + 1}) ${p.company}: ${p.title}${p.why ? ' / 주목 이유: ' + p.why : ''}`).join('\n');
+        const r = await llmClean(env, PROMPTS.bridge, ctx, 500);
+        return Response.json({ text: r.text ? llmStr(r.text, 300) : null, warn: r.warn, prevIssueNo: pe.issue_no });
+      }
+
       if (kind === 'overview') {
         const ctx = picks.map((p, i) => `${i + 1}) ${p.company}: ${p.title}${p.why ? ' / 주목 이유: ' + p.why : ''}`).join('\n');
         const r = await llmClean(env, PROMPTS.overview, `기간: ${start} ~ ${end}\n\n${ctx}`, 500);
@@ -437,6 +486,7 @@ export async function onRequestPost({ request, env }) {
     if (action === 'save') {
       const p = body?.payload || {};
       const payload = {
+        bridge: str(p.bridge, 300),
         overview: str(p.overview, 400),
         hancomConclusion: arr(p.hancomConclusion, 3, 300),
         picks: (Array.isArray(p.picks) ? p.picks : []).slice(0, MAX_PICKS).map(sanitizePick).filter(Boolean),
@@ -446,10 +496,11 @@ export async function onRequestPost({ request, env }) {
       const issueNo = Number.isInteger(body?.issueNo) && body.issueNo > 0
         ? await resolveIssueNo(env, week, body.issueNo)
         : (row ? row.issue_no : null);
-      // 발행본을 다시 저장하는 경우 others(그 외 동향 스냅샷)를 잃지 않도록 유지한다.
+      // 발행본을 다시 저장하는 경우 발행 시점에만 굳는 값(그 외 동향 스냅샷·이은 회차)을 잃지 않도록 유지한다.
       if (row && row.status === 'published') {
         const cur = parseJson(row.payload, {});
         if (Array.isArray(cur.others)) payload.others = cur.others;
+        if (cur.bridgeRef) payload.bridgeRef = cur.bridgeRef;
       }
       if (row) {
         await env.DB.prepare("UPDATE weekly_edition SET payload = ?, issue_no = COALESCE(?, issue_no), updated_at = datetime('now') WHERE week = ?")
@@ -480,7 +531,11 @@ export async function onRequestPost({ request, env }) {
       stats.picks = picks.length;
 
       const issueNo = await resolveIssueNo(env, week, row.issue_no);
+      // 이은 회차 번호도 함께 굳힌다. 나중에 다른 회차가 발행돼도 이 발행본의 「N호 대비」는 변하지 않는다.
+      const pe = payload.bridge ? await prevEdition(env, start) : null;
       const finalPayload = {
+        bridge: str(payload.bridge, 300),
+        bridgeRef: pe ? { week: pe.week, issueNo: pe.issue_no } : null,
         overview: str(payload.overview, 400),
         hancomConclusion: arr(payload.hancomConclusion, 3, 300),
         picks, others,
