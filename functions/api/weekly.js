@@ -14,7 +14,7 @@
 //  - 수치는 항상 코드 집계다. LLM 이 실패해도 수치와 주목 동향은 나온다.
 import { pinOk, forbidden } from '../_auth.js';
 import { entryKey } from '../_publish.js';
-import { stripTrailingPeriod, replaceEmDash } from '../_style.js';
+import { stripTrailingPeriod, replaceEmDash, replaceAxisWord } from '../_style.js';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MAX_PICKS = 5;
@@ -216,6 +216,10 @@ ${STYLE}
 ${STYLE}`,
 };
 
+// LLM 출력에만 「축」 치환을 걸어 관리자가 화면에서 고쳐진 문장을 보고 저장하게 한다.
+// reports 에서 승계한 본문에는 걸지 않는다 — 같은 항목이 대시보드와 주간 페이지에서 달라 보이면 안 된다.
+const llmStr = (v, len) => replaceAxisWord(str(v, len));
+
 async function llm(env, system, user, maxTokens) {
   if (!env.OPENROUTER_API_KEY || !env.OPENROUTER_MODEL) return null;
   try {
@@ -396,20 +400,20 @@ export async function onRequestPost({ request, env }) {
         const it = sanitizePick(body?.item);
         if (!it) return Response.json({ error: 'ITEM_REQUIRED' }, { status: 400 });
         const text = await llm(env, PROMPTS.why, itemContext(it), 400);
-        return Response.json({ text: text ? str(text, 300) : null });
+        return Response.json({ text: text ? llmStr(text, 300) : null });
       }
       if (!picks.length) return Response.json({ error: 'PICKS_REQUIRED' }, { status: 400 });
 
       if (kind === 'overview') {
         const ctx = picks.map((p, i) => `${i + 1}) ${p.company}: ${p.title}${p.why ? ' / 주목 이유: ' + p.why : ''}`).join('\n');
         const text = await llm(env, PROMPTS.overview, `기간: ${start} ~ ${end}\n\n${ctx}`, 500);
-        return Response.json({ text: text ? str(text, 400) : null });
+        return Response.json({ text: text ? llmStr(text, 400) : null });
       }
       // conclusion — 불릿 여러 개
       const ctx = picks.map((p) => `[${p.company}] ${p.title}\n한컴인사이트: ${p.hancomInsight.join(' / ') || '-'}\n주목 이유: ${p.why || '-'}`).join('\n\n');
       const text = await llm(env, PROMPTS.conclusion, `기간: ${start} ~ ${end}\n\n${ctx}`, 700);
       const items = text
-        ? text.split('\n').map((l) => str(l.replace(/^[-·•*\s]+/, ''), 300)).filter(Boolean).slice(0, 3)
+        ? text.split('\n').map((l) => llmStr(l.replace(/^[-·•*\s]+/, ''), 300)).filter(Boolean).slice(0, 3)
         : [];
       return Response.json({ items });
     }
