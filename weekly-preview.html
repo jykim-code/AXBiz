@@ -369,37 +369,49 @@ function variantF() {
   h += '<p class="text-[20px] sm:text-[24px] font-display font-medium leading-[1.5] max-w-[38ch] mb-12">' + esc(D.overview) + '</p>';
   h += '</div>';
 
-  // 다크 수치 밴드 (E) — 전체폭
-  h += '<div class="bg-ink text-white py-10">' +
-    '<div class="max-w-[1000px] mx-auto px-5 sm:px-8">' +
-    '<div class="grid grid-cols-2 sm:grid-cols-4 gap-6 pb-7">' +
+  /* 다크 수치 밴드 — E 의 「대형 라임 숫자」만 가져오고, 나머지는 C 의 어휘로 쓴다.
+     C 의 문법 = 선으로 나눈 행 + 좌측 라벨 / 우측 내용 + 활자 위계. 그래서
+     칩(라운드 필)·막대 그래프를 쓰지 않고, 세로 얇은 선으로 지표를 나누고
+     추이는 숫자와 연결선으로, 키워드·기업명은 인라인 텍스트로 둔다. */
+  const fRow = (label, content, cls) =>
+    '<div class="rule-dark ' + (cls || 'py-4') + ' grid sm:grid-cols-[110px,1fr] gap-x-6 gap-y-1.5">' +
+    '<div class="text-[10px] font-bold uppercase tracking-widest text-lime sm:pt-1">' + label + '</div>' +
+    '<div>' + content + '</div></div>';
+
+  h += '<div class="bg-ink text-white">' +
+    '<div class="max-w-[1000px] mx-auto px-5 sm:px-8 py-10">';
+
+  // 지표 — 세로 얇은 선으로만 나눈 4열 (박스·칩 없음)
+  h += '<div class="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/[.12] pb-9">' +
     [['금주 동향', D.stats.total], ['등장 기업', D.stats.companies], ['신규 기업', D.stats.newCo], ['Weekly Picks', D.stats.picks]]
-      .map(([k, v]) => '<div><div class="font-display font-bold text-[44px] sm:text-[52px] text-lime leading-none">' + v + '</div>' +
-        '<div class="text-[10px] uppercase tracking-widest text-white/50 mt-2.5">' + k + '</div></div>').join('') + '</div>' +
-    // 키워드 + 추이
-    '<div class="rule-dark pt-5 flex flex-wrap items-end gap-x-8 gap-y-4">' +
-    '<div class="flex-1 min-w-[240px]">' +
-    '<div class="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-2">금주 키워드</div>' +
-    '<div class="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-white/80">' +
-    D.tags.map((t) => '<span>#' + t.t + '<span class="text-white/35 ml-0.5">' + t.n + '</span>' +
-      (t.isNew ? '<span class="text-[9px] font-bold bg-lime text-ink rounded-full px-1.5 ml-1">NEW</span>' : '') + '</span>').join('') + '</div></div>' +
-    '<div class="flex-none">' +
-    '<div class="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-2">최근 4주</div>' +
-    '<div class="flex items-end gap-2.5">' + D.trend.map((t, i) => {
+      .map(([k, v], i) => '<div class="' + (i === 0 ? 'sm:pr-6' : 'sm:px-6') + ' py-4 sm:py-0">' +
+        '<div class="font-display font-bold text-[44px] sm:text-[52px] text-lime leading-none tracking-tighter">' + v + '</div>' +
+        '<div class="text-[10px] uppercase tracking-widest text-white/45 mt-2.5">' + k + '</div></div>').join('') + '</div>';
+
+  // 추이 — 막대 대신 숫자 + 연결선
+  h += fRow('최근 4주',
+    '<div class="flex items-center gap-2 text-[15px] font-display font-bold">' +
+    D.trend.map((t, i) => {
       const last = i === D.trend.length - 1;
-      return '<div class="flex flex-col items-center gap-1.5">' +
-        '<span class="text-[11px] font-display font-bold ' + (last ? 'text-lime' : 'text-white/40') + '">' + t.n + '</span>' +
-        '<div class="w-9 h-9 flex items-end"><div class="w-full ' + (last ? 'bg-lime' : 'bg-white/15') + '" style="height:' + Math.max(10, Math.round(t.n / 33 * 100)) + '%"></div></div>' +
-        '<span class="text-[9px] ' + (last ? 'text-white/70' : 'text-white/30') + '">' + t.d + '</span></div>';
-    }).join('') + '</div></div></div>' +
-    // 신규 편입 기업
-    '<div class="rule-dark mt-5 pt-5">' +
-    '<div class="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-2">금주 신규 편입 기업</div>' +
-    '<div class="flex flex-wrap gap-1.5">' +
-    D.newCompanies.slice(0, 6).map((n) => '<span class="text-[12.5px] font-display font-semibold border border-lime/60 text-lime rounded-full px-2.5 py-0.5">' + esc(n) + '</span>').join('') +
-    (D.newCompanies.length > 6 ? '<span class="text-[12.5px] text-white/40 px-2 py-0.5">+' + (D.newCompanies.length - 6) + '곳</span>' : '') +
-    '</div></div>' +
-    '</div></div>';
+      return (i ? '<span class="w-6 border-t border-white/20"></span>' : '') +
+        '<span class="' + (last ? 'text-lime' : 'text-white/45') + '">' + t.n +
+        '<span class="block text-[9px] font-sans font-normal ' + (last ? 'text-white/60' : 'text-white/25') + ' mt-0.5">' + t.d + '</span></span>';
+    }).join('') + '</div>');
+
+  // 키워드 — 칩 대신 인라인 텍스트
+  h += fRow('금주 키워드',
+    '<p class="text-[14px] leading-[1.9] text-white/85">' +
+    D.tags.map((t) => '<span class="whitespace-nowrap">#' + t.t +
+      '<span class="text-white/30 ml-0.5 text-[11px]">' + t.n + '</span>' +
+      (t.isNew ? '<span class="text-lime text-[9px] font-bold uppercase tracking-widest ml-1">new</span>' : '') + '</span>').join('<span class="text-white/20 mx-2">·</span>') + '</p>');
+
+  // 신규 편입 기업 — 칩 대신 쉼표 나열
+  h += fRow('신규 편입',
+    '<p class="text-[14px] leading-[1.8] font-display font-semibold text-white/90">' +
+    esc(D.newCompanies.slice(0, 6).join(', ')) +
+    (D.newCompanies.length > 6 ? '<span class="font-sans font-normal text-white/40"> 외 ' + (D.newCompanies.length - 6) + '곳</span>' : '') + '</p>');
+
+  h += '</div></div>';
 
   // 목차 + 한컴 관점 (C)
   h += '<div class="max-w-[1000px] mx-auto px-5 sm:px-8 pt-12">';
