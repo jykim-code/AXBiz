@@ -1,6 +1,6 @@
 # 이어서 작업 (Handoff) — 갱신 2026-06-04
 
-> 현재 상태·결정·다음 단계 기록. 상세 진행은 `ROADMAP.md` 참고.
+> 현재 상태·결정·다음 단계 기록. 할 일은 `TODO.md`, 완료 이력은 `ROADMAP.md` 참고.
 
 ## 현재 상태
 - **라이브**: https://ax-biz-radar.pages.dev  ·  **레포(Private)**: github.com/jykim-code/AXBiz
