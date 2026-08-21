@@ -959,7 +959,7 @@ function renderWeekly() {
         '<textarea id="wkBridge" class="field" rows="2" maxlength="300">' + escapeHtml(p.bridge || '') + '</textarea>' +
         '<p class="text-xs opacity-50 mt-1 mb-4">' + escapeHtml(WK.prevEdition.issueNo + '호(' + WK.prevEdition.label + ') 정리: ' + (WK.prevEdition.overview || '(없음)')) + '</p>'
       : '<p class="text-xs opacity-50 mb-4">첫 회차라 「지난 회차와 이어지는 한 줄」은 건너뜁니다.</p>') +
-    '<div class="flex items-center justify-between mb-1.5"><div class="label">금주 정리</div>' +
+    '<div class="flex items-center justify-between mb-1.5"><div class="label">금주 한 줄 요약</div>' +
     '<button type="button" id="wkAiOverview" class="text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
     '<textarea id="wkOverview" class="field" rows="2" maxlength="400">' + escapeHtml(p.overview || '') + '</textarea>' +
     '<div class="flex items-center justify-between mt-4 mb-1.5"><div class="label">금주 결론 · 한컴 관점 · 한 줄 = 불릿 1개 (2~3개)</div>' +

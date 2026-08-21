@@ -200,12 +200,12 @@ function renderEdition(d) {
       '<span class="font-semibold text-lime-600">' + escapeHtml(ref) + '</span> ' + escapeHtml(p.bridge) + '</div>';
   }
 
-  // 금주 정리 + 금주 결론을 최상단에 둔다(2026-08-21 사용자 지시).
+  // 금주 한 줄 요약 + 금주 결론을 최상단에 둔다(2026-08-21 사용자 지시).
   // 단톡방에서 들어온 사람은 평소 대시보드를 보지 않으므로, 스크롤하지 않고도 한 주의 요지와
   // 한컴 관점 결론까지 읽히게 한다. 수치와 개별 동향은 그 뒤에 온다.
   if (p.overview)
     h += '<div class="bg-ink text-white rounded-[24px] p-6 sm:p-7 mb-4">' +
-      '<div class="text-[10px] font-bold uppercase tracking-widest text-lime mb-2.5">금주 정리</div>' +
+      '<div class="text-[10px] font-bold uppercase tracking-widest text-lime mb-2.5">금주 한 줄 요약</div>' +
       '<p class="text-lg sm:text-xl font-display font-semibold tracking-tight leading-snug">' + escapeHtml(p.overview) + '</p></div>';
 
   if ((p.hancomConclusion || []).length)
