@@ -94,6 +94,27 @@ CREATE TABLE IF NOT EXISTS draft_entries (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_draft_dcsr ON draft_entries(date, company, source, source_ref) WHERE status='draft';
 CREATE INDEX IF NOT EXISTS idx_draft_status_date ON draft_entries(status, date DESC);
 
+-- 주간 인사이트 발행본. 단톡방 공유용 주 1회 발행물(회차 번호 부여).
+--   관리자가 그 주 항목에서 3~5건을 고르고 「왜 주목하나」를 쓴 것 + LLM 이 엮은 문장 + 코드 집계 수치.
+--   ⚠ 발행 시점 내용을 payload 에 통째로 복사해 고정한다(스냅샷). 원본(reports)이 나중에 바뀌어도
+--     발행본은 변하지 않는다 — 공유한 링크의 내용이 달라지면 공유물로 쓸 수 없기 때문이다.
+--     같은 이유로 공개 조회는 이 테이블만 읽고 reports 를 다시 읽지 않는다.
+--   period_summary 가 내용해시로 자동 갱신되는 것과 반대 선택이며 의도된 차이다.
+CREATE TABLE IF NOT EXISTS weekly_edition (
+  week         TEXT PRIMARY KEY,              -- ISO 주차 '2026-W34'
+  issue_no     INTEGER,                       -- 회차(발행 순서대로 부여, 관리자 수정 가능). 초안은 NULL
+  range_start  TEXT NOT NULL,                 -- 'YYYY-MM-DD' 월요일
+  range_end    TEXT NOT NULL,                 -- 'YYYY-MM-DD' 일요일
+  stats        TEXT,                          -- JSON 수치 스냅샷
+  payload      TEXT,                          -- JSON {overview, hancomConclusion[], picks[], others[]}
+  status       TEXT NOT NULL DEFAULT 'draft', -- 'draft' | 'published'
+  published_at TEXT,
+  updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- 회차 번호 중복 방지. 초안(NULL)끼리는 SQLite 규칙상 충돌하지 않는다.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_weekly_issue ON weekly_edition(issue_no) WHERE issue_no IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_weekly_status ON weekly_edition(status, range_end DESC);
+
 -- DART 응답 캐시(회사개황+재무). corp_code 기준. 재무는 분기 갱신이라 공격적 캐시.
 CREATE TABLE IF NOT EXISTS company_profile (
   corp_code  TEXT PRIMARY KEY,
