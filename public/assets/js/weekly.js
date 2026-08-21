@@ -15,13 +15,15 @@ function statBox(value, unit, caption, extraCls) {
     '<div class="text-[11px] font-semibold uppercase tracking-widest text-ink/45 mt-1.5">' + escapeHtml(caption) + '</div></div>';
 }
 
+// 전주 대비 증감은 쓰지 않는다(2026-08-21 사용자 지시). 데이터 수집일이 주마다 달라
+// 증감이 시장 변화가 아니라 수집량 차이를 보여 주는 경우가 있고, 「이번 주에 새로 들어온 기업」이
+// 주간 발행물에서 더 읽을 값이 있다. stats.delta 는 서버가 계속 계산하지만 화면에 쓰지 않는다.
 function statsHTML(s) {
-  const d = s.delta || 0;
-  const deltaTxt = d > 0 ? '+' + d : String(d);
+  const nc = (s.newCompanies || []).length;
   return '<div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-8">' +
     statBox(s.total || 0, '건', '이번 주 동향') +
     statBox(s.companies || 0, '곳', '등장 기업') +
-    statBox(deltaTxt, '건', '전주 대비', d > 0 ? 'text-lime-600' : (d < 0 ? 'text-ink/40' : '')) +
+    statBox(nc, '곳', '신규 기업', nc > 0 ? 'text-lime-600' : 'text-ink/40') +
     statBox(s.picks || 0, '건', '주목 동향') +
     '</div>';
 }
@@ -109,8 +111,9 @@ function shareText(d) {
   const s = d.stats || {}, p = d.payload || {};
   const picks = p.picks || [];
   const head = '[AX Biz Radar] 주간 인사이트' + (d.issueNo ? ' ' + d.issueNo + '호' : '') + ' · ' + shortLabel(d.label);
+  const nc = (s.newCompanies || []).length;
   const nums = '동향 ' + (s.total || 0) + '건 중 주목 ' + picks.length + '건' +
-    (s.delta ? ' · 전주 대비 ' + (s.delta > 0 ? '+' : '') + s.delta : '');
+    (nc ? ' · 신규 기업 ' + nc + '곳' : '');
   const body = picks.map((x, i) =>
     (i + 1) + ') ' + x.company + '  ' + (x.title || '') + (x.why ? '\n   → ' + x.why : '')).join('\n');
   const kw = (s.topTags || []).slice(0, 4).map((t) => '#' + t.tag + (t.isNew ? '(NEW)' : '')).join(' ');

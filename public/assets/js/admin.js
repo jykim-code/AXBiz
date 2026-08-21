@@ -879,10 +879,9 @@ async function loadWeekly() {
 
 /* --- 렌더 --- */
 function wkNumbersHTML(s) {
-  const d = s.delta || 0;
   const kw = (s.topTags || []).map((t) => '#' + t.tag + (t.isNew ? '(NEW)' : '')).join(' ');
-  return '<div class="text-sm">동향 <b>' + (s.total || 0) + '</b>건 · 기업 <b>' + (s.companies || 0) + '</b>곳 · 전주 대비 <b>' +
-    (d > 0 ? '+' + d : d) + '</b>건 · 데이터 있는 날 <b>' + (s.daysWithData || 0) + '</b>일</div>' +
+  return '<div class="text-sm">동향 <b>' + (s.total || 0) + '</b>건 · 기업 <b>' + (s.companies || 0) + '</b>곳 · 신규 기업 <b>' +
+    (s.newCompanies || []).length + '</b>곳 · 데이터 있는 날 <b>' + (s.daysWithData || 0) + '</b>일</div>' +
     (kw ? '<div class="text-xs opacity-60 mt-1.5">키워드 ' + escapeHtml(kw) + '</div>' : '') +
     ((s.newCompanies || []).length ? '<div class="text-xs opacity-60 mt-1">신규 편입 기업 ' + escapeHtml(s.newCompanies.join(', ')) + '</div>' : '');
 }
