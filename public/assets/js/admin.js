@@ -319,7 +319,9 @@ function init() {
   document.getElementById('tabReportBtn').addEventListener('click', () => showTab('report'));
   document.getElementById('tabSuggBtn').addEventListener('click', () => showTab('sugg'));
   document.getElementById('tabDartBtn').addEventListener('click', () => showTab('dart'));
+  document.getElementById('tabWeeklyBtn').addEventListener('click', () => showTab('weekly'));
   document.getElementById('tabSetBtn').addEventListener('click', () => showTab('set'));
+  document.getElementById('wkLoad').addEventListener('click', loadWeekly);
   document.getElementById('tabGuideBtn').addEventListener('click', () => showTab('guide'));
   // 가져오기 (데일리/히스토리)
   document.querySelectorAll('#impToggle button').forEach((b) => b.addEventListener('click', () => { impMode = b.dataset.imp; renderImpToggle(); }));
@@ -347,8 +349,8 @@ function init() {
 
 /* ===== 탭 전환 ===== */
 function showTab(which) {
-  const tabs = { review: 'tab-review', imp: 'tab-import', report: 'tab-report', sugg: 'tab-suggestions', dart: 'tab-dart', set: 'tab-settings', guide: 'tab-guide' };
-  const btns = { review: 'tabReviewBtn', imp: 'tabImportBtn', report: 'tabReportBtn', sugg: 'tabSuggBtn', dart: 'tabDartBtn', set: 'tabSetBtn', guide: 'tabGuideBtn' };
+  const tabs = { review: 'tab-review', imp: 'tab-import', report: 'tab-report', sugg: 'tab-suggestions', dart: 'tab-dart', weekly: 'tab-weekly', set: 'tab-settings', guide: 'tab-guide' };
+  const btns = { review: 'tabReviewBtn', imp: 'tabImportBtn', report: 'tabReportBtn', sugg: 'tabSuggBtn', dart: 'tabDartBtn', weekly: 'tabWeeklyBtn', set: 'tabSetBtn', guide: 'tabGuideBtn' };
   for (const k in tabs) {
     document.getElementById(tabs[k]).classList.toggle('hidden', k !== which);
     document.getElementById(btns[k]).className = 'btn px-4 py-2 ' + (k === which ? 'bg-ink text-white' : 'border border-ink/15 hover:bg-ink hover:text-white');
@@ -357,6 +359,7 @@ function showTab(which) {
   if (which === 'imp') renderImpToggle();
   if (which === 'sugg') loadSuggestions();
   if (which === 'dart') loadDartMappings();
+  if (which === 'weekly') openWeeklyTab();
   if (which === 'set') { loadPinned(); loadTagManager(); }
 }
 
@@ -828,6 +831,307 @@ async function clearSameRv() {
   if (!confirm('동일(변경 없음) ' + ids.length + '건을 검수 목록에서 삭제할까요?\n라이브엔 영향이 없습니다(draft만 정리).')) return;
   for (const id of ids) { try { await API.devDeleteDraft(id); } catch { /* 계속 */ } }
   toast(ids.length + '건 정리됨', true); loadReview();
+}
+
+/* ===== 위클리 픽 탭 =====
+   그 주 동향에서 3~5건을 골라 「주목(Pick) 이유」를 쓰고 발행한다.
+   선별과 이유는 사람이 쓴다(AI 초안은 빈 칸을 메우는 보조). 수치는 서버가 집계한다.
+   발행하면 그 시점 내용이 payload 에 고정되므로 이미 공유한 링크의 내용은 바뀌지 않는다. */
+const WK_MAX = 5;
+let WK = null;      // 서버 초안 상태 {week,start,end,label,status,issueNo,stats,candidates,payload}
+let WK_PICKS = [];  // 선택 항목(순서 유지) [{key,title,why}]
+
+const wkStatusLabel = (s) => (s === 'published' ? '발행됨' : s === 'draft' ? '초안 저장됨' : '아직 만들지 않음');
+
+// 서버가 두 번 받아 봐도 「축」 표현이 남은 경우. 무엇으로 바꿀지는 문맥마다 달라
+// 기계가 정할 수 없으므로 사람에게 넘긴다(CLAUDE.md 금지 표현).
+function wkWarnAxis(warn) {
+  if (warn === 'AXIS_WORD') toast('AI 초안에 금지 표현 「축」이 남아 있습니다. 경쟁 지점·비교 기준·차별화 요소로 직접 고쳐 주세요', false);
+}
+const wkCand = (key) => (WK && WK.candidates ? WK.candidates.find((c) => c.key === key) : null);
+
+function openWeeklyTab() {
+  const inp = document.getElementById('wkDate');
+  if (!inp.value) inp.value = todayYmd();
+  if (!WK) loadWeekly();
+}
+
+async function loadWeekly() {
+  const box = document.getElementById('wkEditor');
+  const meta = document.getElementById('wkMeta');
+  const picked = document.getElementById('wkDate').value || todayYmd();
+  box.innerHTML = '<div class="text-sm opacity-50">불러오는 중…</div>';
+  try {
+    WK = await API.weeklyDraft(picked, adminPin);
+  } catch (e) {
+    if (e.status === 403) { adminPin = ''; sessionStorage.removeItem('adminPin'); showGate(true); return; }
+    WK = null;
+    box.innerHTML = '<div class="text-sm text-red-500">불러오기 실패: ' + (e.status || e.message) + '</div>';
+    return;
+  }
+  // 저장된 선택 복원. 원본이 지워졌거나 출처 URL 이 바뀌면 후보와 짝이 맞지 않으므로 알리고 뺀다.
+  const saved = (WK.payload && WK.payload.picks) || [];
+  WK_PICKS = saved.filter((p) => wkCand(p.key)).map((p) => ({ key: p.key, title: p.title || '', why: p.why || '' }));
+  if (saved.length !== WK_PICKS.length) toast('원본이 바뀐 ' + (saved.length - WK_PICKS.length) + '건은 선택에서 빠졌습니다. 다시 골라 주세요', false);
+  meta.textContent = WK.label + ' · ' + WK.start + ' ~ ' + WK.end + ' · 동향 ' + (WK.stats.total || 0) + '건 · ' + wkStatusLabel(WK.status);
+  renderWeekly();
+}
+
+/* --- 렌더 --- */
+function wkNumbersHTML(s) {
+  const kw = (s.topTags || []).map((t) => '#' + t.tag + (t.isNew ? '(NEW)' : '')).join(' ');
+  return '<div class="text-sm">동향 <b>' + (s.total || 0) + '</b>건 · 기업 <b>' + (s.companies || 0) + '</b>곳 · 신규 기업 <b>' +
+    (s.newCompanies || []).length + '</b>곳 · 데이터 있는 날 <b>' + (s.daysWithData || 0) + '</b>일</div>' +
+    (kw ? '<div class="text-xs opacity-60 mt-1.5">키워드 ' + escapeHtml(kw) + '</div>' : '') +
+    ((s.newCompanies || []).length ? '<div class="text-xs opacity-60 mt-1">신규 편입 기업 ' + escapeHtml(s.newCompanies.join(', ')) + '</div>' : '');
+}
+
+function wkRowHTML(c) {
+  const on = WK_PICKS.some((p) => p.key === c.key);
+  return '<label class="flex items-start gap-3 py-2.5 cursor-pointer hover:bg-beige/60 px-1 rounded-lg">' +
+    '<input type="checkbox" class="wk-cb mt-1 flex-none accent-lime-600 w-4 h-4" data-key="' + escapeHtml(c.key) + '"' + (on ? ' checked' : '') + ' />' +
+    '<span class="min-w-0 flex-1">' +
+    '<span class="flex items-baseline gap-2">' +
+    '<b class="text-sm">' + escapeHtml(c.company) + '</b>' +
+    '<span class="text-[11px] opacity-45">' + escapeHtml(c.date) + '</span>' +
+    (c.score ? '<span class="text-[10px] font-bold text-lime-600" title="다건·신규·상위 태그 신호를 더한 정렬용 점수(선별은 사람이 합니다)">신호 ' + c.score + '</span>' : '') +
+    '</span>' +
+    '<span class="block text-xs opacity-65 truncate">' + escapeHtml(c.title || (c.keyPoints || [])[0] || '') + '</span>' +
+    '</span></label>';
+}
+
+function wkPickHTML(p, i) {
+  const c = wkCand(p.key) || {};
+  const why = p.why || '';
+  return '<div class="bg-white rounded-2xl border border-ink/5 shadow p-5" data-wk-pick="' + i + '">' +
+    '<div class="flex items-center gap-2 mb-3">' +
+    '<span class="font-display font-bold text-lime-600">' + (i + 1) + '</span>' +
+    '<b class="text-sm">' + escapeHtml(c.company || '') + '</b>' +
+    '<span class="text-[11px] opacity-45">' + escapeHtml(c.date || '') + '</span>' +
+    '<span class="ml-auto flex gap-1">' +
+    '<button type="button" class="wk-up btn border border-ink/15 px-2.5 py-1 text-xs hover:bg-ink hover:text-white" aria-label="위로">▲</button>' +
+    '<button type="button" class="wk-down btn border border-ink/15 px-2.5 py-1 text-xs hover:bg-ink hover:text-white" aria-label="아래로">▼</button>' +
+    '<button type="button" class="wk-del btn border border-red-300 text-red-600 px-2.5 py-1 text-xs hover:bg-red-500 hover:text-white hover:border-red-500">빼기</button>' +
+    '</span></div>' +
+    '<div class="label mb-1.5">제목 (한 줄)</div>' +
+    '<input class="field wk-title" maxlength="300" value="' + escapeHtml(p.title || '') + '" />' +
+    '<div class="flex items-center justify-between mt-3 mb-1.5">' +
+    '<div class="label normal-case">주목(Pick) 이유 <span class="text-red-500">필수</span> · 60~140자</div>' +
+    '<button type="button" class="wk-ai text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
+    '<textarea class="field wk-why" rows="2" maxlength="300">' + escapeHtml(why) + '</textarea>' +
+    '<div class="text-[11px] opacity-45 mt-1"><span class="wk-len">' + why.length + '</span>자</div>' +
+    '</div>';
+}
+
+function renderWeekly() {
+  const box = document.getElementById('wkEditor');
+  if (!WK) { box.innerHTML = ''; return; }
+  const s = WK.stats || {}, p = WK.payload || {};
+  const pub = WK.status === 'published';
+
+  let h = '<div class="bg-white rounded-2xl border border-ink/5 shadow p-5 mb-5">' +
+    '<div class="flex flex-wrap items-end gap-5">' +
+    '<div><div class="label mb-1.5">회차</div><div class="flex items-baseline gap-1">' +
+    '<input id="wkIssue" type="number" min="1" class="field max-w-[90px]" value="' + (WK.issueNo || '') + '" /><span class="text-sm">호</span></div></div>' +
+    '<div class="flex-1 min-w-[240px]">' + wkNumbersHTML(s) + '</div>' +
+    '<span class="text-xs font-bold rounded-full px-3 py-1 ' + (pub ? 'bg-lime text-ink' : 'bg-beige border border-ink/10') + '">' + wkStatusLabel(WK.status) + '</span>' +
+    '</div></div>';
+
+  h += '<div class="bg-white rounded-2xl border border-ink/5 shadow p-5 mb-5">' +
+    '<div class="flex items-baseline justify-between mb-3">' +
+    '<div class="label">이 주 동향 ' + (WK.candidates || []).length + '건 — 주목할 3~5건 선택</div>' +
+    '<span id="wkSelCnt" class="text-xs font-semibold">' + WK_PICKS.length + ' / ' + WK_MAX + '</span></div>' +
+    ((WK.candidates || []).length
+      ? '<div class="divide-y divide-ink/5 max-h-[420px] overflow-y-auto">' + WK.candidates.map(wkRowHTML).join('') + '</div>'
+      : '<div class="text-sm opacity-50 py-6 text-center">이 주에는 발행된 동향이 없습니다</div>') +
+    '</div>';
+
+  if (WK_PICKS.length) {
+    h += '<div class="label mb-2">선택한 ' + WK_PICKS.length + '건</div>' +
+      '<div class="space-y-3 mb-5">' + WK_PICKS.map(wkPickHTML).join('') + '</div>';
+  }
+
+  h += '<div class="bg-white rounded-2xl border border-ink/5 shadow p-5">' +
+    '<div class="flex items-center justify-between mb-1.5"><div class="label">금주 한 줄 요약</div>' +
+    '<button type="button" id="wkAiOverview" class="text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
+    '<textarea id="wkOverview" class="field" rows="2" maxlength="400">' + escapeHtml(p.overview || '') + '</textarea>' +
+    '<div class="flex items-center justify-between mt-4 mb-1.5"><div class="label">한컴 관점 · 한 줄 = 불릿 1개 (2~3개)</div>' +
+    '<button type="button" id="wkAiConclusion" class="text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
+    '<textarea id="wkConclusion" class="field" rows="4" placeholder="한 줄에 하나씩">' + escapeHtml((p.hancomConclusion || []).join('\n')) + '</textarea>' +
+    '</div>';
+
+  h += '<div class="flex flex-wrap items-center gap-3 mt-5 pt-5 border-t border-ink/10">' +
+    '<button type="button" id="wkSave" class="btn bg-ink text-white px-6 py-2.5 hover:bg-lime hover:text-ink">저장</button>' +
+    '<button type="button" id="wkPreviewBtn" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">미리보기 ↗</button>' +
+    '<button type="button" id="wkPublish" class="btn bg-lime text-ink px-6 py-2.5 hover:bg-ink hover:text-lime">' + (pub ? '다시 발행' : '발행') + '</button>' +
+    (pub ? '<button type="button" id="wkCopyShare" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">공유 텍스트 복사</button>' +
+           '<button type="button" id="wkUnpublish" class="btn border border-red-300 text-red-600 px-4 py-2.5 hover:bg-red-500 hover:text-white hover:border-red-500">발행 회수</button>' : '') +
+    '<span id="wkStatus" class="text-sm"></span></div>';
+
+  box.innerHTML = h;
+  wkBind();
+}
+
+/* --- DOM → 상태 (다시 그리기 전에 입력값을 잃지 않게) --- */
+function wkSync() {
+  document.querySelectorAll('[data-wk-pick]').forEach((node) => {
+    const i = +node.getAttribute('data-wk-pick');
+    if (!WK_PICKS[i]) return;
+    WK_PICKS[i].title = node.querySelector('.wk-title').value;
+    WK_PICKS[i].why = node.querySelector('.wk-why').value;
+  });
+  const iss = document.getElementById('wkIssue');
+  if (iss && WK) WK.issueNo = iss.value ? +iss.value : null;
+  const ov = document.getElementById('wkOverview'), cc = document.getElementById('wkConclusion');
+  if (WK) {
+    WK.payload = WK.payload || {};
+    if (ov) WK.payload.overview = ov.value;
+    if (cc) WK.payload.hancomConclusion = cc.value.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 3);
+  }
+}
+
+// 서버로 보낼 payload. 본문(주요내용·시사점·한컴 인사이트·태그·링크)은 후보에서 그대로 승계한다.
+function wkPayload() {
+  wkSync();
+  const picks = WK_PICKS.map((p) => {
+    const c = wkCand(p.key);
+    if (!c) return null;
+    return Object.assign({}, c, { title: p.title, why: p.why, score: undefined });
+  }).filter(Boolean);
+  return {
+    overview: (WK.payload && WK.payload.overview) || '',
+    hancomConclusion: (WK.payload && WK.payload.hancomConclusion) || [],
+    picks,
+  };
+}
+
+/* --- 이벤트 --- */
+function wkBind() {
+  const box = document.getElementById('wkEditor');
+
+  box.querySelectorAll('.wk-cb').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      wkSync();
+      const key = cb.dataset.key;
+      if (cb.checked) {
+        if (WK_PICKS.length >= WK_MAX) {
+          cb.checked = false;
+          toast('주목 동향은 최대 ' + WK_MAX + '건입니다. 읽는 사람이 훑을 수 있는 분량으로 제한합니다', false);
+          return;
+        }
+        const c = wkCand(key);
+        WK_PICKS.push({ key, title: (c && c.title) || '', why: '' });
+      } else {
+        WK_PICKS = WK_PICKS.filter((p) => p.key !== key);
+      }
+      renderWeekly();
+    });
+  });
+
+  box.querySelectorAll('[data-wk-pick]').forEach((node) => {
+    const i = +node.getAttribute('data-wk-pick');
+    const why = node.querySelector('.wk-why'), len = node.querySelector('.wk-len');
+    why.addEventListener('input', () => { len.textContent = why.value.length; });
+    node.querySelector('.wk-del').addEventListener('click', () => { wkSync(); WK_PICKS.splice(i, 1); renderWeekly(); });
+    node.querySelector('.wk-up').addEventListener('click', () => {
+      if (i === 0) return;
+      wkSync(); const t = WK_PICKS[i - 1]; WK_PICKS[i - 1] = WK_PICKS[i]; WK_PICKS[i] = t; renderWeekly();
+    });
+    node.querySelector('.wk-down').addEventListener('click', () => {
+      if (i >= WK_PICKS.length - 1) return;
+      wkSync(); const t = WK_PICKS[i + 1]; WK_PICKS[i + 1] = WK_PICKS[i]; WK_PICKS[i] = t; renderWeekly();
+    });
+    node.querySelector('.wk-ai').addEventListener('click', async () => {
+      wkSync();
+      const c = wkCand(WK_PICKS[i].key);
+      if (!c) return;
+      if (why.value.trim() && !confirm('이미 쓴 내용을 AI 초안으로 덮어쓸까요?')) return;
+      const btn = node.querySelector('.wk-ai');
+      btn.textContent = '생성 중…'; btn.disabled = true;
+      try {
+        const r = await API.weeklyAction({ action: 'assist', kind: 'why', week: WK.week, item: Object.assign({}, c, { title: WK_PICKS[i].title }) }, adminPin);
+        if (r.text) { why.value = r.text; len.textContent = r.text.length; WK_PICKS[i].why = r.text; wkWarnAxis(r.warn); }
+        else toast('AI 초안을 받지 못했습니다. 직접 써 주세요', false);
+      } catch (e) { toast('AI 초안 실패: ' + (e.status || e.message), false); }
+      btn.textContent = 'AI 초안'; btn.disabled = false;
+    });
+  });
+
+  const aiText = async (kind, btnId, targetId, join) => {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      const payload = wkPayload();
+      if (!payload.picks.length) { toast('먼저 주목 동향을 고르세요', false); return; }
+      const el2 = document.getElementById(targetId);
+      if (el2.value.trim() && !confirm('이미 쓴 내용을 AI 초안으로 덮어쓸까요?')) return;
+      btn.textContent = '생성 중…'; btn.disabled = true;
+      try {
+        const r = await API.weeklyAction({ action: 'assist', kind, week: WK.week, picks: payload.picks }, adminPin);
+        const v = join ? (r.items || []).join('\n') : r.text;
+        if (v) { el2.value = v; wkWarnAxis(r.warn); }
+        else toast('AI 초안을 받지 못했습니다. 직접 써 주세요', false);
+      } catch (e) { toast('AI 초안 실패: ' + (e.status || e.message), false); }
+      btn.textContent = 'AI 초안'; btn.disabled = false;
+    });
+  };
+  aiText('overview', 'wkAiOverview', 'wkOverview', false);
+  aiText('conclusion', 'wkAiConclusion', 'wkConclusion', true);
+
+  document.getElementById('wkSave').addEventListener('click', () => wkSaveDraft(true));
+  document.getElementById('wkPublish').addEventListener('click', wkPublish);
+  document.getElementById('wkPreviewBtn').addEventListener('click', async () => {
+    if (!(await wkSaveDraft(false))) return;
+    window.open('/weekly?w=' + encodeURIComponent(WK.week) + '&draft=1', '_blank');
+  });
+  const unp = document.getElementById('wkUnpublish');
+  if (unp) unp.addEventListener('click', async () => {
+    if (!confirm('발행을 회수하면 공유한 링크가 빈 화면이 됩니다. 계속할까요?')) return;
+    try { await API.weeklyAction({ action: 'unpublish', week: WK.week }, adminPin); toast('발행을 회수했습니다', true); loadWeekly(); }
+    catch (e) { toast('회수 실패: ' + (e.status || e.message), false); }
+  });
+  const cp = document.getElementById('wkCopyShare');
+  if (cp) cp.addEventListener('click', async () => {
+    try {
+      const ed = await API.weekly(WK.week);
+      if (!ed.available) { toast('발행본을 찾지 못했습니다', false); return; }
+      const ok = await copyToClipboard(shareText(ed));
+      toast(ok ? '공유 텍스트를 복사했습니다' : '복사에 실패했습니다', ok);
+    } catch (e) { toast('복사 실패: ' + (e.status || e.message), false); }
+  });
+}
+
+async function wkSaveDraft(notify) {
+  const st = document.getElementById('wkStatus');
+  const payload = wkPayload();
+  try {
+    await API.weeklyAction({ action: 'save', week: WK.week, payload, issueNo: WK.issueNo || null }, adminPin);
+    if (notify) toast('초안을 저장했습니다', true);
+    if (st) { st.textContent = '저장됨'; st.className = 'text-sm text-lime-600 font-semibold'; }
+    return true;
+  } catch (e) {
+    toast('저장 실패: ' + (e.status || e.message), false);
+    return false;
+  }
+}
+
+async function wkPublish() {
+  const payload = wkPayload();
+  if (!payload.picks.length) { toast('주목 동향을 최소 1건 고르세요', false); return; }
+  const missing = payload.picks.filter((p) => !String(p.why || '').trim()).map((p) => p.company);
+  if (missing.length) {
+    toast('「주목(Pick) 이유」가 빈 항목: ' + missing.join(', ') + ' — 이 한 줄이 없으면 대시보드와 같은 화면이 됩니다', false);
+    return;
+  }
+  if (!(await wkSaveDraft(false))) return;
+  try {
+    const r = await API.weeklyAction({ action: 'publish', week: WK.week }, adminPin);
+    toast(r.issueNo + '호 발행 완료 (금주 ' + r.total + '건 중 ' + r.picks + '건 선정)', true);
+    loadWeekly();
+  } catch (e) {
+    if (e.message === 'WHY_REQUIRED') { toast('「주목(Pick) 이유」가 빈 항목이 있습니다: ' + ((e.data && e.data.companies) || []).join(', '), false); return; }
+    toast('발행 실패: ' + (e.status || e.message), false);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

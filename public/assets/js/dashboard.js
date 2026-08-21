@@ -439,7 +439,10 @@ async function init() {
   // 날짜 목록 → 최신을 기준점으로
   state.dates = (state.reports || []).map((r) => r.date).filter(Boolean).sort((a, b) => b.localeCompare(a));
   state.dateSet = new Set(state.dates);
-  state.anchor = state.dates[0] || todayYmd();
+  // ?date=YYYY-MM-DD 로 특정 기간을 열 수 있게 한다(위클리 픽 → 「대시보드에서 이 주 보기」 딥링크).
+  // 값이 없거나 형식이 다르면 기존 동작(최신 날짜)을 그대로 쓴다.
+  const qDate = new URLSearchParams(location.search).get('date') || '';
+  state.anchor = (/^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : null) || state.dates[0] || todayYmd();
   if (!state.dates.length) document.getElementById('selDate').textContent = '데이터 없음';
 
   renderToggle();

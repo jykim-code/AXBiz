@@ -30,6 +30,23 @@ async function getJSONPin(url) {
   return res.json();
 }
 
+// 관리자 POST 공용 — 실패 시 서버가 준 error 코드를 담은 Error throw (호출부가 분기할 수 있게).
+async function postPin(url, payload, pin) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-pin': pin || '' },
+    body: JSON.stringify(payload || {}),
+  });
+  let data = {};
+  try { data = await res.json(); } catch { /* no body */ }
+  if (!res.ok) {
+    const err = new Error(data.error || 'REQUEST_FAILED');
+    err.status = res.status; err.data = data;
+    throw err;
+  }
+  return data;
+}
+
 const API = {
   // 데이터가 있는 날짜 배열(desc)
   dates() {
@@ -203,6 +220,28 @@ const API = {
     try { data = await res.json(); } catch { /* no body */ }
     if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; err.data = data; throw err; }
     return data;
+  },
+
+  // ===== 위클리 픽 =====
+  // 발행본 조회 (공개). w 없으면 최신 회차. { available, week, issueNo, label, stats, payload, prev[] }
+  weekly(w) {
+    return getJSON('/api/weekly' + (w ? '?w=' + encodeURIComponent(w) : ''));
+  },
+  // 초안 + 그 주 후보 목록 (관리자, PIN). 주차('2026-W34') 또는 그 주의 아무 날짜('2026-08-19') 모두 받는다
+  // — 주차 계산은 서버에 두고 화면은 서버가 준 week 값을 그대로 쓴다.
+  async weeklyDraft(weekOrDate, pin) {
+    const key = /^\d{4}-\d{2}-\d{2}$/.test(weekOrDate) ? 'date' : 'w';
+    const res = await fetch('/api/weekly?draft=1&' + key + '=' + encodeURIComponent(weekOrDate), { headers: { Accept: 'application/json', 'x-admin-pin': pin || '' } });
+    if (!res.ok) { const err = new Error('REQUEST_FAILED'); err.status = res.status; throw err; }
+    return res.json();
+  },
+  // 발행 전 미리보기 (저장된 devPin 사용 — /preview 와 같은 방식)
+  weeklyPreview(week) {
+    return getJSONPin('/api/weekly?draft=1&w=' + encodeURIComponent(week));
+  },
+  // 초안 저장 / LLM 초안 / 발행 / 회수 (관리자, PIN)
+  weeklyAction(payload, pin) {
+    return postPin('/api/weekly', payload, pin);
   },
 
   // ===== dev 검수·배포 (PIN, sessionStorage devPin) =====
