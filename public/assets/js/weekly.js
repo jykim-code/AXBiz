@@ -9,46 +9,71 @@
 const md = (d) => (d && d.length >= 10 ? +d.slice(5, 7) + '/' + +d.slice(8, 10) : '');
 const shortLabel = (label) => String(label || '').replace(/^\d{4}년\s*/, ''); // '2026년 8월 3주' → '8월 3주'
 
-/* ===== 수치 스트립 ===== */
-function statBox(value, unit, caption, extraCls) {
-  return '<div class="bg-white rounded-2xl border border-ink/5 px-4 py-3.5">' +
-    '<div class="font-display font-bold text-2xl leading-none ' + (extraCls || '') + '">' + escapeHtml(value) +
-    (unit ? '<span class="text-sm font-semibold opacity-50 ml-0.5">' + escapeHtml(unit) + '</span>' : '') + '</div>' +
-    '<div class="text-[11px] font-semibold uppercase tracking-widest text-ink/45 mt-1.5">' + escapeHtml(caption) + '</div></div>';
+/* ===== 상단 다크 히어로 =====
+   금주 한 줄 요약 · 한컴 관점 결론 · 수치를 한 덩어리로 담는다(2026-08-21 사용자 선택).
+   이전 구성은 다크 카드 → 라임 박스 → 흰 카드로 색 블록이 연달아 부딪쳤고, 라임 박스가
+   「금주 결론」·「왜 주목하나」·「한컴 인사이트」 세 곳에 반복돼 라임이 가진 신호가 흐려졌다.
+   대시보드 지식그래프 카드의 문법(다크 바탕 + 라임 숫자 + 하단 통계 띠)을 그대로 차용해
+   두 화면이 같은 디자인 언어를 쓰게 한다. */
+function heroStat(value, unit, caption) {
+  return '<div>' +
+    '<div class="font-display font-bold text-3xl sm:text-4xl text-lime leading-none">' + escapeHtml(value) +
+    (unit ? '<span class="text-base font-semibold opacity-60 ml-0.5">' + escapeHtml(unit) + '</span>' : '') + '</div>' +
+    '<div class="text-[10px] font-semibold uppercase tracking-widest opacity-70 mt-2">' + escapeHtml(caption) + '</div></div>';
 }
 
 // 전주 대비 증감은 쓰지 않는다(2026-08-21 사용자 지시). 데이터 수집일이 주마다 달라
-// 증감이 시장 변화가 아니라 수집량 차이를 보여 주는 경우가 있고, 「이번 주에 새로 들어온 기업」이
+// 증감이 시장 변화가 아니라 수집량 차이를 보여 주는 경우가 있고, 「그 주에 새로 들어온 기업」이
 // 주간 발행물에서 더 읽을 값이 있다. stats.delta 는 서버가 계속 계산하지만 화면에 쓰지 않는다.
-function statsHTML(s) {
+function heroHTML(d, p, s) {
+  let h = '<div class="bg-ink text-white rounded-[28px] p-6 sm:p-8 relative overflow-hidden mb-4">' +
+    '<div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-lime/40 to-transparent"></div>' +
+    '<div class="flex items-baseline gap-2 mb-4">' +
+    '<span class="text-[11px] font-bold uppercase tracking-widest text-lime">Weekly Picks</span>' +
+    (d.issueNo ? '<span class="text-[11px] font-bold opacity-60">· ' + d.issueNo + '호</span>' : '') + '</div>';
+
+  if (p.overview)
+    h += '<p class="text-xl sm:text-2xl font-display font-semibold tracking-tight leading-snug">' + escapeHtml(p.overview) + '</p>';
+
+  if ((p.hancomConclusion || []).length)
+    h += '<div class="mt-6">' +
+      '<div class="text-[10px] font-bold uppercase tracking-widest text-lime mb-2.5">한컴 관점</div>' +
+      '<ul class="space-y-2">' + p.hancomConclusion.map((x) =>
+        '<li class="text-[13.5px] leading-[1.75] text-white/85 pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-[10px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime">' +
+        escapeHtml(x) + '</li>').join('') + '</ul></div>';
+
   const nc = (s.newCompanies || []).length;
-  return '<div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">' +
-    statBox(s.total || 0, '건', '금주 동향') +
-    statBox(s.companies || 0, '곳', '등장 기업') +
-    statBox(nc, '곳', '신규 기업', nc > 0 ? 'text-lime-600' : 'text-ink/40') +
-    statBox(s.picks || 0, '건', '주목 픽') +
+  h += '<div class="mt-7 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-5">' +
+    heroStat(s.total || 0, '건', '금주 동향') +
+    heroStat(s.companies || 0, '곳', '등장 기업') +
+    heroStat(nc, '곳', '신규 기업') +
+    heroStat(s.picks || 0, '건', '주목 픽') +
     '</div>';
+  return h + '</div>';
 }
 
-/* ===== 최근 4주 추이 =====
-   대시보드에 추이가 없어 이 페이지의 시각적 차별 지점이 된다. 막대 높이는 4주 최대값 기준 비율.
-   건수가 0인 주도 칸을 남겨 「비어 있던 주」가 보이게 한다. */
+/* ===== 금주 한눈에 (흰 카드) =====
+   키워드 · 신규 편입 기업 · 4주 추이를 라벨 + 내용 3행으로 둔다. 이전에는 실선으로 4단을 쌓아
+   입력 폼처럼 보였다. 수치는 히어로로 올라갔으므로 여기는 「부가 정보」 성격만 남는다. */
+const glanceRow = (label, content) =>
+  '<div class="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-4">' +
+  '<div class="text-[10px] font-bold uppercase tracking-widest text-ink/35 sm:w-20 sm:flex-none sm:pt-1">' + escapeHtml(label) + '</div>' +
+  '<div class="flex-1 min-w-0">' + content + '</div></div>';
+
+// 막대 높이는 4주 최대값 기준 비율. 건수가 0인 주도 칸을 남겨 「비어 있던 주」가 보이게 한다.
 function trendHTML(trend) {
   const t = (trend || []).filter((x) => x && x.start);
   if (t.length < 2) return '';
   const max = Math.max(...t.map((x) => x.total || 0), 1);
-  const bars = t.map((x, i) => {
+  return '<div class="flex items-end gap-2.5">' + t.map((x, i) => {
     const last = i === t.length - 1;
-    const pct = Math.max(4, Math.round(((x.total || 0) / max) * 100));
-    return '<div class="flex-1 flex flex-col items-center gap-1.5">' +
-      '<div class="text-[10px] font-display font-bold ' + (last ? 'text-ink' : 'text-ink/40') + '">' + (x.total || 0) + '</div>' +
-      '<div class="w-full h-14 flex items-end"><div class="w-full rounded-t-[4px] ' + (last ? 'bg-lime' : 'bg-ink/10') + '" style="height:' + pct + '%"></div></div>' +
-      '<div class="text-[10px] ' + (last ? 'font-semibold text-ink/70' : 'text-ink/35') + '">' + escapeHtml(md(x.start)) + '</div>' +
+    const pct = Math.max(6, Math.round(((x.total || 0) / max) * 100));
+    return '<div class="flex flex-col items-center gap-1">' +
+      '<div class="text-[10px] font-display font-bold ' + (last ? 'text-ink' : 'text-ink/35') + '">' + (x.total || 0) + '</div>' +
+      '<div class="w-8 h-8 flex items-end"><div class="w-full rounded-t-[3px] ' + (last ? 'bg-lime' : 'bg-ink/[.12]') + '" style="height:' + pct + '%"></div></div>' +
+      '<div class="text-[9px] ' + (last ? 'font-semibold text-ink/60' : 'text-ink/30') + '">' + escapeHtml(md(x.start)) + '</div>' +
       '</div>';
-  }).join('');
-  return '<div class="mt-5 pt-5 border-t border-ink/[.07]">' +
-    '<div class="text-[10px] font-bold uppercase tracking-widest text-ink/40 mb-2.5">최근 4주 동향 건수</div>' +
-    '<div class="flex items-end gap-2">' + bars + '</div></div>';
+  }).join('') + '</div>';
 }
 
 /* ===== 주목 동향 카드 =====
@@ -184,11 +209,8 @@ function renderEdition(d) {
   OTHERS = others; // 펼칠 때 본문을 만들 원본
   let h = '';
 
-  // 헤더
+  // 헤더 — 회차 표기는 다크 히어로가 담당하므로 여기는 주차와 기간만 둔다
   h += '<div class="mb-5">' +
-    '<div class="flex items-baseline gap-2 mb-2.5">' +
-    '<span class="text-[11px] font-bold uppercase tracking-widest text-lime-600">Weekly Picks</span>' +
-    (d.issueNo ? '<span class="text-[11px] font-bold text-ink/50">· ' + d.issueNo + '호</span>' : '') + '</div>' +
     '<h1 class="text-3xl sm:text-4xl font-display font-bold tracking-tight leading-tight">' + escapeHtml(d.label) + '</h1>' +
     '<p class="text-sm text-ink/55 mt-2">' + escapeHtml(md(d.start) + ' ~ ' + md(d.end)) +
     (d.publishedAt ? ' · 발행 ' + escapeHtml(String(d.publishedAt).slice(0, 10)) : '') + '</p></div>';
@@ -200,51 +222,34 @@ function renderEdition(d) {
       '<span class="font-semibold text-lime-600">' + escapeHtml(ref) + '</span> ' + escapeHtml(p.bridge) + '</div>';
   }
 
-  // 금주 한 줄 요약 + 금주 결론을 최상단에 둔다(2026-08-21 사용자 지시).
-  // 단톡방에서 들어온 사람은 평소 대시보드를 보지 않으므로, 스크롤하지 않고도 한 주의 요지와
-  // 한컴 관점 결론까지 읽히게 한다. 수치와 개별 동향은 그 뒤에 온다.
-  if (p.overview)
-    h += '<div class="bg-ink text-white rounded-[24px] p-6 sm:p-7 mb-4">' +
-      '<div class="text-[10px] font-bold uppercase tracking-widest text-lime mb-2.5">금주 한 줄 요약</div>' +
-      '<p class="text-lg sm:text-xl font-display font-semibold tracking-tight leading-snug">' + escapeHtml(p.overview) + '</p></div>';
+  // 다크 히어로 — 금주 한 줄 요약 + 한컴 관점 + 수치를 한 덩어리로
+  h += heroHTML(d, p, s);
 
-  if ((p.hancomConclusion || []).length)
-    h += '<div class="rounded-[24px] bg-lime/15 border border-lime p-5 sm:p-6 mb-8">' +
-      '<div class="text-[10px] font-bold uppercase tracking-widest text-lime-600 mb-3">금주 결론 · 한컴 관점</div>' +
-      '<ul class="space-y-2.5">' +
-      p.hancomConclusion.map((x) =>
-        '<li class="text-[14px] leading-[1.8] text-ink/90 pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-[11px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime-600">' +
-        escapeHtml(x) + '</li>').join('') + '</ul></div>';
-
-  // 금주 한눈에 — 수치 · 키워드 · 신규 편입 기업 · 4주 추이를 한 카드에 모아 주목 픽 위에 둔다.
-  // 「수치 말고도 대시보드에 없는 포인트를 상단에」(2026-08-21 사용자 지시)에 대한 답이며,
-  // 넷을 따로 흩어 놓으면 상단이 벽처럼 보여 한 덩어리로 묶었다.
-  h += '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-5 sm:p-6 mb-8">' +
-    '<div class="text-[10px] font-bold uppercase tracking-widest text-lime-600 mb-3.5">금주 한눈에</div>' +
-    statsHTML(s);
+  // 금주 한눈에 — 키워드 · 신규 편입 기업 · 4주 추이 (라벨 + 내용 3행)
+  const rows = [];
   if ((s.topTags || []).length)
-    h += '<div class="mt-5 pt-5 border-t border-ink/[.07]">' +
-      '<div class="text-[10px] font-bold uppercase tracking-widest text-ink/40 mb-2.5">금주 키워드</div>' +
-      '<div class="flex flex-wrap gap-2">' + s.topTags.map((t) =>
-        '<span class="text-[13px] bg-beige border border-ink/[.07] rounded-full pl-3.5 pr-2 py-1.5 inline-flex items-center gap-1.5">' +
+    rows.push(glanceRow('키워드',
+      '<div class="flex flex-wrap gap-1.5">' + s.topTags.map((t) =>
+        '<span class="text-[12.5px] bg-beige border border-ink/[.07] rounded-full pl-3 pr-2 py-1 inline-flex items-center gap-1.5">' +
         '#' + escapeHtml(t.tag) +
-        '<span class="text-[11px] font-bold text-ink/40">' + (t.count || 0) + '</span>' +
-        (t.isNew ? '<span class="text-[9px] font-bold bg-lime text-ink rounded-full px-1.5 py-0.5">NEW</span>' : '') +
-        '</span>').join('') + '</div></div>';
-  // 신규 기업이 두 자릿수인 주가 있어(실측 11곳) 칩이 세 줄까지 번진다. 6곳까지만 보이고 나머지는 수로 접는다.
+        '<span class="text-[10px] font-bold text-ink/35">' + (t.count || 0) + '</span>' +
+        (t.isNew ? '<span class="text-[9px] font-bold bg-lime text-ink rounded-full px-1.5">NEW</span>' : '') +
+        '</span>').join('') + '</div>'));
+  // 신규 기업이 두 자릿수인 주가 있어(실측 11곳) 칩이 여러 줄로 번진다. 6곳까지만 보이고 나머지는 수로 접는다.
   if ((s.newCompanies || []).length) {
     const shown = s.newCompanies.slice(0, NEW_CO_MAX);
     const rest = s.newCompanies.length - shown.length;
-    h += '<div class="mt-5 pt-5 border-t border-ink/[.07]">' +
-      '<div class="text-[10px] font-bold uppercase tracking-widest text-ink/40 mb-2">금주 신규 편입 기업 ' +
-      '<span class="text-ink/30">' + s.newCompanies.length + '곳</span></div>' +
-      '<div class="flex flex-wrap gap-2">' + shown.map((n) =>
-        '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-[13px] font-display font-semibold bg-lime/20 border border-lime rounded-full px-3 py-1 hover:bg-lime transition-colors">' +
+    rows.push(glanceRow('신규 기업 ' + s.newCompanies.length,
+      '<div class="flex flex-wrap gap-1.5">' + shown.map((n) =>
+        '<a href="/company?name=' + encodeURIComponent(n) + '" class="text-[12.5px] font-display font-semibold bg-lime/20 border border-lime rounded-full px-2.5 py-1 hover:bg-lime transition-colors">' +
         escapeHtml(n) + '</a>').join('') +
-      (rest > 0 ? '<span class="text-[13px] text-ink/45 px-2 py-1">외 ' + rest + '곳</span>' : '') +
-      '</div></div>';
+        (rest > 0 ? '<span class="text-[12.5px] text-ink/40 px-1.5 py-1">외 ' + rest + '곳</span>' : '') + '</div>'));
   }
-  h += trendHTML(s.trend) + '</div>';
+  const tr = trendHTML(s.trend);
+  if (tr) rows.push(glanceRow('4주 추이', tr));
+  if (rows.length)
+    h += '<div class="bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 p-5 sm:p-6 mb-8 space-y-4">' +
+      rows.join('') + '</div>';
 
   // 주목 픽 — 본문(주요내용·시사점·한컴 인사이트)까지 기본 펼침
   if (picks.length) {
