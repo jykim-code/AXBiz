@@ -68,10 +68,21 @@ function pickHTML(p, i) {
   return h + '</article>';
 }
 
-/* ===== 그 외 동향 (접힘 안에서 각각 펼침) ===== */
-function otherHTML(o) {
-  const detail = typeof entryDetailHTML === 'function' ? entryDetailHTML(o) : '';
-  let h = '<div class="wk-item bg-white rounded-2xl border border-ink/5 overflow-hidden">';
+/* ===== 그 외 동향 (접힘 안에서 각각 펼침) =====
+   본문은 **펼칠 때 만든다**. 데이터가 늘어 한 주 30건대가 되면서 본문을 미리 그리면 초기 HTML 이
+   188KB 까지 갔다(주목 동향 3건 + 그 외 30건). 접혀 있어도 HTML 은 전부 내려가므로,
+   원본만 들고 있다가 첫 펼침에 그린다. 화면에 보이는 것은 같고 초기 무게만 줄어든다. */
+let OTHERS = [];
+
+// 펼칠 내용이 있는지 — entryDetailHTML 을 만들지 않고 판정한다(그 함수와 같은 기준).
+const hasDetail = (e) => !!(
+  (e.keyPoints || []).length || (e.implications || []).length || (e.hancomInsight || []).length ||
+  e.sourceUrl || e.confluenceUrl
+);
+
+function otherHTML(o, i) {
+  const detail = hasDetail(o);
+  let h = '<div class="wk-item bg-white rounded-2xl border border-ink/5 overflow-hidden" data-oi="' + i + '">';
   h += '<div class="wk-toggle px-4 py-3 cursor-pointer" role="button" tabindex="0" aria-expanded="false">' +
     '<div class="flex items-baseline gap-2">' +
     '<a href="/company?name=' + encodeURIComponent(o.company) + '" class="font-display font-semibold text-[15px] tracking-tight hover:text-lime-600 flex-none">' + escapeHtml(o.company) + '</a>' +
@@ -80,8 +91,7 @@ function otherHTML(o) {
     '</div>' +
     (o.title ? '<p class="text-[13px] leading-snug text-ink/70 mt-1">' + escapeHtml(o.title) + '</p>' : '') +
     '</div>';
-  if (detail) h += '<div class="wk-body"><div class="px-4 pb-4">' + detail + '</div></div>';
-  return h + '</div>';
+  return h + '</div>'; // .wk-body 는 첫 펼침에 만든다
 }
 
 /* ===== 섹션 머리 ===== */
@@ -147,6 +157,7 @@ async function copyToClipboard(text) {
 function renderEdition(d) {
   const s = d.stats || {}, p = d.payload || {};
   const picks = p.picks || [], others = p.others || [];
+  OTHERS = others; // 펼칠 때 본문을 만들 원본
   let h = '';
 
   // 헤더
@@ -247,7 +258,27 @@ function onToggle(e) {
     e.preventDefault();
   }
   const item = head.closest('.wk-item');
-  if (!item || !item.querySelector('.wk-body')) return;
+  if (!item) return;
+
+  // 그 외 동향은 본문이 아직 없다 — 첫 펼침에 만든다.
+  let body = item.querySelector('.wk-body');
+  if (!body) {
+    const oi = item.getAttribute('data-oi');
+    if (oi == null) return;
+    const o = OTHERS[+oi];
+    if (!o || !hasDetail(o) || typeof entryDetailHTML !== 'function') return;
+    body = document.createElement('div');
+    body.className = 'wk-body';
+    body.innerHTML = '<div class="px-4 pb-4">' + entryDetailHTML(o) + '</div>';
+    item.appendChild(body);
+    // 붙인 직후 같은 프레임에 클래스를 주면 max-height 전환이 생략된다. 다음 프레임으로 넘긴다.
+    requestAnimationFrame(() => {
+      item.classList.add('wk-open');
+      head.setAttribute('aria-expanded', 'true');
+    });
+    return;
+  }
+
   const open = item.classList.toggle('wk-open');
   head.setAttribute('aria-expanded', open ? 'true' : 'false');
   const more = item.querySelector('.wk-more');
