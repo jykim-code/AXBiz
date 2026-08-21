@@ -353,8 +353,98 @@ function variantE() {
   return h + '</div></div>';
 }
 
+/* ============================================================
+   F. 매거진 인덱스 + 다크 수치 밴드 — C 의 골격에 E 의 수치 영역을 전체폭 다크 밴드로 끼운다.
+      요약(라이트) → 수치(다크) → 목차(라이트) → 섹션(짝수 다크)로 명암이 번갈아 리듬이 된다.
+   ============================================================ */
+function variantF() {
+  let h = '<div class="pt-12 pb-0">';
+
+  // 헤더 + 요약 (C)
+  h += '<div class="max-w-[1000px] mx-auto px-5 sm:px-8">';
+  h += '<div class="flex items-end justify-between rule-thin pb-4 mb-8">' +
+    '<div><div class="text-[11px] font-bold uppercase tracking-[.2em] text-lime-600 mb-1.5">Weekly Picks No.' + pad2(D.issueNo) + '</div>' +
+    '<h1 class="text-[40px] sm:text-[52px] font-bold tracking-tighter leading-none">' + esc(D.label) + '</h1></div>' +
+    '<div class="text-right text-[12px] text-ink/45 leading-relaxed">' + D.range + '<br/>발행 ' + D.published + '</div></div>';
+  h += '<p class="text-[20px] sm:text-[24px] font-display font-medium leading-[1.5] max-w-[38ch] mb-12">' + esc(D.overview) + '</p>';
+  h += '</div>';
+
+  // 다크 수치 밴드 (E) — 전체폭
+  h += '<div class="bg-ink text-white py-10">' +
+    '<div class="max-w-[1000px] mx-auto px-5 sm:px-8">' +
+    '<div class="grid grid-cols-2 sm:grid-cols-4 gap-6 pb-7">' +
+    [['금주 동향', D.stats.total], ['등장 기업', D.stats.companies], ['신규 기업', D.stats.newCo], ['Weekly Picks', D.stats.picks]]
+      .map(([k, v]) => '<div><div class="font-display font-bold text-[44px] sm:text-[52px] text-lime leading-none">' + v + '</div>' +
+        '<div class="text-[10px] uppercase tracking-widest text-white/50 mt-2.5">' + k + '</div></div>').join('') + '</div>' +
+    // 키워드 + 추이
+    '<div class="rule-dark pt-5 flex flex-wrap items-end gap-x-8 gap-y-4">' +
+    '<div class="flex-1 min-w-[240px]">' +
+    '<div class="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-2">금주 키워드</div>' +
+    '<div class="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-white/80">' +
+    D.tags.map((t) => '<span>#' + t.t + '<span class="text-white/35 ml-0.5">' + t.n + '</span>' +
+      (t.isNew ? '<span class="text-[9px] font-bold bg-lime text-ink rounded-full px-1.5 ml-1">NEW</span>' : '') + '</span>').join('') + '</div></div>' +
+    '<div class="flex-none">' +
+    '<div class="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-2">최근 4주</div>' +
+    '<div class="flex items-end gap-2.5">' + D.trend.map((t, i) => {
+      const last = i === D.trend.length - 1;
+      return '<div class="flex flex-col items-center gap-1.5">' +
+        '<span class="text-[11px] font-display font-bold ' + (last ? 'text-lime' : 'text-white/40') + '">' + t.n + '</span>' +
+        '<div class="w-9 h-9 flex items-end"><div class="w-full ' + (last ? 'bg-lime' : 'bg-white/15') + '" style="height:' + Math.max(10, Math.round(t.n / 33 * 100)) + '%"></div></div>' +
+        '<span class="text-[9px] ' + (last ? 'text-white/70' : 'text-white/30') + '">' + t.d + '</span></div>';
+    }).join('') + '</div></div></div>' +
+    // 신규 편입 기업
+    '<div class="rule-dark mt-5 pt-5">' +
+    '<div class="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-2">금주 신규 편입 기업</div>' +
+    '<div class="flex flex-wrap gap-1.5">' +
+    D.newCompanies.slice(0, 6).map((n) => '<span class="text-[12.5px] font-display font-semibold border border-lime/60 text-lime rounded-full px-2.5 py-0.5">' + esc(n) + '</span>').join('') +
+    (D.newCompanies.length > 6 ? '<span class="text-[12.5px] text-white/40 px-2 py-0.5">+' + (D.newCompanies.length - 6) + '곳</span>' : '') +
+    '</div></div>' +
+    '</div></div>';
+
+  // 목차 + 한컴 관점 (C)
+  h += '<div class="max-w-[1000px] mx-auto px-5 sm:px-8 pt-12">';
+  h += '<div class="rule pt-3">' + D.picks.map((p, i) =>
+    '<a href="#f' + i + '" class="group flex items-baseline gap-4 py-3.5 rule-thin first:border-t-0 hover:bg-lime/20 transition-colors">' +
+    '<span class="font-display font-bold text-[13px] text-lime-600 w-6">' + pad2(i + 1) + '</span>' +
+    '<span class="font-display font-bold text-[20px] sm:text-[24px] tracking-tight">' + esc(p.company) + '</span>' +
+    '<span class="text-[13px] text-ink/55 hidden sm:block truncate flex-1">' + esc(p.title) + '</span>' +
+    '<span class="text-[11px] text-ink/35 ml-auto flex-none">' + esc(p.date) + '</span></a>').join('') + '</div>';
+  h += '<div class="mt-10 grid sm:grid-cols-[1fr,1fr] gap-x-10 gap-y-3 rule pt-5">' +
+    '<div><div class="text-[11px] font-bold uppercase tracking-widest text-lime-600 mb-2">한컴 관점</div>' +
+    '<p class="text-[13px] text-ink/45 leading-relaxed">금주 픽에서 도출한 결론</p></div>' +
+    '<div class="space-y-3">' + D.hancom.map((x) => '<p class="text-[14px] leading-[1.7]">' + esc(x) + '</p>').join('') + '</div></div>';
+  h += '</div>';
+
+  // 전체폭 섹션 (C)
+  D.picks.forEach((p, i) => {
+    const dark = i % 2 === 1;
+    h += '<section id="f' + i + '" class="mt-12 py-10 ' + (dark ? 'bg-ink text-white' : '') + '">' +
+      '<div class="max-w-[1000px] mx-auto px-5 sm:px-8 grid sm:grid-cols-[120px,1fr] gap-x-8">' +
+      '<div class="font-display font-bold text-[72px] leading-none ' + (dark ? 'text-lime/30' : 'num-out') + '">' + pad2(i + 1) + '</div>' +
+      '<div><div class="flex items-baseline gap-3 mb-2">' +
+      '<h2 class="text-[28px] sm:text-[34px] font-bold tracking-tight leading-none">' + esc(p.company) + '</h2>' +
+      '<span class="text-[11px] ' + (dark ? 'text-white/45' : 'text-ink/40') + '">' + esc(p.category) + ' · ' + esc(p.date) + '</span></div>' +
+      '<p class="text-[17px] font-semibold leading-snug mb-4 max-w-[50ch]">' + esc(p.title) + '</p>' +
+      '<p class="text-[14px] leading-[1.75] mb-6 pl-4 border-l-2 border-lime max-w-[56ch]">' + esc(p.why) + '</p>' +
+      '<div class="grid sm:grid-cols-3 gap-x-6 gap-y-4">' +
+      BODY.map((b) => '<div><div class="text-[10px] font-bold uppercase tracking-widest ' + (dark ? 'text-lime' : 'text-ink/35') + ' mb-1.5">' + b.label + '</div>' +
+        '<ul class="space-y-1.5 text-[12.5px] leading-[1.7] ' + (dark ? 'text-white/75' : 'text-ink/80') + '">' + p[b.k].map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>').join('') +
+      '</div>' +
+      '<div class="text-[11px] ' + (dark ? 'text-white/30' : 'text-ink/35') + ' mt-4">' + p.tags.map((t) => '#' + t).join(' ') + '</div>' +
+      '</div></div></section>';
+  });
+
+  h += '<div class="max-w-[1000px] mx-auto px-5 sm:px-8 mt-12 pb-14 rule pt-4 text-[14px] flex flex-wrap gap-x-6">' +
+    '<a href="#" class="font-semibold hover:text-lime-600">금주 동향 ' + D.stats.total + '건 전체 →</a>' +
+    '<a href="#" class="font-semibold hover:text-lime-600">기업 찾아보기 →</a>' +
+    '<a href="#" class="font-semibold hover:text-lime-600">자료 검색 →</a></div>';
+  return h + '</div>';
+}
+
 /* ===== 스위처 ===== */
 const VARIANTS = [
+  { key: 'F', name: 'C + 다크 수치', fn: variantF, bg: 'bg-beige',
+    note: 'C(매거진 인덱스) 골격에 E 의 수치 영역을 전체폭 다크 밴드로 끼운 안. 요약(라이트) → 수치(다크) → 목차(라이트) → 픽 섹션(짝수 다크)으로 명암이 번갈아 리듬이 된다. 다크 밴드에 대형 라임 숫자·키워드·4주 추이·신규 편입 기업을 한 덩어리로 담았다.' },
   { key: 'A', name: '에디토리얼', fn: variantA, bg: 'bg-beige',
     note: '신문·잡지 조판. 박스와 그림자를 전혀 쓰지 않고 굵은 선·얇은 선·활자 크기로만 구분한다. 본문을 2단으로 흘려 길이가 부담스럽지 않다. 「발행물」 느낌이 가장 강하지만 모바일에서 2단이 1단으로 접혀 길어진다.' },
   { key: 'B', name: '타임라인', fn: variantB, bg: 'bg-beige',
@@ -370,7 +460,7 @@ const VARIANTS = [
 const tabs = document.getElementById('tabs');
 const stage = document.getElementById('stage');
 const note = document.getElementById('note');
-let cur = 'A';
+let cur = 'F';
 
 function paint() {
   const v = VARIANTS.find((x) => x.key === cur);
