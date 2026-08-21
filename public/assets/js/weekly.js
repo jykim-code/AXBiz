@@ -9,12 +9,6 @@
 const md = (d) => (d && d.length >= 10 ? +d.slice(5, 7) + '/' + +d.slice(8, 10) : '');
 const shortLabel = (label) => String(label || '').replace(/^\d{4}년\s*/, ''); // '2026년 8월 3주' → '8월 3주'
 
-/* 형광펜 강조 — 관리자가 사람 손으로 쓴 문장에서 ==강조== 로 감싼 구간을 라임 띠로 그린다.
-   무엇이 중요한지는 기계가 정할 수 없으므로 표시를 사람이 남기고 렌더만 여기서 한다.
-   escapeHtml 을 먼저 걸고 그 결과에서 == 를 찾으므로 입력으로 태그가 새지 않는다. */
-function hlText(s) {
-  return escapeHtml(s).replace(/==([^=]{1,200})==/g, '<span class="wk-hl">$1</span>');
-}
 
 /* ===== 상단 다크 히어로 =====
    금주 한 줄 요약 · 한컴 관점 결론 · 수치를 한 덩어리로 담는다(2026-08-21 사용자 선택).
@@ -41,14 +35,14 @@ function heroHTML(d, p, s) {
 
   // 요약 글자 크기는 본문보다 한 단만 크게 둔다(2026-08-21 사용자 지시: 이전 text-2xl 은 너무 컸다).
   if (p.overview)
-    h += '<p class="text-[16px] sm:text-[17px] font-display font-semibold tracking-tight leading-[1.65]">' + hlText(p.overview) + '</p>';
+    h += '<p class="text-[16px] sm:text-[17px] font-display font-semibold tracking-tight leading-[1.65]">' + escapeHtml(p.overview) + '</p>';
 
   if ((p.hancomConclusion || []).length)
     h += '<div class="mt-6">' +
       '<div class="text-[10px] font-bold uppercase tracking-widest text-lime mb-2.5">한컴 관점</div>' +
       '<ul class="space-y-2">' + p.hancomConclusion.map((x) =>
         '<li class="text-[13.5px] leading-[1.75] text-white/85 pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-[10px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-lime">' +
-        hlText(x) + '</li>').join('') + '</ul></div>';
+        escapeHtml(x) + '</li>').join('') + '</ul></div>';
 
   const nc = (s.newCompanies || []).length;
   h += '<div class="mt-7 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-5">' +
@@ -108,7 +102,7 @@ function pickHTML(p, i) {
   if (p.why)
     h += '<div class="rounded-2xl bg-lime/15 border border-lime p-3.5 mb-3">' +
       '<div class="text-[10px] font-bold tracking-widest text-lime-600 mb-1">주목(Pick) 이유</div>' +
-      '<p class="text-[13.5px] leading-[1.75] text-ink/90">' + hlText(p.why) + '</p></div>';
+      '<p class="text-[13.5px] leading-[1.75] text-ink/90">' + escapeHtml(p.why) + '</p></div>';
   if (preview.length)
     h += '<ul class="wk-preview space-y-1.5 mb-3">' + preview.map((x) =>
       '<li class="text-[13px] leading-[1.7] text-ink/70 pl-3 relative before:content-[\'\'] before:absolute before:left-0 before:top-[9px] before:w-1 before:h-1 before:rounded-full before:bg-ink/30">' +
@@ -201,18 +195,18 @@ function renderEdition(d) {
   const ICON_CAL = '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>';
   const ICON_SEND = '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>';
 
-  h += '<div class="mb-5">' +
+  // 제목과 같은 행에 둔다(2026-08-21 사용자 지시). 좁은 화면에서는 자연히 다음 줄로 넘어간다.
+  h += '<div class="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-2">' +
     '<h1 class="text-3xl sm:text-4xl font-display font-bold tracking-tight leading-tight">' + escapeHtml(d.label) + '</h1>' +
-    '<div class="flex flex-wrap items-center gap-2 mt-3">' +
     chip(ICON_CAL, md(d.start) + ' ~ ' + md(d.end), true) +
     (d.publishedAt ? chip(ICON_SEND, '발행 ' + md(String(d.publishedAt).slice(0, 10)), false) : '') +
-    '</div></div>';
+    '</div>';
 
   // 지난 회차와 이어지는 한 줄 — 회차가 이어지는 발행물이라는 신호. 대시보드는 회차 개념이 없어 못 하는 것.
   if (p.bridge) {
     const ref = p.bridgeRef && p.bridgeRef.issueNo ? p.bridgeRef.issueNo + '호 대비' : '지난 회차 대비';
     h += '<div class="mb-6 pl-4 border-l-2 border-lime text-[13.5px] leading-[1.7] text-ink/70">' +
-      '<span class="font-semibold text-lime-600">' + escapeHtml(ref) + '</span> ' + hlText(p.bridge) + '</div>';
+      '<span class="font-semibold text-lime-600">' + escapeHtml(ref) + '</span> ' + escapeHtml(p.bridge) + '</div>';
   }
 
   // 다크 히어로 — 금주 한 줄 요약 + 한컴 관점 + 수치를 한 덩어리로
