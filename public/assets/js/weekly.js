@@ -202,12 +202,6 @@ function renderEdition(d) {
     (d.publishedAt ? chip(ICON_SEND, '발행 ' + md(String(d.publishedAt).slice(0, 10)), false) : '') +
     '</div>';
 
-  // 지난 회차와 이어지는 한 줄 — 회차가 이어지는 발행물이라는 신호. 대시보드는 회차 개념이 없어 못 하는 것.
-  if (p.bridge) {
-    const ref = p.bridgeRef && p.bridgeRef.issueNo ? p.bridgeRef.issueNo + '호 대비' : '지난 회차 대비';
-    h += '<div class="mb-6 pl-4 border-l-2 border-lime text-[13.5px] leading-[1.7] text-ink/70">' +
-      '<span class="font-semibold text-lime-600">' + escapeHtml(ref) + '</span> ' + escapeHtml(p.bridge) + '</div>';
-  }
 
   // 다크 히어로 — 금주 한 줄 요약 + 한컴 관점 + 수치를 한 덩어리로
   h += heroHTML(d, p, s);
@@ -314,9 +308,6 @@ function draftToEdition(d) {
     week: d.week, issueNo: d.issueNo, start: d.start, end: d.end, label: d.label, publishedAt: null,
     stats: Object.assign({}, d.stats, { picks: picks.length }),
     payload: {
-      bridge: (d.payload && d.payload.bridge) || '',
-      // 초안에는 이은 회차가 아직 굳지 않았다(발행 시 확정) — 미리보기에서는 서버가 준 직전 회차를 쓴다
-      bridgeRef: d.prevEdition ? { week: d.prevEdition.week, issueNo: d.prevEdition.issueNo } : null,
       overview: (d.payload && d.payload.overview) || '',
       hancomConclusion: (d.payload && d.payload.hancomConclusion) || [],
       picks,

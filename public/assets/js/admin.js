@@ -952,13 +952,6 @@ function renderWeekly() {
   }
 
   h += '<div class="bg-white rounded-2xl border border-ink/5 shadow p-5">' +
-    // 지난 회차가 있을 때만 「이어지는 한 줄」을 받는다(첫 회차엔 이을 것이 없다)
-    (WK.prevEdition
-      ? '<div class="flex items-center justify-between mb-1.5"><div class="label">' + WK.prevEdition.issueNo + '호와 이어지는 한 줄 (페이지 최상단)</div>' +
-        '<button type="button" id="wkAiBridge" class="text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
-        '<textarea id="wkBridge" class="field" rows="2" maxlength="300">' + escapeHtml(p.bridge || '') + '</textarea>' +
-        '<p class="text-xs opacity-50 mt-1 mb-4">' + escapeHtml(WK.prevEdition.issueNo + '호(' + WK.prevEdition.label + ') 정리: ' + (WK.prevEdition.overview || '(없음)')) + '</p>'
-      : '<p class="text-xs opacity-50 mb-4">첫 회차라 「지난 회차와 이어지는 한 줄」은 건너뜁니다.</p>') +
     '<div class="flex items-center justify-between mb-1.5"><div class="label">금주 한 줄 요약</div>' +
     '<button type="button" id="wkAiOverview" class="text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
     '<textarea id="wkOverview" class="field" rows="2" maxlength="400">' + escapeHtml(p.overview || '') + '</textarea>' +
@@ -990,10 +983,8 @@ function wkSync() {
   const iss = document.getElementById('wkIssue');
   if (iss && WK) WK.issueNo = iss.value ? +iss.value : null;
   const ov = document.getElementById('wkOverview'), cc = document.getElementById('wkConclusion');
-  const br = document.getElementById('wkBridge');
   if (WK) {
     WK.payload = WK.payload || {};
-    if (br) WK.payload.bridge = br.value;
     if (ov) WK.payload.overview = ov.value;
     if (cc) WK.payload.hancomConclusion = cc.value.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 3);
   }
@@ -1008,7 +999,6 @@ function wkPayload() {
     return Object.assign({}, c, { title: p.title, why: p.why, score: undefined });
   }).filter(Boolean);
   return {
-    bridge: (WK.payload && WK.payload.bridge) || '',
     overview: (WK.payload && WK.payload.overview) || '',
     hancomConclusion: (WK.payload && WK.payload.hancomConclusion) || [],
     picks,
@@ -1080,13 +1070,11 @@ function wkBind() {
         const r = await API.weeklyAction({ action: 'assist', kind, week: WK.week, picks: payload.picks }, adminPin);
         const v = join ? (r.items || []).join('\n') : r.text;
         if (v) { el2.value = v; wkWarnAxis(r.warn); }
-        else if (r.reason === 'NO_PREV_EDITION') toast('이을 지난 회차가 없습니다(첫 회차이거나 지난 회차에 정리가 비어 있음)', false);
         else toast('AI 초안을 받지 못했습니다. 직접 써 주세요', false);
       } catch (e) { toast('AI 초안 실패: ' + (e.status || e.message), false); }
       btn.textContent = 'AI 초안'; btn.disabled = false;
     });
   };
-  aiText('bridge', 'wkAiBridge', 'wkBridge', false);
   aiText('overview', 'wkAiOverview', 'wkOverview', false);
   aiText('conclusion', 'wkAiConclusion', 'wkConclusion', true);
 
