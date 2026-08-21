@@ -469,13 +469,13 @@ export async function onRequestPost({ request, env }) {
         // 첫 회차거나 지난 회차에 정리가 없으면 이을 것이 없다 — 없는 연결을 지어내지 않는다.
         if (!pe || !pe.overview) return Response.json({ text: null, reason: 'NO_PREV_EDITION' });
         const ctx = `지난 회차(${pe.issue_no}호 ${weekLabel(pe.week)}) 정리: ${pe.overview}\n\n` +
-          `금주 주목 동향\n` + picks.map((p, i) => `${i + 1}) ${p.company}: ${p.title}${p.why ? ' / 주목 이유: ' + p.why : ''}`).join('\n');
+          `금주 주목 동향\n` + picks.map((p, i) => `${i + 1}) ${p.company}: ${p.title}${p.why ? ' / 주목(Pick) 이유: ' + p.why : ''}`).join('\n');
         const r = await llmClean(env, PROMPTS.bridge, ctx, 500);
         return Response.json({ text: r.text ? llmStr(r.text, 300) : null, warn: r.warn, prevIssueNo: pe.issue_no });
       }
 
       if (kind === 'overview') {
-        const ctx = picks.map((p, i) => `${i + 1}) ${p.company}: ${p.title}${p.why ? ' / 주목 이유: ' + p.why : ''}`).join('\n');
+        const ctx = picks.map((p, i) => `${i + 1}) ${p.company}: ${p.title}${p.why ? ' / 주목(Pick) 이유: ' + p.why : ''}`).join('\n');
         const r = await llmClean(env, PROMPTS.overview, `기간: ${start} ~ ${end}\n\n${ctx}`, 500);
         return Response.json({ text: r.text ? llmStr(r.text, 400) : null, warn: r.warn });
       }
@@ -527,7 +527,7 @@ export async function onRequestPost({ request, env }) {
       const payload = parseJson(row.payload, {});
       const picks = (Array.isArray(payload.picks) ? payload.picks : []).map(sanitizePick).filter(Boolean);
       if (!picks.length) return Response.json({ error: 'NO_PICKS' }, { status: 400 });
-      // 「왜 주목하나」가 비면 페이지가 대시보드 복사본이 된다 — 발행을 막는다(기획 3절 원칙 1).
+      // 「주목(Pick) 이유」가 비면 페이지가 대시보드 복사본이 된다 — 발행을 막는다(기획 3절 원칙 1).
       const missing = picks.filter((p) => !p.why).map((p) => p.company);
       if (missing.length) return Response.json({ error: 'WHY_REQUIRED', companies: missing }, { status: 400 });
 

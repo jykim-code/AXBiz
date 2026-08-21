@@ -834,7 +834,7 @@ async function clearSameRv() {
 }
 
 /* ===== 위클리 픽 탭 =====
-   그 주 동향에서 3~5건을 골라 「왜 주목하나」를 쓰고 발행한다.
+   그 주 동향에서 3~5건을 골라 「주목(Pick) 이유」를 쓰고 발행한다.
    선별과 이유는 사람이 쓴다(AI 초안은 빈 칸을 메우는 보조). 수치는 서버가 집계한다.
    발행하면 그 시점 내용이 payload 에 고정되므로 이미 공유한 링크의 내용은 바뀌지 않는다. */
 const WK_MAX = 5;
@@ -916,7 +916,7 @@ function wkPickHTML(p, i) {
     '<div class="label mb-1.5">제목 (한 줄)</div>' +
     '<input class="field wk-title" maxlength="300" value="' + escapeHtml(p.title || '') + '" />' +
     '<div class="flex items-center justify-between mt-3 mb-1.5">' +
-    '<div class="label">왜 주목하나 <span class="text-red-500">필수</span> · 60~140자</div>' +
+    '<div class="label normal-case">주목(Pick) 이유 <span class="text-red-500">필수</span> · 60~140자</div>' +
     '<button type="button" class="wk-ai text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
     '<textarea class="field wk-why" rows="2" maxlength="300">' + escapeHtml(why) + '</textarea>' +
     '<div class="text-[11px] opacity-45 mt-1"><span class="wk-len">' + why.length + '</span>자</div>' +
@@ -962,7 +962,7 @@ function renderWeekly() {
     '<div class="flex items-center justify-between mb-1.5"><div class="label">금주 한 줄 요약</div>' +
     '<button type="button" id="wkAiOverview" class="text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
     '<textarea id="wkOverview" class="field" rows="2" maxlength="400">' + escapeHtml(p.overview || '') + '</textarea>' +
-    '<div class="flex items-center justify-between mt-4 mb-1.5"><div class="label">금주 결론 · 한컴 관점 · 한 줄 = 불릿 1개 (2~3개)</div>' +
+    '<div class="flex items-center justify-between mt-4 mb-1.5"><div class="label">한컴 관점 · 한 줄 = 불릿 1개 (2~3개)</div>' +
     '<button type="button" id="wkAiConclusion" class="text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
     '<textarea id="wkConclusion" class="field" rows="4" placeholder="한 줄에 하나씩">' + escapeHtml((p.hancomConclusion || []).join('\n')) + '</textarea>' +
     '</div>';
@@ -1132,7 +1132,7 @@ async function wkPublish() {
   if (!payload.picks.length) { toast('주목 동향을 최소 1건 고르세요', false); return; }
   const missing = payload.picks.filter((p) => !String(p.why || '').trim()).map((p) => p.company);
   if (missing.length) {
-    toast('「왜 주목하나」가 빈 항목: ' + missing.join(', ') + ' — 이 한 줄이 없으면 대시보드와 같은 화면이 됩니다', false);
+    toast('「주목(Pick) 이유」가 빈 항목: ' + missing.join(', ') + ' — 이 한 줄이 없으면 대시보드와 같은 화면이 됩니다', false);
     return;
   }
   if (!(await wkSaveDraft(false))) return;
@@ -1141,7 +1141,7 @@ async function wkPublish() {
     toast(r.issueNo + '호 발행 완료 (주목 ' + r.picks + '건 · 그 외 ' + r.others + '건)', true);
     loadWeekly();
   } catch (e) {
-    if (e.message === 'WHY_REQUIRED') { toast('「왜 주목하나」가 빈 항목이 있습니다: ' + ((e.data && e.data.companies) || []).join(', '), false); return; }
+    if (e.message === 'WHY_REQUIRED') { toast('「주목(Pick) 이유」가 빈 항목이 있습니다: ' + ((e.data && e.data.companies) || []).join(', '), false); return; }
     toast('발행 실패: ' + (e.status || e.message), false);
   }
 }

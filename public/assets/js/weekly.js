@@ -1,7 +1,7 @@
 /* 위클리 픽 — 단톡방 주 1회 공유용 발행물 페이지.
    이름 근거: 대시보드 항목에 「한컴 인사이트」가 있어 「주간 인사이트」와 겹쳐 읽혔다(2026-08-21 사용자 지시).
    「픽」이 이 페이지의 정체(사람이 골라 이유를 붙인 것)를 그대로 말한다.
-   대시보드(기업 축)와 달리 한 주를 발행물로 자른다: 선별 · 왜 주목하나 · 교차 종합 · 회차 아카이브.
+   대시보드(기업 축)와 달리 한 주를 발행물로 자른다: 선별 · 주목(Pick) 이유 · 교차 종합 · 회차 아카이브.
    본문(주요내용·시사점·한컴 인사이트)은 entry.js 의 entryDetailHTML 을 그대로 재사용한다 —
    대시보드 카드 펼침과 같은 구성이어야 두 화면이 어긋나지 않는다.
    링크로 밖으로 내보내지 않고 카드 펼침으로 페이지 안에서 완결시킨다(실제로 링크는 잘 눌리지 않는다). */
@@ -12,7 +12,7 @@ const shortLabel = (label) => String(label || '').replace(/^\d{4}년\s*/, ''); /
 /* ===== 상단 다크 히어로 =====
    금주 한 줄 요약 · 한컴 관점 결론 · 수치를 한 덩어리로 담는다(2026-08-21 사용자 선택).
    이전 구성은 다크 카드 → 라임 박스 → 흰 카드로 색 블록이 연달아 부딪쳤고, 라임 박스가
-   「금주 결론」·「왜 주목하나」·「한컴 인사이트」 세 곳에 반복돼 라임이 가진 신호가 흐려졌다.
+   「금주 결론」·「주목(Pick) 이유」·「한컴 인사이트」 세 곳에 반복돼 라임이 가진 신호가 흐려졌다.
    대시보드 지식그래프 카드의 문법(다크 바탕 + 라임 숫자 + 하단 통계 띠)을 그대로 차용해
    두 화면이 같은 디자인 언어를 쓰게 한다. */
 function heroStat(value, unit, caption) {
@@ -79,7 +79,7 @@ function trendHTML(trend) {
 /* ===== 주목 동향 카드 =====
    **기본 펼침**이다(2026-08-21 사용자 지시). 단톡방에서 들어온 사람은 평소 대시보드를 보지 않으므로
    이 페이지만 읽고 끝낼 수 있어야 한다 — 주요내용·시사점·한컴 인사이트를 클릭 없이 보여 준다.
-   접으면 훑기용 요약(제목 + 왜 주목하나 + 주요내용 2불릿)만 남는다. 접힘 미리보기는 펼친 상태에서
+   접으면 훑기용 요약(제목 + 주목(Pick) 이유 + 주요내용 2불릿)만 남는다. 접힘 미리보기는 펼친 상태에서
    숨겨 같은 불릿이 두 번 보이지 않게 한다(CSS .wk-open .wk-preview). */
 const PREVIEW_POINTS = 2;
 const NEW_CO_MAX = 6; // 금주 한눈에의 신규 편입 기업 칩 상한
@@ -96,10 +96,10 @@ function pickHTML(p, i) {
     '<a href="/company?name=' + encodeURIComponent(p.company) + '" class="font-display font-bold text-lg tracking-tight hover:text-lime-600 min-w-0 truncate">' + escapeHtml(p.company) + '</a>' +
     cat + '<span class="text-[11px] text-ink/45 font-medium ml-auto flex-none">' + escapeHtml(p.date || '') + '</span></div>';
   if (p.title) h += '<p class="text-[15px] font-bold leading-snug mb-3">' + escapeHtml(p.title) + '</p>';
-  // 「왜 주목하나」 — 이 페이지의 알맹이. 사람이 판단해 쓴 한 줄이며 대시보드에 없는 유일한 정보다.
+  // 「주목(Pick) 이유」 — 이 페이지의 알맹이. 사람이 판단해 쓴 한 줄이며 대시보드에 없는 유일한 정보다.
   if (p.why)
     h += '<div class="rounded-2xl bg-lime/15 border border-lime p-3.5 mb-3">' +
-      '<div class="text-[10px] font-bold uppercase tracking-widest text-lime-600 mb-1">왜 주목하나</div>' +
+      '<div class="text-[10px] font-bold tracking-widest text-lime-600 mb-1">주목(Pick) 이유</div>' +
       '<p class="text-[13.5px] leading-[1.75] text-ink/90">' + escapeHtml(p.why) + '</p></div>';
   if (preview.length)
     h += '<ul class="wk-preview space-y-1.5 mb-3">' + preview.map((x) =>
@@ -167,7 +167,7 @@ function prevHTML(prev) {
 
 /* ===== 공유 텍스트 =====
    단톡방에서 실제로 읽히는 것은 붙여넣은 텍스트다(링크 클릭률은 낮다).
-   「왜 주목하나」가 그대로 → 줄로 들어가 관리자가 쓴 한 줄이 페이지와 텍스트 양쪽을 채운다. */
+   「주목(Pick) 이유」가 그대로 → 줄로 들어가 관리자가 쓴 한 줄이 페이지와 텍스트 양쪽을 채운다. */
 function shareText(d) {
   const s = d.stats || {}, p = d.payload || {};
   const picks = p.picks || [];
