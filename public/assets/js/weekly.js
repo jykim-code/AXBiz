@@ -249,8 +249,11 @@ function onToggle(e) {
 }
 
 /* ===== 발행 전 미리보기 =====
-   관리자가 발행 버튼을 누르기 전에 실제 화면을 확인하는 경로(?preview=1, 저장된 PIN 필요).
-   초안에는 「그 외 동향」 스냅샷이 아직 없으므로(발행 시점에 고정된다) 후보에서 계산해 채운다. */
+   관리자가 발행 버튼을 누르기 전에 실제 화면을 확인하는 경로(?draft=1, 저장된 PIN 필요).
+   초안에는 「그 외 동향」 스냅샷이 아직 없으므로(발행 시점에 고정된다) 후보에서 계산해 채운다.
+   ⚠ 기존 데이터 검수용 `?preview=1` 은 쓰지 않는다. 그 값은 dev-toolbar 배너를 띄우고
+     「전체 배포 ▶」 버튼까지 노출하는데, 그 버튼은 보고서 draft 를 배포하는 것이라
+     주간 발행과 무관하고 이 화면에서 누르면 의도치 않은 배포가 된다. */
 function draftToEdition(d) {
   const picks = (d.payload && d.payload.picks) || [];
   const picked = new Set(picks.map((p) => p.key));
@@ -280,12 +283,15 @@ async function initWeekly() {
   if (!root) return;
   const params = new URLSearchParams(location.search);
   const w = params.get('w') || '';
-  const isPreview = params.get('preview') === '1' && !!w;
+  const isPreview = params.get('draft') === '1' && !!w;
   let data;
   try {
     data = isPreview ? draftToEdition(await API.weeklyPreview(w)) : await API.weekly(w);
-  } catch {
-    root.innerHTML = '<div class="text-sm text-center py-16">불러오지 못했습니다. <a href="/" class="text-lime-600 font-semibold hover:underline">대시보드로</a></div>';
+  } catch (e) {
+    // 미리보기는 PIN 이 있어야 한다. 관리자 콘솔의 [미리보기 ↗] 로 열면 PIN 이 이미 저장돼 있다.
+    root.innerHTML = isPreview && e && e.status === 403
+      ? '<div class="text-sm text-center py-16">미리보기 권한이 없습니다. <a href="/admin/" class="text-lime-600 font-semibold hover:underline">관리자 콘솔</a>의 [미리보기 ↗] 버튼으로 열어 주세요.</div>'
+      : '<div class="text-sm text-center py-16">불러오지 못했습니다. <a href="/" class="text-lime-600 font-semibold hover:underline">대시보드로</a></div>';
     return;
   }
   if (!data || !data.available) {

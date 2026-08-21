@@ -1078,7 +1078,7 @@ function wkBind() {
   document.getElementById('wkPublish').addEventListener('click', wkPublish);
   document.getElementById('wkPreviewBtn').addEventListener('click', async () => {
     if (!(await wkSaveDraft(false))) return;
-    window.open('/weekly?w=' + encodeURIComponent(WK.week) + '&preview=1', '_blank');
+    window.open('/weekly?w=' + encodeURIComponent(WK.week) + '&draft=1', '_blank');
   });
   const unp = document.getElementById('wkUnpublish');
   if (unp) unp.addEventListener('click', async () => {
