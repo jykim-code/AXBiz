@@ -190,11 +190,23 @@ function renderEdition(d) {
   const picks = p.picks || [];
   let h = '';
 
-  // 헤더 — 회차 표기는 다크 히어로가 담당하므로 여기는 주차와 기간만 둔다
+  // 헤더 — 회차 표기는 다크 히어로가 담당하므로 여기는 주차와 기간만 둔다.
+  // 기간·발행일은 맨 텍스트로 두면 제목에 딸린 부스러기처럼 보여, 아이콘을 붙인 칩으로 만든다
+  // (페이지 전체가 라운드 칩을 쓰므로 같은 문법이다).
+  const chip = (icon, text, strong) =>
+    '<span class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ' +
+    (strong ? 'bg-white border-ink/10 font-semibold' : 'bg-transparent border-ink/[.08] text-ink/50') + '">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 ' +
+    (strong ? 'text-lime-600' : 'text-ink/35') + '">' + icon + '</svg>' + escapeHtml(text) + '</span>';
+  const ICON_CAL = '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>';
+  const ICON_SEND = '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>';
+
   h += '<div class="mb-5">' +
     '<h1 class="text-3xl sm:text-4xl font-display font-bold tracking-tight leading-tight">' + escapeHtml(d.label) + '</h1>' +
-    '<p class="text-sm text-ink/55 mt-2">' + escapeHtml(md(d.start) + ' ~ ' + md(d.end)) +
-    (d.publishedAt ? ' · 발행 ' + escapeHtml(String(d.publishedAt).slice(0, 10)) : '') + '</p></div>';
+    '<div class="flex flex-wrap items-center gap-2 mt-3">' +
+    chip(ICON_CAL, md(d.start) + ' ~ ' + md(d.end), true) +
+    (d.publishedAt ? chip(ICON_SEND, '발행 ' + md(String(d.publishedAt).slice(0, 10)), false) : '') +
+    '</div></div>';
 
   // 지난 회차와 이어지는 한 줄 — 회차가 이어지는 발행물이라는 신호. 대시보드는 회차 개념이 없어 못 하는 것.
   if (p.bridge) {
