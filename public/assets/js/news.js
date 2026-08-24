@@ -19,8 +19,8 @@
     const el = document.createElement('style');
     el.id = 'nw-style';
     el.textContent = [
-      '.nw-frame{width:min(100vw,var(--nw-col,620px));height:var(--nw-h,min(calc(100dvh - 152px),880px));margin:0 auto}',
-      '.nw-bar{width:min(100vw,var(--nw-col,620px));margin:0 auto;padding-left:20px;padding-right:20px}',
+      '.nw-frame{width:min(100%,var(--nw-col,620px));height:var(--nw-h,min(calc(100dvh - 152px),880px));margin:0 auto}',
+      '.nw-bar{width:min(100%,var(--nw-col,620px));margin:0 auto;padding-left:20px;padding-right:20px}',
       /* 넘기는 동작의 실체 — 가로 scroll-snap. 터치 스와이프와 트랙패드 가로 제스처가 별도 구현
          없이 동작하고, 키보드는 같은 스크롤을 호출한다. 드래그 물리를 직접 만들면 본문 세로
          스크롤과 텍스트 선택이 깨진다. */
@@ -28,6 +28,11 @@
         'overscroll-behavior-x:contain;scrollbar-width:none;-ms-overflow-style:none}',
       '.nw-track::-webkit-scrollbar{display:none}',
       '.nw-slide{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:start;display:flex;flex-direction:column;overflow:hidden}',
+      /* 픽의 비주얼 판(사진 또는 도형). 34% 를 쓰되 최소·최대를 둔다.
+         화면이 낮을 때(가로로 돌린 휴대폰, 짧은 창) 최소 210px 이 프레임의 대부분을 먹어
+         본문이 몇십 px 만 남는다 — 그때는 판을 줄이고 본문에 자리를 준다. */
+      '.nw-vis{flex:none;height:clamp(210px,34%,300px)}',
+      '@media (max-height:640px){.nw-vis{height:clamp(120px,26%,180px)}}',
       /* 본문이 한 장에 안 들어가면 그 판만 세로로 흐른다. 세로 제스처는 이 안에서 먹고
          가로 제스처는 트랙으로 올라가므로 두 방향이 싸우지 않는다. */
       '.nw-scroll{overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:none;-ms-overflow-style:none}',
@@ -191,7 +196,7 @@
       '<div class="mt-7 grid grid-cols-4 divide-x divide-white/10">' +
       [['동향', s.total || 0], ['기업', s.companies || 0], ['신규', (s.newCompanies || []).length], ['주목', s.picks || 0]]
         .map(function (kv, i) {
-          return '<div class="' + (i === 0 ? 'pr-4' : 'px-4') + '">' +
+          return '<div class="' + (i === 0 ? 'pr-2 sm:pr-4' : 'px-2 sm:px-4') + '">' +
             '<div class="font-display font-bold text-[24px] leading-none tracking-tighter">' + kv[1] + '</div>' +
             '<div class="text-[9px] font-bold uppercase tracking-widest text-white/35 mt-1.5">' + kv[0] + '</div></div>';
         }).join('') +
@@ -229,7 +234,7 @@
      여전히 필수라 기록은 회차 데이터에 남는다. 그늘은 머리 활자가 읽힐 만큼만 위에 넣고,
      아래는 다크 텍스트 판과 이어지도록 살짝만 어둡게 한다. */
   function photoPanel(p) {
-    return '<div class="flex-none relative overflow-hidden bg-ink text-white" style="height:clamp(210px, 34%, 300px)">' +
+    return '<div class="nw-vis relative overflow-hidden bg-ink text-white">' +
       '<img src="/api/pick-image?k=' + encodeURIComponent(p.image.key) + '" alt="" loading="lazy" decoding="async" ' +
       'class="absolute inset-0 w-full h-full object-cover" style="object-position:' + (POS[p.image.pos] || 'center') + '" />' +
       '<div class="absolute inset-0" aria-hidden="true" style="background:linear-gradient(to bottom, rgba(0,0,0,.58), rgba(0,0,0,.06) 45%, rgba(0,0,0,.22))"></div>' +
@@ -241,7 +246,7 @@
   function artPanel(p, i) {
     const s = SKINS[i % SKINS.length];
     const seed = p.key || (p.company + '|' + p.date + '|' + (p.title || ''));
-    return '<div class="flex-none relative overflow-hidden ' + s.bg + ' text-ink" style="height:clamp(210px, 34%, 300px)">' +
+    return '<div class="nw-vis relative overflow-hidden ' + s.bg + ' text-ink">' +
       graphArt(seed, s) +
       '<div class="relative h-full flex flex-col p-6">' + panelHead(p, false) + '</div></div>';
   }

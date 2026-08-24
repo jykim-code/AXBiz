@@ -498,8 +498,10 @@ function openNewsOverlay(d) {
   const wrap = document.createElement('div');
   wrap.id = 'nwOverlay';
   wrap.className = 'fixed inset-0 z-50 flex flex-col items-center justify-center px-3 py-4';
-  // 상단 줄·진행 세그먼트·하단 조작 줄을 뺀 높이. 전면 페이지(/news)와 여백이 다르므로 여기서 정한다.
-  wrap.style.setProperty('--nw-h', 'min(calc(100dvh - 200px), 840px)');
+  /* 상단 줄·진행 세그먼트·하단 조작 줄을 뺀 높이. 전면 페이지(/news)와 여백이 다르므로 여기서 정한다.
+     실제 껍데기는 121px(여백 32 + 상단 줄 26 + 세그먼트 15 + 조작 줄 48)이라 150 만 뺀다.
+     200 을 빼면 낮은 화면(가로로 돌린 휴대폰)에서 프레임이 필요 이상으로 눌린다. */
+  wrap.style.setProperty('--nw-h', 'min(calc(100dvh - 150px), 840px)');
   wrap.innerHTML =
     '<div data-nw-scrim class="absolute inset-0 bg-ink/75 backdrop-blur-sm"></div>' +
     '<div class="relative w-full flex flex-col items-center">' +
