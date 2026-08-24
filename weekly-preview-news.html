@@ -193,9 +193,11 @@ function intro() {
     '<div class="text-[10px] font-bold uppercase tracking-[.2em] text-lime mb-3">이번 주 흐름</div>' +
     '<p class="font-display font-medium text-[18px] sm:text-[20px] leading-[1.55] text-white/90">' + esc(D.overview) + '</p>' +
 
-    '<div class="mt-7 grid grid-cols-4 gap-px bg-white/10">' +
+    /* 세로 얇은 선으로만 나눈다. gap-px 로 선을 만들면 셀 안 활자가 선에 붙어 읽기 나쁘다
+       — divide-x 로 선을 두고 좌우 여백을 준다(첫 칸은 위 문단과 왼쪽을 맞춘다). */
+    '<div class="mt-7 grid grid-cols-4 divide-x divide-white/10">' +
     [['동향', D.stats.total], ['기업', D.stats.companies], ['신규', D.stats.newCo], ['주목', D.stats.picks]]
-      .map(([k, v]) => '<div class="bg-panel pt-3 pb-1.5">' +
+      .map(([k, v], i) => '<div class="' + (i === 0 ? 'pr-4' : 'px-4') + '">' +
         '<div class="font-display font-bold text-[24px] leading-none tracking-tighter">' + v + '</div>' +
         '<div class="text-[9px] font-bold uppercase tracking-widest text-white/35 mt-1.5">' + k + '</div></div>').join('') +
     '</div>' +

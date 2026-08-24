@@ -78,10 +78,13 @@
         ? '<p class="font-display font-medium text-[18px] sm:text-[20px] leading-[1.55] text-white/90">' + escapeHtml(d.payload.overview) + '</p>'
         : '<p class="text-[14px] text-white/40">금주 한 줄 요약이 비어 있습니다</p>') +
 
-      '<div class="mt-7 grid grid-cols-4 gap-px bg-white/10">' +
+      /* 세로 얇은 선으로만 나눈다(상세 페이지의 수치 4칸과 같은 문법).
+         gap-px 로 선을 만들면 셀 안 활자가 선에 붙어 읽기 나쁘다 — divide-x 로 선을 두고
+         좌우 여백을 준다. 첫 칸은 왼쪽에 선이 없으므로 위 문단과 왼쪽을 맞춘다. */
+      '<div class="mt-7 grid grid-cols-4 divide-x divide-white/10">' +
       [['동향', s.total || 0], ['기업', s.companies || 0], ['신규', (s.newCompanies || []).length], ['주목', s.picks || 0]]
-        .map(function (kv) {
-          return '<div class="bg-panel pt-3 pb-1.5">' +
+        .map(function (kv, i) {
+          return '<div class="' + (i === 0 ? 'pr-4' : 'px-4') + '">' +
             '<div class="font-display font-bold text-[24px] leading-none tracking-tighter">' + kv[1] + '</div>' +
             '<div class="text-[9px] font-bold uppercase tracking-widest text-white/35 mt-1.5">' + kv[0] + '</div></div>';
         }).join('') +
