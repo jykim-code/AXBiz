@@ -100,7 +100,11 @@ function indexHTML(picks) {
    라임 바가 붙는다는 규칙이 페이지 전체에 생긴다.
    폐기한 조판: 라벨 왼쪽 / 문단 오른쪽 2열(결론이 그냥 쌓여 보임), 큰 번호 01·02·03(위 이유). */
 function hancomHTML(items) {
-  return '<div class="mt-10 rule pt-4">' +
+  /* mb-10 이 필요하다: 총론을 목차 위로 올린 뒤 이 블록이 아래 여백 없이 끝나고 바로 목차의
+     2px 굵은 선이 붙어, 마지막 결론의 라임 바가 그 선에 닿아 보였다(2026-08-24 사용자 지적).
+     목차 쪽에 mt-10 을 주지 않는 이유는 한컴 관점이 없는 회차에서 수치 4칸의 mb-10 과 겹쳐
+     간격이 두 배가 되기 때문이다. 형제 마진은 합쳐지므로 위쪽 간격은 40px 그대로다. */
+  return '<div class="mt-10 mb-10 rule pt-4">' +
     '<div class="flex items-baseline justify-between gap-4 mb-5">' +
     '<div class="text-[11px] font-bold uppercase tracking-widest text-lime-600">한컴 관점</div>' +
     '<div class="text-[12px] text-ink/40">금주 픽에서 도출한 결론</div></div>' +
