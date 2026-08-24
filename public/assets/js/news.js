@@ -27,12 +27,74 @@
 
   /* 비주얼 판 배색 3종을 순번으로 순환한다.
      ⚠ 셋 다 밝은 계열로 둔다 — 아래 텍스트 판이 다크이므로 「밝은 위 / 어두운 아래」 분할이
-       슬라이드 경계를 만든다. 비주얼 판까지 어두우면 장이 넘어간 것이 안 보인다. */
+       슬라이드 경계를 만든다. 비주얼 판까지 어두우면 장이 넘어간 것이 안 보인다.
+     line·dot·hub 는 아래 관계망 도형 색이다. SVG 속성이라 Tailwind 클래스가 아닌 실색으로 둔다. */
   const SKINS = [
-    { bg: 'bg-lime',  fg: 'text-ink', sub: 'text-ink/55', rule: 'border-ink/20', num: 'text-ink/[.10]' },
-    { bg: 'bg-white', fg: 'text-ink', sub: 'text-ink/50', rule: 'border-ink/12', num: 'text-ink/[.07]' },
-    { bg: 'bg-beige', fg: 'text-ink', sub: 'text-ink/50', rule: 'border-ink/12', num: 'text-lime-600/25' },
+    { bg: 'bg-lime',  line: 'rgba(17,17,17,.20)',   dot: 'rgba(17,17,17,.38)',  hub: '#111' },
+    { bg: 'bg-white', line: 'rgba(123,165,0,.40)',  dot: 'rgba(123,165,0,.62)', hub: '#111' },
+    { bg: 'bg-beige', line: 'rgba(17,17,17,.16)',   dot: 'rgba(123,165,0,.75)', hub: '#111' },
   ];
+
+  /* 같은 픽은 늘 같은 모양이 나와야 한다(회차를 다시 열었을 때 그림이 바뀌면 다른 글로 읽힌다).
+     그래서 난수를 쓰지 않고 픽 식별값에서 씨앗을 뽑아 고정한다. */
+  function seedOf(str) {
+    let h = 2166136261;
+    const s = String(str || '');
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+  function rngOf(seed) {
+    let a = seed || 1;
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* 사진이 없을 때 비주얼 판에 깔리는 도형. **활자를 넣지 않는다** —
+     기업명·제목·순번은 모두 바로 아래 텍스트 판에 있어 두 번 읽히면 안 된다(2026-08-24 사용자 지시).
+     모티프는 대시보드의 지식 그래프 노드-링크 관계망이다(CLAUDE.md 확정 요소).
+     각 노드를 「가장 가까운 앞선 노드」에 이어 끊긴 점이 없게 하고, 여분 연결 몇 개로 망처럼 보이게 한다. */
+  function graphArt(seedStr, sk) {
+    const rnd = rngOf(seedOf(seedStr));
+    const W = 620, H = 300;
+    const n = 11 + Math.floor(rnd() * 4);
+    const pts = [];
+    for (let i = 0; i < n; i++) pts.push([30 + rnd() * (W - 60), 28 + rnd() * (H - 56)]);
+
+    const r1 = (v) => Math.round(v * 10) / 10;
+    let lines = '';
+    for (let i = 1; i < n; i++) {
+      let best = 0, bd = Infinity;
+      for (let j = 0; j < i; j++) {
+        const dx = pts[i][0] - pts[j][0], dy = pts[i][1] - pts[j][1];
+        const d = dx * dx + dy * dy;
+        if (d < bd) { bd = d; best = j; }
+      }
+      lines += '<line x1="' + r1(pts[i][0]) + '" y1="' + r1(pts[i][1]) + '" x2="' + r1(pts[best][0]) + '" y2="' + r1(pts[best][1]) + '" />';
+    }
+    for (let k = 0; k < 3; k++) {
+      const a = Math.floor(rnd() * n), b = Math.floor(rnd() * n);
+      if (a !== b) lines += '<line x1="' + r1(pts[a][0]) + '" y1="' + r1(pts[a][1]) + '" x2="' + r1(pts[b][0]) + '" y2="' + r1(pts[b][1]) + '" />';
+    }
+
+    const hub = Math.floor(rnd() * n);
+    let dots = '';
+    for (let i = 0; i < n; i++) {
+      if (i === hub) continue;
+      dots += '<circle cx="' + r1(pts[i][0]) + '" cy="' + r1(pts[i][1]) + '" r="' + r1(2.5 + rnd() * 3.5) + '" fill="' + sk.dot + '" />';
+    }
+
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid slice" ' +
+      'class="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true" focusable="false">' +
+      '<g stroke="' + sk.line + '" stroke-width="1.25">' + lines + '</g>' + dots +
+      // 허브 — 대시보드 그래프의 중앙 AX 노드와 같은 역할. 시선이 한 곳에 걸리게 한다.
+      '<circle cx="' + r1(pts[hub][0]) + '" cy="' + r1(pts[hub][1]) + '" r="9" fill="' + sk.hub + '" />' +
+      '<circle cx="' + r1(pts[hub][0]) + '" cy="' + r1(pts[hub][1]) + '" r="19" fill="none" stroke="' + sk.line + '" stroke-width="1.25" />' +
+      '</svg>';
+  }
 
   /* ===== 1장: 표지 =====
      캐러셀은 첫 장에서 「무엇을 넘기게 되는가」를 말해야 한다. 라임 전면이라 넘기기 전에도
@@ -105,53 +167,34 @@
      위 비주얼 판(밝음 또는 사진) + 아래 다크 텍스트 판. 비주얼 판이 두 갈래다.
      · 관리자가 이미지를 올린 항목 → 사진이 판을 채우고 활자를 얹는다
      · 안 올린 항목 → 배색 판 + 제목 큰 활자. 이것이 기본 상태이며 사진은 선택이다 */
-  function photoPanel(p, i, total, issueNo) {
-    const n = no2(i + 1);
-    return '<div class="flex-none relative overflow-hidden bg-ink text-white" style="height:clamp(210px, 34%, 300px)">' +
+  /* 사진 판 — 사진 위에 활자를 얹지 않는다. 기업명·제목·순번이 모두 바로 아래 텍스트 판에
+     있어 두 번 읽히면 안 된다. 얹는 것은 출처 표기뿐이며 그것은 필수 표기다.
+     그늘도 그 한 줄이 읽힐 만큼만 아래쪽에 넣는다. */
+  function photoPanel(p) {
+    return '<div class="flex-none relative overflow-hidden bg-ink" style="height:clamp(210px, 34%, 300px)">' +
       '<img src="/api/pick-image?k=' + encodeURIComponent(p.image.key) + '" alt="" loading="lazy" decoding="async" ' +
       'class="absolute inset-0 w-full h-full object-cover" style="object-position:' + (POS[p.image.pos] || 'center') + '" />' +
-      // 사진 위에 활자를 얹으려면 그늘이 필요하다. 밝은 사진에서도 읽히게 위아래로만 넣는다.
-      '<div class="absolute inset-0" style="background:linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,.12) 45%, rgba(0,0,0,.72))"></div>' +
-      '<div class="relative h-full flex flex-col p-6">' +
-      '<div class="flex items-start justify-between gap-3">' +
-      '<div class="min-w-0">' +
-      '<div class="font-display font-bold text-[21px] sm:text-[24px] tracking-tight leading-none truncate">' + escapeHtml(p.company) + '</div>' +
-      '<div class="text-[10px] font-bold uppercase tracking-widest text-white/70 mt-1.5">' +
-      escapeHtml([p.category, p.date].filter(Boolean).join(' · ')) + '</div></div>' +
-      '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-3.5 w-auto flex-none opacity-80" /></div>' +
-      '<div class="mt-auto">' +
-      '<div class="font-display font-bold text-[26px] leading-[1.15] tracking-tight max-w-[24ch]">' + escapeHtml(p.title || '') + '</div>' +
-      '<div class="mt-3 pt-2.5 border-t border-white/25 flex items-baseline justify-between gap-3">' +
-      '<span class="text-[10px] font-semibold uppercase tracking-[.18em] text-white/70">' +
-      (issueNo ? 'Weekly Picks No.' + no2(issueNo) + ' — ' : '') + n + ' / ' + no2(total) + '</span>' +
-      (p.image.credit ? '<span class="text-[9.5px] text-white/55 flex-none">이미지 ' + escapeHtml(p.image.credit) + '</span>' : '') +
-      '</div></div></div></div>';
+      (p.image.credit
+        ? '<div class="absolute inset-x-0 bottom-0 pt-8 pb-2.5 px-6 text-right" ' +
+          'style="background:linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,0))">' +
+          '<span class="text-[9.5px] text-white/60">이미지 ' + escapeHtml(p.image.credit) + '</span></div>'
+        : '') +
+      '</div>';
   }
 
-  function colorPanel(p, i, total, issueNo) {
+  /* 사진이 없는 판 — 배색 + 관계망 도형만. 활자를 넣지 않는다(2026-08-24 사용자 지시).
+     씨앗은 픽 식별값이라 같은 픽은 늘 같은 모양이고, 배색은 순번으로 순환해 장이 넘어간 것이 보인다. */
+  function artPanel(p, i) {
     const s = SKINS[i % SKINS.length];
-    const n = no2(i + 1);
-    return '<div class="flex-none relative overflow-hidden ' + s.bg + ' ' + s.fg + '" style="height:clamp(210px, 34%, 300px)">' +
-      '<span aria-hidden="true" class="pointer-events-none absolute -right-4 -bottom-10 font-display font-bold leading-none tracking-tighter text-[150px] ' + s.num + '">' + n + '</span>' +
-      '<div class="relative h-full flex flex-col p-6">' +
-      '<div class="flex items-start justify-between gap-3">' +
-      '<div class="min-w-0">' +
-      '<div class="font-display font-bold text-[21px] sm:text-[24px] tracking-tight leading-none truncate">' + escapeHtml(p.company) + '</div>' +
-      '<div class="text-[10px] font-bold uppercase tracking-widest ' + s.sub + ' mt-1.5">' +
-      escapeHtml([p.category, p.date].filter(Boolean).join(' · ')) + '</div></div>' +
-      '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-3.5 w-auto flex-none opacity-60" /></div>' +
-      // 사진이 없으면 제목을 큰 활자로 세운다 — 빈 판을 만들지 않는다.
-      '<div class="mt-auto">' +
-      '<div class="font-display font-bold text-[27px] leading-[1.15] tracking-tight max-w-[22ch]">' + escapeHtml(p.title || '') + '</div>' +
-      '<div class="mt-4 pt-3 border-t ' + s.rule + ' text-[10px] font-semibold uppercase tracking-[.18em] ' + s.sub + '">' +
-      (issueNo ? 'Weekly Picks No.' + no2(issueNo) + ' — ' : '') + n + ' / ' + no2(total) + '</div>' +
-      '</div></div></div>';
+    const seed = p.key || (p.company + '|' + p.date + '|' + (p.title || ''));
+    return '<div class="flex-none relative overflow-hidden ' + s.bg + '" style="height:clamp(210px, 34%, 300px)">' +
+      graphArt(seed, s) + '</div>';
   }
 
   /* 다크 텍스트 판 — 남는 높이를 다 쓰고 넘치면 이 판만 세로로 흐른다.
      하위 3항목을 접지 않는 것은 「단톡방에서 들어온 사람이 이 페이지만 읽고 끝낼 수 있어야
      한다」는 기존 결정을 지키기 위한 것이다(2026-08-21). 사진이 있든 없든 이 판은 같다. */
-  function textPanel(p, i) {
+  function textPanel(p, i, issueNo) {
     const n = no2(i + 1);
     const src = safeUrl(p.sourceUrl), conf = safeUrl(p.confluenceUrl);
     const source = hostOf(p.sourceUrl);
@@ -199,17 +242,18 @@
       (src ? '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener noreferrer" class="' + linkCls + '">출처 기사 ↗</a>' : '') +
       (conf ? '<a href="' + escapeHtml(conf) + '" target="_blank" rel="noopener noreferrer" class="' + linkCls + '">상세 모니터링 ↗</a>' : '') +
       '</div>' +
-      '<span class="font-display font-bold text-[11px] tracking-[.18em] text-white/40 flex-none">AX BIZ RADAR</span>' +
+      // 비주얼 판에서 활자를 뺐으므로 회차 표기를 여기로 옮긴다. 한 장만 캡처해도
+      // 어느 회차인지 남게 하는 것이고, 표지 말고는 회차가 나오는 곳이 없어 중복이 아니다.
+      '<span class="font-display font-bold text-[11px] tracking-[.18em] text-white/40 flex-none">AX BIZ RADAR' +
+      (issueNo ? ' · No.' + no2(issueNo) : '') + '</span>' +
       '</div>';
 
     return h + '</div></div>';
   }
 
-  function pickSlide(p, i, total, issueNo) {
-    const visual = (p.image && p.image.key)
-      ? photoPanel(p, i, total, issueNo)
-      : colorPanel(p, i, total, issueNo);
-    return visual + textPanel(p, i);
+  function pickSlide(p, i, issueNo) {
+    const visual = (p.image && p.image.key) ? photoPanel(p) : artPanel(p, i);
+    return visual + textPanel(p, i, issueNo);
   }
 
   /* ===== 마지막 장: 한컴 관점 =====
@@ -241,7 +285,7 @@
     const s = d.stats || {};
     const picks = (d.payload && d.payload.picks) || [];
     const pages = [cover(d, s), intro(d, s, picks)]
-      .concat(picks.map(function (p, i) { return pickSlide(p, i, picks.length, d.issueNo); }))
+      .concat(picks.map(function (p, i) { return pickSlide(p, i, d.issueNo); }))
       .concat([closing(d, s)]);
 
     root.innerHTML =
