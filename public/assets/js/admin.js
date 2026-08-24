@@ -837,7 +837,8 @@ async function clearSameRv() {
    그 주 동향에서 3~5건을 골라 「주목(Pick) 이유」를 쓰고 발행한다.
    선별과 이유는 사람이 쓴다(AI 초안은 빈 칸을 메우는 보조). 수치는 서버가 집계한다.
    발행하면 그 시점 내용이 payload 에 고정되므로 이미 공유한 링크의 내용은 바뀌지 않는다. */
-const WK_MAX = 5;
+// 픽 수는 제한하지 않는다(2026-08-24 사용자 지시) — 그 주에 주목할 것이 많으면 많이 싣는다.
+// 서버 MAX_PICKS(50)는 폭주 방지용 상한이며 편집 기준이 아니다.
 let WK = null;      // 서버 초안 상태 {week,start,end,label,status,issueNo,stats,candidates,payload}
 let WK_PICKS = [];  // 선택 항목(순서 유지) [{key,title,why}]
 
@@ -939,8 +940,8 @@ function renderWeekly() {
 
   h += '<div class="bg-white rounded-2xl border border-ink/5 shadow p-5 mb-5">' +
     '<div class="flex items-baseline justify-between mb-3">' +
-    '<div class="label">이 주 동향 ' + (WK.candidates || []).length + '건 — 주목할 3~5건 선택</div>' +
-    '<span id="wkSelCnt" class="text-xs font-semibold">' + WK_PICKS.length + ' / ' + WK_MAX + '</span></div>' +
+    '<div class="label">이 주 동향 ' + (WK.candidates || []).length + '건 — 주목할 것 선택 (건별)</div>' +
+    '<span id="wkSelCnt" class="text-xs font-semibold">' + WK_PICKS.length + '건 선택</span></div>' +
     ((WK.candidates || []).length
       ? '<div class="divide-y divide-ink/5 max-h-[420px] overflow-y-auto">' + WK.candidates.map(wkRowHTML).join('') + '</div>'
       : '<div class="text-sm opacity-50 py-6 text-center">이 주에는 발행된 동향이 없습니다</div>') +
@@ -1014,11 +1015,6 @@ function wkBind() {
       wkSync();
       const key = cb.dataset.key;
       if (cb.checked) {
-        if (WK_PICKS.length >= WK_MAX) {
-          cb.checked = false;
-          toast('주목 동향은 최대 ' + WK_MAX + '건입니다. 읽는 사람이 훑을 수 있는 분량으로 제한합니다', false);
-          return;
-        }
         const c = wkCand(key);
         WK_PICKS.push({ key, title: (c && c.title) || '', why: '' });
       } else {

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>위클리 픽 — 회차 썸네일 목록 프리뷰</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+    fontFamily: { sans: ['Inter','Pretendard','ui-sans-serif','system-ui','sans-serif'], display: ['"Space Grotesk"','Pretendard','ui-sans-serif','system-ui','sans-serif'] },
+  }}};
+</script>
+<style>
+  body { background:#f7f5f0; color:#111; font-family:'Inter','Pretendard',sans-serif; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family:'Space Grotesk','Pretendard',sans-serif; }
+  ::selection { background:#c8f200; color:#111; }
+  .rule      { border-top:2px solid #111; }
+  .rule-thin { border-top:1px solid rgba(17,17,17,.14); }
+  .num-out   { -webkit-text-stroke:1.5px rgba(17,17,17,.22); color:transparent; }
+</style>
+</head>
+<!--
+  위클리 픽 회차 썸네일 목록(`/weekly`) 프리뷰.
+
+  첫 회차가 아직 발행되지 않아 스테이징에서는 빈 상태만 보인다. 그래서 이 파일로 커버를 확인한다.
+  ⚠ 커버 조판을 여기에 베껴 두지 않는다 — 실제 코드(public/assets/js/weekly.js)를 그대로 불러
+    샘플 데이터만 끼운다. 프리뷰와 실제 화면이 갈라지지 않게 하는 것이 이 파일의 조건이다.
+  발행이 시작되면 이 파일은 지운다(실제 페이지가 같은 것을 보여 준다).
+
+  여는 방법: 브라우저로 이 파일을 그대로 열면 된다(file:// 로도 동작).
+-->
+<body class="min-h-screen bg-beige">
+  <div class="bg-ink text-lime">
+    <div class="max-w-[1000px] mx-auto px-5 sm:px-8 py-3 text-sm font-semibold">
+      프리뷰 — 샘플 데이터로 그린 회차 썸네일 목록입니다. 실제 조판 코드를 그대로 씁니다
+    </div>
+  </div>
+
+  <header class="h-20 bg-lime/90 backdrop-blur-md border-b border-ink/5 sticky top-0 z-20 flex items-center gap-3 px-5 sm:px-8">
+    <span class="font-display font-semibold text-sm">위클리 픽</span>
+  </header>
+
+  <main>
+    <div id="wkRoot"><div class="text-sm opacity-50 py-16 text-center">불러오는 중…</div></div>
+  </main>
+
+<script>
+  /* 실제 weekly.js 의 initWeekly 가 호출하는 API 를 샘플로 가로챈다.
+     주차·회차 파라미터가 없는 상태여야 목록 분기를 타므로 이 파일은 쿼리 없이 열어야 한다. */
+  /* 주차 라벨은 서버(functions/api/weekly.js weekLabel)가 계산한다. 그 주 목요일이 속한 달·주차를
+     세므로 W35 = 8/24~8/30 = 「8월 4주」다. 여기 값은 실제 계산 결과와 맞춰 둔 것이니 임의로 고치지 말 것. */
+  const SAMPLE = [
+    { week:'2026-W35', issueNo:6, start:'2026-08-24', end:'2026-08-30', label:'2026년 8월 4주',
+      overview:'공공 조달을 겨냥한 대형 SI 3사의 동시 진입, 멀티 LLM 라우팅이 공통 경쟁 지점으로 부상',
+      total:23, picks:4, companies:15, topTags:['공공조달','멀티LLM','소버린AI'] },
+    { week:'2026-W34', issueNo:5, start:'2026-08-17', end:'2026-08-23', label:'2026년 8월 3주',
+      overview:'온프레미스 배포 요건이 제안서 필수 항목으로 이동, 폐쇄망 레퍼런스 확보 경쟁 본격화',
+      total:19, picks:3, companies:12, topTags:['폐쇄망','에이전트협업','RAG'] },
+    { week:'2026-W33', issueNo:4, start:'2026-08-10', end:'2026-08-16', label:'2026년 8월 2주',
+      overview:'문서 기반 데이터 파이프라인 신규 진입 3건, 정형화 품질이 차별화 요소로 제시됨',
+      total:17, picks:3, companies:11, topTags:['문서처리','데이터로더','ODL'] },
+    { week:'2026-W32', issueNo:3, start:'2026-08-03', end:'2026-08-09', label:'2026년 8월 1주',
+      overview:'권한·거버넌스 기능을 앞세운 발표가 늘어, 감사 로그와 수신자 권한 재검증이 공통 요건',
+      total:21, picks:5, companies:14, topTags:['거버넌스','권한관리','감사로그'] },
+    { week:'2026-W31', issueNo:2, start:'2026-07-27', end:'2026-08-02', label:'2026년 7월 5주',
+      overview:'노코드 워크플로 자동화 제품군 확대, 비개발 부서 도입 사례가 조달 근거로 인용됨',
+      total:16, picks:3, companies:10, topTags:['노코드','워크플로','업무자동화'] },
+    { week:'2026-W30', issueNo:1, start:'2026-07-20', end:'2026-07-26', label:'2026년 7월 4주',
+      overview:'모델 중립을 명시한 제품 소개가 처음 등장, 특정 모델 종속 해소가 비교 기준으로 부각',
+      total:14, picks:3, companies:9, topTags:['모델중립','오케스트레이션','에이전트'] },
+  ];
+  const API = { weeklyList: async () => ({ editions: SAMPLE }) };
+</script>
+<script src="public/assets/js/util.js"></script>
+<script src="public/assets/js/weekly.js"></script>
+<script>
+  /* file:// 로 열면 절대경로(/assets/…)가 깨지므로 렌더 후 상대경로로 돌린다. 프리뷰 전용 보정.
+     렌더가 비동기라 언제 끝나는지 알 수 없어 잠깐 지켜본다. */
+  new MutationObserver(() => {
+    document.querySelectorAll('img[src^="/assets/"]').forEach((img) => {
+      img.setAttribute('src', 'public' + img.getAttribute('src'));
+    });
+  }).observe(document.getElementById('wkRoot'), { childList: true, subtree: true });
+</script>
+</body>
+</html>

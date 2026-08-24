@@ -13,6 +13,7 @@
 const WRAP = 'max-w-[1000px] mx-auto px-5 sm:px-8';
 const md = (d) => (d && d.length >= 10 ? +d.slice(5, 7) + '/' + +d.slice(8, 10) : '');
 const shortLabel = (label) => String(label || '').replace(/^\d{4}년\s*/, ''); // '2026년 8월 3주' → '8월 3주'
+const weekTitle = (label) => { const s = shortLabel(label); return s ? s + '차' : ''; }; // → '8월 3주차'
 // 회차·순번 2자리 표기. pad2 는 util.js 에 이미 있어 여기서 다시 선언하면 같은 페이지에서
 // const 재선언 SyntaxError 가 나 페이지 전체가 죽는다 — 이름을 달리 둔다.
 const no2 = (n) => String(n).padStart(2, '0');
@@ -36,7 +37,9 @@ function headerHTML(d) {
     '<div class="text-right text-[12px] text-ink/45 leading-relaxed flex-none pl-4">' +
     escapeHtml(md(d.start) + ' ~ ' + md(d.end)) +
     (d.publishedAt ? '<br/>발행 ' + escapeHtml(String(d.publishedAt).slice(0, 10)) : '') +
-    '</div></div>';
+    // 마지막 </div> 로 WRAP 을 닫는다. 닫지 않으면 뒤따르는 모든 블록이 이 max-width 안에 들어가
+    // 픽 섹션의 전체폭 다크 반전이 1000px 로 잘리고 좌우 패딩이 이중으로 걸린다.
+    '</div></div></div>';
 }
 
 /* ===== 수치 =====
@@ -153,6 +156,111 @@ function prevHTML(prev) {
     '</div></div>';
 }
 
+/* ===== 회차 커버 (4:5 썸네일) =====
+   회차가 인스타 피드처럼 쌓여 보이게 한다(2026-08-24 사용자 지시, 참고 instagram.com/ai_freaks.kr).
+   사진을 쓰지 않고 활자·색만으로 만든다: 이미지 저장소(R2)가 없고, 매주 사진을 구하는 손이 늘고,
+   대외 배포물에 타사 이미지를 얹는 판단을 매주 해야 한다. 카피도 고정 양식이라 매주 쓸 것이 없다.
+   회차마다 달라 보이게 하는 것은 배색 3종 순환이며, 회차 번호로 결정하므로 같은 회차는 늘 같은 색이다.
+   ⚠ 카톡 링크 미리보기(og:image)로는 쓸 수 없다 — OG 는 실제 PNG URL 이어야 하고 이것은 DOM 이다.
+     그쪽은 래스터화(satori+resvg)가 필요해 Phase 2 로 둔다. */
+// 색 역할: ink=상단 라벨 / accent=주차(가장 먼저 읽혀야 하는 것) / sub=브랜드 줄 / dim=수치·키워드.
+// 라임 배경에서는 라임보다 튀는 악센트가 없으므로 accent 를 ink 로 두고 크기로만 위계를 만든다.
+// 배경이 베이지(#f7f5f0)인 페이지 위에 놓이므로 베이지 커버는 쓰지 않는다(경계가 사라진다).
+const SKINS = [
+  { bg: 'bg-ink', ink: 'text-white', accent: 'text-lime', sub: 'text-white/70', dim: 'text-white/45',
+    bar: 'bg-lime', rule: 'border-white/20', num: 'text-white/[.07]', invertLogo: true },
+  { bg: 'bg-lime', ink: 'text-ink', accent: 'text-ink', sub: 'text-ink/60', dim: 'text-ink/50',
+    bar: 'bg-ink', rule: 'border-ink/20', num: 'text-ink/[.09]', invertLogo: false },
+  { bg: 'bg-white', ink: 'text-ink', accent: 'text-lime-600', sub: 'text-ink/75', dim: 'text-ink/45',
+    bar: 'bg-lime', rule: 'border-ink/12', num: 'text-ink/[.06]', invertLogo: false },
+];
+const skinOf = (e) => SKINS[(Number.isInteger(e.issueNo) ? e.issueNo : 0) % SKINS.length];
+
+function coverHTML(e) {
+  const s = skinOf(e);
+  // 어순은 공유 텍스트(「동향 20건 중 주목 3건」)와 맞춘다
+  const meta = ['동향 ' + (e.total || 0) + '건', '주목 ' + (e.picks || 0) + '건'].join(' · ');
+  return '<a href="/weekly?w=' + encodeURIComponent(e.week) + '" ' +
+    'class="group relative block aspect-[4/5] overflow-hidden ' + s.bg + ' ' + s.ink +
+    ' transition-transform duration-200 hover:-translate-y-1">' +
+
+    // 큰 회차 번호 — 커버의 유일한 그래픽 요소. 활자로만 구분한다는 F안 문법을 커버에서도 잇는다.
+    (e.issueNo
+      ? '<span aria-hidden="true" class="pointer-events-none absolute -right-3 -bottom-10 font-display font-bold leading-none ' +
+        'text-[120px] sm:text-[150px] md:text-[170px] tracking-tighter ' + s.num + '">' + no2(e.issueNo) + '</span>'
+      : '') +
+
+    '<div class="relative h-full flex flex-col p-4 sm:p-5">' +
+
+    // 상단 — 라벨 / 로고
+    '<div class="flex items-start justify-between gap-2">' +
+    '<div class="flex items-center gap-1.5 min-w-0">' +
+    '<span class="w-[3px] h-3 ' + s.bar + ' flex-none"></span>' +
+    '<span class="font-display font-bold text-[9px] sm:text-[10px] uppercase tracking-[.16em] truncate">Weekly Picks' +
+    (e.issueNo ? ' No.' + no2(e.issueNo) : '') + '</span></div>' +
+    '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-3 sm:h-3.5 w-auto flex-none opacity-70' +
+    (s.invertLogo ? ' brightness-0 invert' : '') + '" />' +
+    '</div>' +
+
+    // 하단 — 헤드라인 + 수치. 회차를 가르는 정보는 주차 하나뿐이라 그것만 크게 띄우고
+    // 브랜드 줄은 한 단계 작게 둔다. 좁은 화면(320px 2열)에서 브랜드 줄이 접혀도 읽히게 하려는 것이며,
+    // 셋을 같은 크기로 쌓으면 그 폭에서 「AX Biz Radar」가 어중간하게 잘린다.
+    '<div class="mt-auto">' +
+    '<h3 class="font-display font-bold tracking-tighter leading-[1.08]">' +
+    '<span class="block text-[21px] sm:text-[26px] md:text-[30px] ' + s.accent + '">' +
+    escapeHtml(weekTitle(e.label)) + '</span>' +
+    '<span class="block mt-0.5 text-[13px] sm:text-[16px] md:text-[18px] ' + s.sub + '">AX Biz Radar News</span>' +
+    '</h3>' +
+    '<div class="mt-3 pt-2.5 border-t ' + s.rule + ' text-[10px] sm:text-[11px] ' + s.dim + ' leading-relaxed">' +
+    escapeHtml(meta) +
+    ((e.topTags || []).length
+      ? '<div class="truncate mt-0.5">' + e.topTags.map((t) => '#' + escapeHtml(t)).join(' ') + '</div>'
+      : '') +
+    '</div></div></div></a>';
+}
+
+/* ===== 목록 `/weekly` — 발행 회차 썸네일 =====
+   단톡방에 뿌리는 링크는 늘 `?w=` 가 붙으므로(shareText) 이 화면은 공유 도착지가 아니라
+   사이드바·대시보드에서 들어오는 「둘러보기」 입구다. 그래서 최신 회차 본문을 바로 펴지 않고
+   회차가 쌓인 것을 보여 준 뒤 최신 회차로 들여보낸다. */
+function renderList(editions) {
+  const latest = editions[0];
+  let h = '<div class="' + WRAP + ' pt-12">' +
+    '<div class="text-[11px] font-bold uppercase tracking-[.2em] text-lime-600 mb-2">Weekly Picks</div>' +
+    '<h1 class="text-[40px] sm:text-[52px] font-bold tracking-tighter leading-none mb-3">위클리 픽</h1>' +
+    '<p class="text-[14px] text-ink/55 leading-relaxed max-w-[46ch]">' +
+    '한 주의 AX 시장 동향에서 주목할 것만 골라 이유를 붙인 발행물</p>';
+
+  if (latest) {
+    h += '<div class="mt-8 rule pt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1">' +
+      '<a href="/weekly?w=' + encodeURIComponent(latest.week) + '" class="font-display font-bold text-[15px] hover:text-lime-600">' +
+      '최신 ' + (latest.issueNo ? no2(latest.issueNo) + '호 · ' : '') + escapeHtml(weekTitle(latest.label)) + ' 읽기 →</a>' +
+      (latest.overview ? '<span class="text-[13px] text-ink/50 truncate max-w-full">' + escapeHtml(latest.overview) + '</span>' : '') +
+      '</div>';
+  }
+  h += '</div>';
+
+  if (!editions.length) {
+    return h + '<div class="' + WRAP + ' mt-10"><div class="rule pt-6">' +
+      '<p class="font-display font-bold text-[24px] tracking-tight mb-2">아직 발행된 회차가 없습니다</p>' +
+      '<p class="text-sm text-ink/55">첫 회차가 발행되면 이 목록에 쌓입니다</p>' +
+      '<div class="flex flex-wrap gap-x-6 gap-y-2 mt-6 text-[14px]">' +
+      '<a href="/" class="font-semibold hover:text-lime-600">대시보드 →</a>' +
+      '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a></div>' +
+      '</div></div><div class="h-14"></div>';
+  }
+
+  h += '<div class="' + WRAP + ' mt-10">' +
+    '<div class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">' +
+    editions.map(coverHTML).join('') + '</div>' +
+    '<div class="mt-10 rule-thin pt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">' +
+    '<a href="/company" class="font-semibold hover:text-lime-600">기업 찾아보기 →</a>' +
+    '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a>' +
+    '<a href="/" class="text-ink/45 hover:text-lime-600">대시보드 →</a></div>' +
+    '</div>';
+  return h + '<div class="h-14"></div>';
+}
+
 /* ===== 공유 텍스트 =====
    단톡방에서 실제로 읽히는 것은 붙여넣은 텍스트다(링크 클릭률은 낮다).
    「주목(Pick) 이유」가 그대로 → 줄로 들어가 관리자가 쓴 한 줄이 페이지와 텍스트 양쪽을 채운다.
@@ -253,6 +361,7 @@ function renderEdition(d) {
 
   // 푸터 — 다음 동선. 대시보드보다 기업·검색을 앞세운다(대시보드는 실제로 잘 읽히지 않는다).
   h += '<div class="mt-6 rule-thin pt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">' +
+    '<a href="/weekly" class="font-semibold hover:text-lime-600">전체 회차 →</a>' +
     '<a href="/company" class="font-semibold hover:text-lime-600">기업 찾아보기 →</a>' +
     '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a></div>';
   h += '</div>';
@@ -272,6 +381,7 @@ function renderEmpty(d) {
     '<p class="font-display font-bold text-[26px] tracking-tight mb-2">' + msg + '</p>' +
     '<p class="text-sm text-ink/55">발행되면 이 주소에서 바로 볼 수 있습니다</p>' +
     '<div class="flex flex-wrap gap-x-6 gap-y-2 mt-6 text-[14px]">' +
+    '<a href="/weekly" class="font-semibold hover:text-lime-600">전체 회차 →</a>' +
     '<a href="/" class="font-semibold hover:text-lime-600">대시보드 →</a>' +
     '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a></div></div></div>' +
     prevHTML(d.prev) + '<div class="h-14"></div>';
@@ -309,10 +419,28 @@ async function initWeekly() {
   if (!root) return;
   const params = new URLSearchParams(location.search);
   const w = params.get('w') || '';
+  const n = params.get('n') || '';
   const isPreview = params.get('draft') === '1' && !!w;
+
+  /* 주차·회차를 지정하지 않으면 썸네일 목록 (2026-08-24 사용자 지시).
+     공유 링크에는 늘 ?w= 가 붙으므로 단톡방에서 들어오는 사람은 이 분기를 타지 않는다. */
+  if (!w && !n) {
+    let list;
+    try {
+      list = await API.weeklyList();
+    } catch {
+      root.innerHTML = '<div class="' + WRAP + ' text-sm text-center py-16">불러오지 못했습니다. ' +
+        '<a href="/" class="text-lime-600 font-semibold hover:underline">대시보드로</a></div>';
+      return;
+    }
+    root.innerHTML = renderList((list && list.editions) || []);
+    document.title = '위클리 픽 — AX Biz Radar';
+    return;
+  }
+
   let data;
   try {
-    data = isPreview ? draftToEdition(await API.weeklyPreview(w)) : await API.weekly(w);
+    data = isPreview ? draftToEdition(await API.weeklyPreview(w)) : await API.weekly(w, n);
   } catch (e) {
     // 미리보기는 PIN 이 있어야 한다. 관리자 콘솔의 [미리보기 ↗] 로 열면 PIN 이 이미 저장돼 있다.
     root.innerHTML = '<div class="' + WRAP + ' text-sm text-center py-16">' + (isPreview && e && e.status === 403

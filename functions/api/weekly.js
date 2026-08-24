@@ -1,4 +1,5 @@
 // /api/weekly — 위클리 픽 발행물 (단톡방 주 1회 공유용)
+//   GET  ?list=1            (공개) 발행 회차 목록. `/weekly` 썸네일 목록이 쓴다(커버용 값만)
 //   GET  ?w=2026-W34        (공개) 그 주차 발행본. w·n·date 가 없으면 최신 발행 회차
 //   GET  ?n=12              (공개) 회차 번호로 조회
 //   GET  ?date=2026-08-19   (공개) 그 날짜가 속한 주차로 정규화
@@ -17,7 +18,10 @@ import { entryKey } from '../_publish.js';
 import { stripTrailingPeriod, replaceEmDash, replaceAxisWord, hasAxisWord } from '../_style.js';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MAX_PICKS = 5;
+// 픽 수는 제한하지 않는다 — 그 주에 주목할 것이 많으면 많이 싣는다(2026-08-24 사용자 지시).
+// 이 값은 편집 기준이 아니라 폭주 방지용 상한이다. 실제 상한은 그 주 후보 수(보통 20~35건)이고,
+// 배열 상한 50 은 `_publish.js` 의 관례를 따른 것이다.
+const MAX_PICKS = 50;
 const WEEK_RE = /^(\d{4})-W(\d{1,2})$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86400000;
@@ -301,18 +305,27 @@ function editionResponse(row, prev) {
   });
 }
 
-// 발행 회차 목록(푸터 아카이브). payload 전체를 읽지 않고 필요한 값만 뽑아 가볍게 유지한다.
+// 발행 회차 목록. 상세 하단 아카이브와 `/weekly` 썸네일 목록이 같이 쓴다.
+// payload·stats 전체(픽 본문 포함)를 읽지 않고 커버가 쓰는 값만 json_extract 로 뽑는다 —
+// 회차가 쌓여도 목록 응답이 커지지 않게 한다.
 async function publishedList(env, limit) {
   const rows = (await env.DB.prepare(
-    `SELECT week, issue_no, range_start, range_end,
+    `SELECT week, issue_no, range_start, range_end, published_at,
             json_extract(payload, '$.overview') AS overview,
-            json_extract(stats, '$.total') AS total
+            json_extract(stats, '$.total') AS total,
+            json_extract(stats, '$.picks') AS picks,
+            json_extract(stats, '$.companies') AS companies,
+            json_extract(stats, '$.topTags') AS top_tags
        FROM weekly_edition WHERE status = 'published'
       ORDER BY range_end DESC LIMIT ?`
   ).bind(limit).all()).results || [];
   return rows.map((r) => ({
     week: r.week, issueNo: r.issue_no, start: r.range_start, end: r.range_end,
     label: weekLabel(r.week), overview: r.overview || '', total: r.total || 0,
+    picks: r.picks || 0, companies: r.companies || 0,
+    publishedAt: r.published_at,
+    // 커버에 3개만 얹으므로 여기서 자른다(태그 6개를 다 내려보내지 않는다)
+    topTags: (parseJson(r.top_tags, []) || []).slice(0, 3).map((t) => String((t && t.tag) || '')).filter(Boolean),
   }));
 }
 
@@ -351,6 +364,13 @@ export async function onRequestGet({ request, env }) {
           picks: payload.picks || [],
         },
       });
+    }
+
+    /* --- 공개: 발행 회차 목록 (썸네일 목록용) --- */
+    if (u.searchParams.get('list') === '1') {
+      // 상한을 둔다. 주 1회 발행이라 60이면 1년이 넘고, 목록은 스크롤로 다 보이는 화면이라
+      // 페이지네이션을 두지 않는다(넘칠 시점에 「연도별」로 나누는 것이 맞다).
+      return Response.json({ editions: await publishedList(env, 60) });
     }
 
     /* --- 공개: 발행본 1건 (LLM 호출 없음, D1 읽기만) --- */

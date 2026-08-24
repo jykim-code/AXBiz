@@ -224,8 +224,15 @@ const API = {
 
   // ===== 위클리 픽 =====
   // 발행본 조회 (공개). w 없으면 최신 회차. { available, week, issueNo, label, stats, payload, prev[] }
-  weekly(w) {
-    return getJSON('/api/weekly' + (w ? '?w=' + encodeURIComponent(w) : ''));
+  // n = 회차 번호로 조회. w·n 모두 없으면 최신 회차.
+  weekly(w, n) {
+    const q = w ? '?w=' + encodeURIComponent(w) : (n ? '?n=' + encodeURIComponent(n) : '');
+    return getJSON('/api/weekly' + q);
+  },
+  // 발행 회차 목록 (공개). `/weekly` 썸네일 목록용 — 커버가 쓰는 값만 담긴 가벼운 응답.
+  // { editions: [{week, issueNo, label, overview, total, picks, companies, topTags[]}] }
+  weeklyList() {
+    return getJSON('/api/weekly?list=1');
   },
   // 초안 + 그 주 후보 목록 (관리자, PIN). 주차('2026-W34') 또는 그 주의 아무 날짜('2026-08-19') 모두 받는다
   // — 주차 계산은 서버에 두고 화면은 서버가 준 week 값을 그대로 쓴다.
