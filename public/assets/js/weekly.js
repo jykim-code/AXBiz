@@ -90,20 +90,25 @@ function indexHTML(picks) {
 }
 
 /* ===== 한컴 관점 =====
-   후보 F(2026-08-24 사용자 선택). 사람이 판단해 쓴 이 페이지의 알맹이라 결론이 몇 개인지
-   한눈에 보이고 각 항목이 독립된 주장으로 읽혀야 한다. 큰 순번은 픽 섹션이 쓰는 활자 장치와
-   같은 것이라 페이지 안에서 리듬이 이어진다.
-   이전 조판(라벨 왼쪽 / 문단 오른쪽 2열)은 결론이 그냥 쌓여 보여 폐기했다. */
+   후보 K(2026-08-24 사용자 선택). 번호를 쓰지 않고 라임 좌측 바만 붙여 문장을 주인공으로 둔다.
+
+   번호를 뺀 이유: 바로 아래 기업 목차도 01·02·03 을 쓰는데 두 번호의 성격이 다르다.
+   목차의 번호는 픽 섹션의 큰 순번과 짝을 이루는 **기능**(눌러서 그 섹션으로 이동)이고,
+   한컴 관점의 번호는 순서에 뜻이 없는 **장식**이었다. 그래서 목차가 번호를 지키고 이쪽이 뺀다.
+
+   라임 좌측 바는 픽 섹션의 「주목(Pick) 이유」가 쓰는 장치와 같다 — 사람이 판단해 쓴 문장에는
+   라임 바가 붙는다는 규칙이 페이지 전체에 생긴다.
+   폐기한 조판: 라벨 왼쪽 / 문단 오른쪽 2열(결론이 그냥 쌓여 보임), 큰 번호 01·02·03(위 이유). */
 function hancomHTML(items) {
   return '<div class="mt-10 rule pt-4">' +
     '<div class="flex items-baseline justify-between gap-4 mb-5">' +
     '<div class="text-[11px] font-bold uppercase tracking-widest text-lime-600">한컴 관점</div>' +
     '<div class="text-[12px] text-ink/40">금주 픽에서 도출한 결론</div></div>' +
-    items.map((x, i) =>
-      '<div class="flex gap-4 sm:gap-5 py-4 rule-thin first:border-t-0">' +
-      '<div class="font-display font-bold text-[26px] sm:text-[30px] leading-none text-lime-600 flex-none w-8 sm:w-9">' + no2(i + 1) + '</div>' +
-      '<p class="text-[14.5px] sm:text-[15px] leading-[1.7] flex-1">' + escapeHtml(x) + '</p></div>').join('') +
-    '</div>';
+    '<div class="space-y-4 max-w-[66ch]">' +
+    items.map((x) =>
+      '<p class="text-[14.5px] sm:text-[15px] leading-[1.75] pl-4 border-l-2 border-lime">' +
+      escapeHtml(x) + '</p>').join('') +
+    '</div></div>';
 }
 
 const glanceRow = (label, content) =>
@@ -127,6 +132,25 @@ function trendHTML(trend) {
 /* ===== 픽 — 전체폭 섹션. 짝수 섹션을 다크로 반전해 리듬을 만든다 ===== */
 const EXT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 inline-block ml-0.5 -mt-0.5"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>';
 
+/* 이미지는 관리자가 올린 것만 실린다(2026-08-24 사용자 지시) — 기사 사진을 자동으로
+   가져오지 않는다. 없으면 이 밴드를 그리지 않는다. 그것이 지금 조판의 기본 상태이고,
+   큰 순번 숫자가 이미 시각 요소 역할을 한다.
+   잘리는 기준은 서버에서 top·center·bottom 으로 좁혀 두었지만 화면에서도 흰 목록으로 받는다. */
+const PICK_IMG_POS = { top: 'top', center: 'center', bottom: 'bottom' };
+
+function pickImageHTML(p, dark) {
+  const im = p.image;
+  if (!im || !im.key) return '';
+  return '<div class="mb-5">' +
+    '<div class="w-full overflow-hidden ' + (dark ? 'bg-white/5' : 'bg-beige') + '" style="aspect-ratio:12/5">' +
+    '<img src="/api/pick-image?k=' + encodeURIComponent(im.key) + '" alt="" loading="lazy" decoding="async" ' +
+    'class="w-full h-full object-cover" style="object-position:' + (PICK_IMG_POS[im.pos] || 'center') + '" /></div>' +
+    (im.credit
+      ? '<div class="text-[10.5px] ' + (dark ? 'text-white/35' : 'text-ink/35') + ' mt-1.5">이미지 ' + escapeHtml(im.credit) + '</div>'
+      : '') +
+    '</div>';
+}
+
 function pickHTML(p, i) {
   const dark = i % 2 === 1;
   const linkCls = 'underline underline-offset-2 ' + (dark ? 'decoration-white/30 hover:text-lime' : 'decoration-ink/25 hover:text-lime-600');
@@ -136,6 +160,8 @@ function pickHTML(p, i) {
     '<div class="' + WRAP + ' grid sm:grid-cols-[120px,1fr] gap-x-8">' +
     '<div class="font-display font-bold text-[72px] leading-none ' + (dark ? 'text-lime/30' : 'num-out') + '">' + no2(i + 1) + '</div>' +
     '<div>';
+
+  h += pickImageHTML(p, dark);
 
   h += '<div class="flex items-baseline gap-3 mb-2">' +
     '<a href="/company?name=' + encodeURIComponent(p.company) + '" class="text-[28px] sm:text-[34px] font-display font-bold tracking-tight leading-none hover:text-lime-600">' +

@@ -250,6 +250,24 @@ const API = {
   weeklyAction(payload, pin) {
     return postPin('/api/weekly', payload, pin);
   },
+  // 픽 이미지 업로드 (관리자, PIN). JSON 이 아니라 파일 바이트를 그대로 보낸다 —
+  // multipart 를 쓰면 Function 쪽에 파싱이 붙는데 파일이 하나라 그럴 이유가 없다.
+  // 응답의 key 를 픽에 저장하고, 화면에서는 /api/pick-image?k=<key> 로 불러온다.
+  async uploadPickImage(file, pin) {
+    const res = await fetch('/api/pick-image', {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-admin-pin': pin || '' },
+      body: file,
+    });
+    let data = {};
+    try { data = await res.json(); } catch { /* no body */ }
+    if (!res.ok) {
+      const err = new Error(data.error || 'UPLOAD_FAILED');
+      err.status = res.status; err.data = data;
+      throw err;
+    }
+    return data;
+  },
 
   // ===== dev 검수·배포 (PIN, sessionStorage devPin) =====
   isDevPreview() { return devPreviewActive(); },

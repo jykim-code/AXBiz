@@ -446,11 +446,29 @@ async function resolveIssueNo(env, week, desired) {
   return ((mx && mx.m) || 0) + 1;
 }
 
+// 픽 이미지. 관리자가 /api/pick-image 로 올린 것만 실린다 — 키 형식을 서버에서 다시 확인해
+// 화면을 우회한 요청으로 임의 키가 들어오는 것을 막는다.
+const IMG_KEY_RE = /^[0-9a-f]{32}\.(jpg|png|webp)$/;
+const IMG_POS = ['top', 'center', 'bottom'];
+function sanitizeImage(v) {
+  if (!v || !IMG_KEY_RE.test(String(v.key || ''))) return null;
+  // 출처·권리 근거가 없으면 싣지 않는다. 반년 뒤에 이 사진을 어디서 가져왔는지
+  // 아무도 모르는 상태를 만들지 않기 위한 것이고, 문제가 생기면 이 기록이 방어의 전부다.
+  const credit = str(v.credit, 200);
+  if (!credit) return null;
+  return {
+    key: String(v.key),
+    credit,
+    pos: IMG_POS.includes(String(v.pos)) ? String(v.pos) : 'center',
+  };
+}
+
 // 저장·발행에 담기는 주목 동향. 관리자가 고친 제목·이유를 받고 본문은 후보에서 그대로 승계한다.
 function sanitizePick(p) {
   if (!p || !p.company || !DATE_RE.test(String(p.date || ''))) return null;
   return {
     key: String(p.key || '').slice(0, 1200),
+    image: sanitizeImage(p.image),
     company: String(p.company).slice(0, 200),
     category: String(p.category || '').slice(0, 40),
     date: String(p.date),

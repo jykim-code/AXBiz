@@ -872,7 +872,7 @@ async function loadWeekly() {
   }
   // 저장된 선택 복원. 원본이 지워졌거나 출처 URL 이 바뀌면 후보와 짝이 맞지 않으므로 알리고 뺀다.
   const saved = (WK.payload && WK.payload.picks) || [];
-  WK_PICKS = saved.filter((p) => wkCand(p.key)).map((p) => ({ key: p.key, title: p.title || '', why: p.why || '' }));
+  WK_PICKS = saved.filter((p) => wkCand(p.key)).map((p) => ({ key: p.key, title: p.title || '', why: p.why || '', image: p.image || null }));
   if (saved.length !== WK_PICKS.length) toast('원본이 바뀐 ' + (saved.length - WK_PICKS.length) + '건은 선택에서 빠졌습니다. 다시 골라 주세요', false);
   meta.textContent = WK.label + ' · ' + WK.start + ' ~ ' + WK.end + ' · 동향 ' + (WK.stats.total || 0) + '건 · ' + wkStatusLabel(WK.status);
   renderWeekly();
@@ -915,6 +915,51 @@ function wkRowHTML(c) {
     '</span></label>';
 }
 
+/* 픽 이미지 — 선택 입력이다. 올리면 사진이 실리고, 안 올리면 활자 판으로 나간다.
+   매주 올려야 하는 의무로 만들지 않기 위한 것이다(2026-08-24 사용자 지시).
+   기사 사진을 내려받아 올리는 것은 링크가 아니라 복제라 위험이 더 크다. 그래서 출처·권리
+   근거를 필수로 받고, 비면 서버가 이미지를 버린다(functions/api/weekly.js sanitizeImage). */
+const WK_IMG_POS = [['top', '위'], ['center', '가운데'], ['bottom', '아래']];
+
+function wkImageHTML(p) {
+  const img = p.image || null;
+  const pos = (img && img.pos) || 'center';
+
+  let h = '<div class="mt-4 pt-4 border-t border-ink/8">' +
+    '<div class="flex items-center justify-between mb-2">' +
+    '<div class="label normal-case">이미지 <span class="font-normal opacity-45">선택 · 안 올리면 활자 판으로 나갑니다</span></div>' +
+    (img ? '<button type="button" class="wk-img-del text-xs font-semibold text-red-600 hover:text-ink">이미지 빼기</button>' : '') +
+    '</div>';
+
+  if (img) {
+    h += '<div class="flex flex-wrap gap-3">' +
+      // 미리보기는 실제 판 비율(620×260)을 줄인 것이다. 여기서 잘려 보이는 대로 페이지에서도 잘린다.
+      '<div class="w-[248px] h-[104px] flex-none overflow-hidden bg-beige border border-ink/10">' +
+      '<img class="wk-img-prev w-full h-full object-cover" style="object-position:' + pos + '" ' +
+      'src="/api/pick-image?k=' + encodeURIComponent(img.key) + '" alt="" /></div>' +
+      '<div class="min-w-0 flex-1 basis-[260px]">' +
+      '<div class="label normal-case mb-1">출처·권리 근거 <span class="text-red-500">필수</span></div>' +
+      '<input class="field wk-img-credit" maxlength="200" value="' + escapeHtml(img.credit || '') + '" ' +
+      'placeholder="예: 한컴 제공 / 과기정통부 보도자료(공공누리 1유형) / 직접 작성" />' +
+      '<div class="flex items-center gap-1.5 mt-2">' +
+      '<span class="text-[11px] opacity-45 mr-1">잘리는 기준</span>' +
+      WK_IMG_POS.map(([v, label]) =>
+        '<button type="button" class="wk-img-pos text-[11px] font-semibold rounded-full px-2.5 py-1 ' +
+        (v === pos ? 'bg-lime text-ink' : 'bg-ink/8 hover:bg-ink/15') + '" data-pos="' + v + '">' + label + '</button>').join('') +
+      '</div>' +
+      '<div class="wk-img-warn text-[11px] mt-1.5"></div>' +
+      '</div></div>';
+  }
+
+  h += '<div class="' + (img ? 'mt-3' : '') + ' flex flex-wrap items-center gap-2">' +
+    '<label class="btn border border-ink/15 px-4 py-2 text-xs hover:bg-ink hover:text-white cursor-pointer">' +
+    (img ? '다른 파일로 교체' : '파일 선택') +
+    '<input type="file" class="wk-img-file hidden" accept="image/jpeg,image/png,image/webp" /></label>' +
+    '<span class="wk-img-msg text-[11px] opacity-45">JPG·PNG·WebP · 5MB 이하 · 1240×520 이상 권장</span>' +
+    '</div></div>';
+  return h;
+}
+
 function wkPickHTML(p, i) {
   const c = wkCand(p.key) || {};
   const why = p.why || '';
@@ -935,6 +980,7 @@ function wkPickHTML(p, i) {
     '<button type="button" class="wk-ai text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
     '<textarea class="field wk-why" rows="2" maxlength="300">' + escapeHtml(why) + '</textarea>' +
     '<div class="text-[11px] opacity-45 mt-1"><span class="wk-len">' + why.length + '</span>자</div>' +
+    wkImageHTML(p) +
     '</div>';
 }
 
@@ -994,6 +1040,9 @@ function wkSync() {
     if (!WK_PICKS[i]) return;
     WK_PICKS[i].title = node.querySelector('.wk-title').value;
     WK_PICKS[i].why = node.querySelector('.wk-why').value;
+    // 출처 칸은 이미지가 있을 때만 그려진다. 잘리는 기준은 칩을 누를 때 이미 상태에 반영된다.
+    const cr = node.querySelector('.wk-img-credit');
+    if (cr && WK_PICKS[i].image) WK_PICKS[i].image.credit = cr.value;
   });
   const iss = document.getElementById('wkIssue');
   if (iss && WK) WK.issueNo = iss.value ? +iss.value : null;
@@ -1011,7 +1060,7 @@ function wkPayload() {
   const picks = WK_PICKS.map((p) => {
     const c = wkCand(p.key);
     if (!c) return null;
-    return Object.assign({}, c, { title: p.title, why: p.why, score: undefined });
+    return Object.assign({}, c, { title: p.title, why: p.why, image: p.image || null, score: undefined });
   }).filter(Boolean);
   return {
     overview: (WK.payload && WK.payload.overview) || '',
@@ -1065,6 +1114,54 @@ function wkBind() {
       } catch (e) { toast('AI 초안 실패: ' + (e.status || e.message), false); }
       btn.textContent = 'AI 초안'; btn.disabled = false;
     });
+
+    /* --- 이미지 --- 올리면 즉시 R2 에 올라가고 픽에는 키만 남는다. */
+    const imgFile = node.querySelector('.wk-img-file');
+    const imgMsg = node.querySelector('.wk-img-msg');
+    const imgHint = 'JPG·PNG·WebP · 5MB 이하 · 1240×520 이상 권장';
+    if (imgFile) imgFile.addEventListener('change', async () => {
+      const f = imgFile.files && imgFile.files[0];
+      if (!f) return;
+      if (f.size > 5 * 1024 * 1024) {
+        toast('5MB 이하만 올릴 수 있습니다 (' + (Math.round(f.size / 1024 / 1024 * 10) / 10) + 'MB)', false);
+        imgFile.value = ''; return;
+      }
+      wkSync();                       // 올리면 다시 그리므로 입력 중이던 값을 먼저 거둔다
+      if (imgMsg) imgMsg.textContent = '올리는 중…';
+      try {
+        const r = await API.uploadPickImage(f, adminPin);
+        const old = WK_PICKS[i].image || {};
+        WK_PICKS[i].image = { key: r.key, credit: old.credit || '', pos: old.pos || 'center' };
+        renderWeekly();
+        toast('이미지를 올렸습니다. 출처·권리 근거를 적어 주세요', true);
+      } catch (e) {
+        if (imgMsg) imgMsg.textContent = imgHint;
+        toast('업로드 실패: ' + (e.message || e.status), false);
+      }
+    });
+
+    const imgDel = node.querySelector('.wk-img-del');
+    if (imgDel) imgDel.addEventListener('click', () => { wkSync(); WK_PICKS[i].image = null; renderWeekly(); });
+
+    node.querySelectorAll('.wk-img-pos').forEach((b) => b.addEventListener('click', () => {
+      wkSync();
+      if (WK_PICKS[i].image) WK_PICKS[i].image.pos = b.dataset.pos;
+      renderWeekly();
+    }));
+
+    // 실제 픽셀 크기는 브라우저가 받아 봐야 안다 — Workers 에 이미지 처리가 없어 서버가 못 재 준다.
+    const imgPrev = node.querySelector('.wk-img-prev'), imgWarn = node.querySelector('.wk-img-warn');
+    if (imgPrev && imgWarn) {
+      const measure = () => {
+        const w = imgPrev.naturalWidth, hgt = imgPrev.naturalHeight;
+        if (!w) return;
+        const ok = w >= 1240;
+        imgWarn.textContent = w + '×' + hgt + (ok ? ' · 판을 채우기에 충분합니다' : ' · 1240px 보다 작아 화면에서 뭉개집니다');
+        imgWarn.className = 'wk-img-warn text-[11px] mt-1.5 font-semibold ' + (ok ? 'text-lime-600' : 'text-red-600');
+      };
+      imgPrev.addEventListener('load', measure);
+      if (imgPrev.complete) measure();   // 캐시에서 바로 온 경우엔 load 가 이미 지나갔다
+    }
   });
 
   const aiText = async (kind, btnId, targetId, join) => {
@@ -1131,6 +1228,13 @@ async function wkPublish() {
   const missing = payload.picks.filter((p) => !String(p.why || '').trim()).map((p) => p.company);
   if (missing.length) {
     toast('「주목(Pick) 이유」가 빈 항목: ' + missing.join(', ') + ' — 이 한 줄이 없으면 대시보드와 같은 화면이 됩니다', false);
+    return;
+  }
+  // 이미지를 올렸는데 출처가 비면 서버가 이미지를 버린다. 발행 후에 사진이 사라진 것을
+  // 발견하게 되므로 여기서 막는다.
+  const noCredit = payload.picks.filter((p) => p.image && !String(p.image.credit || '').trim()).map((p) => p.company);
+  if (noCredit.length) {
+    toast('이미지 출처·권리 근거가 빈 항목: ' + noCredit.join(', ') + ' — 비워 두면 이미지가 실리지 않습니다', false);
     return;
   }
   if (!(await wkSaveDraft(false))) return;
