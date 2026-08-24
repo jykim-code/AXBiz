@@ -15,6 +15,11 @@
 // (주요내용·시사점·한컴 인사이트)에 걸리는 것이고, 메신저 안내문은 대외 인사말이라 성격이 다르다.
 // 픽 목록은 회차에 실린 제목을 그대로 옮기므로 그쪽 문체를 따른다.
 
+/* 글머리기호는 문자 그대로 넣는다(2026-08-24 사용자 지시로 두 절 모두 붙인다).
+   `- ` 나 `* ` 를 줄 앞에 두면 안 된다 — Google Chat 은 목록으로 바꿔 주지 않고,
+   특히 `*` 는 굵게 시작으로 읽혀 뒤 문장이 통째로 굵어진다. */
+const BULLET = '• ';
+
 const MAX_PICKS_IN_MSG = 7;   // 픽 수량 제한은 폐기됐다 — 메시지에서만 접는다
 const MAX_NEW_CO = 5;
 const TITLE_MAX = 32;         // 모바일 한 줄(약 26자)을 크게 넘지 않게
@@ -51,12 +56,12 @@ export function buildWeeklyMessage(ed, origin) {
   if (s.total) nums.push('수집 동향 ' + s.total + '건');
   if (s.companies) nums.push('대상 기업 ' + s.companies + '곳');
   if (picks.length) nums.push('그중 주요 동향 ' + picks.length + '건');
-  if (nums.length) lines.push('· ' + nums.join(' / '));
+  if (nums.length) lines.push(BULLET + nums.join(' / '));
   /* 신규 진입 기업은 수를 앞으로 뺀다. 문장형으로 두면 목록을 접을 때 「A, B 외 3곳 8곳」처럼
      수가 두 번 나와 읽히지 않는다. 접든 안 접든 같은 모양이 되는 쪽을 택했다. */
   if (newCo.length) {
     const rest = newCo.length - MAX_NEW_CO;
-    lines.push('· 신규 진입 기업 ' + newCo.length + '곳 : ' +
+    lines.push(BULLET + '신규 진입 기업 ' + newCo.length + '곳 : ' +
       newCo.slice(0, MAX_NEW_CO).join(', ') + (rest > 0 ? ' 외 ' + rest + '곳' : ''));
   }
 
@@ -66,10 +71,10 @@ export function buildWeeklyMessage(ed, origin) {
     picks.slice(0, MAX_PICKS_IN_MSG).forEach((x) => {
       const title = cut(oneLine(x.title), TITLE_MAX);
       // 기업명을 굵게 — 목록에서 눈이 먼저 걸리는 곳이고, 「내가 아는 회사가 있나」로 클릭이 결정된다.
-      lines.push('*' + oneLine(x.company) + '*' + (title ? ' : ' + title : ''));
+      lines.push(BULLET + '*' + oneLine(x.company) + '*' + (title ? ' : ' + title : ''));
     });
     const rest = picks.length - MAX_PICKS_IN_MSG;
-    if (rest > 0) lines.push('외 ' + rest + '건');
+    if (rest > 0) lines.push(BULLET + '외 ' + rest + '건');
   }
 
   lines.push('');
