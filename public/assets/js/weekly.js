@@ -381,7 +381,9 @@ function renderEdition(d) {
       (p.overview
         ? '<p class="text-[19px] sm:text-[22px] font-display font-medium leading-[1.55] max-w-[40ch] flex-1">' + escapeHtml(p.overview) + '</p>'
         : '<div class="flex-1"></div>') +
-      (thumb ? '<div class="flex-none">' + thumb + '</div>' : '') +
+      /* sm:ml-auto 로 오른쪽 끝에 붙인다. 요약 문단은 읽기 폭(max-w-[40ch])에서 멈추므로
+         그 뒤에 그냥 붙이면 오른쪽에 빈 공간이 남아 썸네일이 가운데로 치우쳐 보인다. */
+      (thumb ? '<div class="flex-none sm:ml-auto">' + thumb + '</div>' : '') +
       '</div>';
 
   h += statsHTML(s);

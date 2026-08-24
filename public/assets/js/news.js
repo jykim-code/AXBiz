@@ -34,9 +34,22 @@
       '.nw-scroll::-webkit-scrollbar{display:none}',
       '.nw-hair{border-top:1px solid rgba(255,255,255,.10)}',
       // 아래로 더 있다는 신호. 끝에 닿으면 JS 가 nw-end 를 붙여 없앤다.
-      '.nw-fade::after{content:"";position:absolute;left:0;right:0;bottom:0;height:44px;pointer-events:none;' +
+      '.nw-fade::after{content:"";position:absolute;left:0;right:0;bottom:0;height:52px;pointer-events:none;' +
         'background:linear-gradient(to top,#161616,rgba(22,22,22,0));transition:opacity .2s}',
       '.nw-fade.nw-end::after{opacity:0}',
+      /* 스크롤해야 한다는 것을 활자로 말해 준다(2026-08-24 사용자 지시).
+         그늘만으로는 더 있는지 모르고 지나간다. 끝에 닿으면 nw-end 가 붙어 사라진다. */
+      '.nw-more{position:absolute;left:50%;bottom:9px;transform:translate(-50%,0);z-index:2;' +
+        'display:flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;' +
+        'background:rgba(255,255,255,.16);color:#fff;font-size:10.5px;font-weight:700;' +
+        'pointer-events:none;transition:opacity .2s}',
+      '.nw-fade.nw-end .nw-more{opacity:0}',
+      // 라임 판(마무리 장)은 그늘·표시 색을 반전한다
+      '.nw-fade.nw-lime::after{background:linear-gradient(to top,#c8f200,rgba(200,242,0,0))}',
+      '.nw-fade.nw-lime .nw-more{background:rgba(17,17,17,.14);color:#111}',
+      // 시선을 끌되 과하지 않게. 움직임을 줄이는 설정에서는 멈춘다.
+      '@media (prefers-reduced-motion:no-preference){.nw-more{animation:nwBob 1.8s ease-in-out infinite}' +
+        '@keyframes nwBob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,3px)}}}',
     ].join('');
     document.head.appendChild(el);
   }
@@ -164,11 +177,12 @@
     const tags = (s.topTags || []).slice(0, 4).map((t) => '#' + escapeHtml(t.tag) + (t.isNew ? '(NEW)' : '')).join(' ');
     /* text-white 를 판에 박아 둔다 — 이 조판은 상세 페이지 위에 겹쳐서도 쓰이는데
        그 페이지 body 는 ink 라, 색을 물려받게 두면 다크 판에서 글자가 안 보인다. */
-    return '<div class="h-full bg-panel text-white relative nw-fade flex flex-col">' +
+    return '<div class="h-full bg-panel text-white relative nw-fade nw-end flex flex-col">' +
       '<div class="nw-scroll flex-1 px-6 sm:px-7 pt-7 pb-12">' +
       '<div class="text-[10px] font-bold uppercase tracking-[.2em] text-lime mb-3">이번 주 흐름</div>' +
+      // data-nw-fit — 3줄 이상으로 떨어지면 mount 가 활자를 줄여 2줄 안에 넣는다(2026-08-24 사용자 지시)
       (d.payload.overview
-        ? '<p class="font-display font-medium text-[18px] sm:text-[20px] leading-[1.55] text-white/90">' + escapeHtml(d.payload.overview) + '</p>'
+        ? '<p data-nw-fit class="font-display font-medium text-[18px] sm:text-[20px] leading-[1.55] text-white/90">' + escapeHtml(d.payload.overview) + '</p>'
         : '<p class="text-[14px] text-white/40">금주 한 줄 요약이 비어 있습니다</p>') +
 
       /* 세로 얇은 선으로만 나눈다(상세 페이지의 수치 4칸과 같은 문법).
@@ -191,7 +205,7 @@
           '<span class="font-display font-bold text-[14.5px] tracking-tight flex-none">' + escapeHtml(p.company) + '</span>' +
           '<span class="text-[11.5px] text-white/40 truncate flex-1">' + escapeHtml(p.title || '') + '</span></button>';
       }).join('') +
-      '</div></div></div>';
+      '</div></div>' + '<div class="nw-more">아래로 더 있음 <span aria-hidden="true">&#8595;</span></div>' + '</div>';
   }
 
   /* ===== 픽 한 장 =====
@@ -242,7 +256,7 @@
 
     // 상단 출처 표기는 두지 않는다(2026-08-24 사용자 지시) — 아래에 출처 기사 링크가 있어 겹친다.
     // text-white 를 판에 박는 이유는 intro() 와 같다(겹쳐 띄운 페이지의 ink 를 물려받지 않게).
-    let h = '<div class="flex-1 min-h-0 bg-panel text-white relative nw-fade">' +
+    let h = '<div class="flex-1 min-h-0 bg-panel text-white relative nw-fade nw-end">' +
       '<div class="nw-scroll h-full px-6 pt-5 pb-12">' +
 
       '<div class="flex items-center gap-2.5 min-w-0 mb-4">' +
@@ -290,7 +304,7 @@
       (issueNo ? ' · No.' + no2(issueNo) : '') + '</span>' +
       '</div>';
 
-    return h + '</div></div>';
+    return h + '</div>' + '<div class="nw-more">아래로 더 있음 <span aria-hidden="true">&#8595;</span></div>' + '</div>';
   }
 
   function pickSlide(p, i, issueNo) {
@@ -310,7 +324,7 @@
        같은 회차는 늘 같은 모양이다. 도형 위에 글이 얹히므로 결론 묶음에는 라임 바탕을 깔아
        읽히게 한다 — 활자만 얹으면 선과 점이 글자 사이로 지나간다. */
     const sk = { line: 'rgba(17,17,17,.16)', dot: 'rgba(17,17,17,.30)', hub: '#111' };
-    return '<div class="h-full bg-lime text-ink relative overflow-hidden flex flex-col">' +
+    return '<div class="h-full bg-lime text-ink relative overflow-hidden flex flex-col nw-fade nw-lime nw-end">' +
       graphArt('closing|' + (d.week || ''), sk) +
 
       '<div class="nw-scroll relative flex-1 px-6 sm:px-7 pt-7 pb-8">' +
@@ -340,7 +354,9 @@
       '<a href="/weekly?w=' + week + '" class="font-bold hover:underline">해당 회차 상세보기 →</a>' +
       '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="font-bold hover:underline">금주 동향 전체 보기 →</a>' +
       '<a href="/weekly" class="font-semibold text-ink/55 hover:underline">전체 회차 →</a></div>' +
-      '</div></div>';
+      '</div>' +
+      '<div class="nw-more">아래로 더 있음 <span aria-hidden="true">&#8595;</span></div>' +
+      '</div>';
   }
 
   /* ===== 조립 + 넘기기 ===== */
@@ -420,9 +436,18 @@
       const b = e.target.closest('[data-seg]');
       if (b) go(Number(b.dataset.seg));
     }, sig);
-    track.addEventListener('click', function (e) {          // 목차 줄 → 해당 장
-      const b = e.target.closest('[data-go]');
-      if (b) go(Number(b.dataset.go));
+    /* 클릭도 넘기는 수단이다(2026-08-24 사용자 지시).
+       거르는 경우 셋 —
+         · 목차 줄은 그 장으로 건너뛴다(넘기기가 아니다)
+         · 링크·버튼을 누른 것은 그 동작이 우선이다
+         · 글을 끌어 고른 뒤 손을 떼는 것도 click 으로 들어온다. 그때 넘기면 읽던 자리를 잃는다 */
+    track.addEventListener('click', function (e) {
+      const jump = e.target.closest('[data-go]');
+      if (jump) { go(Number(jump.dataset.go)); return; }
+      if (e.target.closest('a, button')) return;
+      const sel = window.getSelection && window.getSelection();
+      if (sel && String(sel).trim()) return;
+      go(idx + 1);
     }, sig);
 
     /* 키보드. 세로(↑↓)는 넘기지 않고 본문 판 안에서 읽는 데 쓴다 — 가로와 세로의 역할을 섞지 않는다.
@@ -454,6 +479,26 @@
         setTimeout(check, 50);    // 웹폰트가 붙으면서 높이가 바뀐 뒤 다시 잰다
         setTimeout(check, 600);
       })(boxes[i]);
+    }
+
+    /* 요약이 3줄 이상으로 떨어지면 활자를 한 단계씩 줄여 2줄 안에 넣는다(2026-08-24 사용자 지시).
+       줄 수를 세는 대신 높이를 재는 이유 — 줄바꿈 위치는 폰트·자간·글자마다 달라 계산으로 맞지 않는다.
+       웹폰트가 붙기 전에 재면 줄 수가 달라지므로 fonts.ready 뒤에 한 번 더 잰다. */
+    const fitEl = track.querySelector('[data-nw-fit]');
+    function fitTwoLines() {
+      if (!fitEl) return;
+      const sizes = [20, 19, 18, 17, 16, 15, 14, 13];
+      for (let i = 0; i < sizes.length; i++) {
+        fitEl.style.fontSize = sizes[i] + 'px';
+        const lh = parseFloat(getComputedStyle(fitEl).lineHeight) || sizes[i] * 1.55;
+        if (fitEl.scrollHeight <= lh * 2 + 1) return;   // 2줄 안에 들어왔다
+      }
+      // 가장 작은 크기로도 2줄을 넘으면 그대로 둔다. 더 줄이면 못 읽는다.
+    }
+    if (fitEl) {
+      fitTwoLines();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTwoLines).catch(function () {});
+      window.addEventListener('resize', fitTwoLines, sig);
     }
 
     paint();
