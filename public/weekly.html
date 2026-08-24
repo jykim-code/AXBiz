@@ -40,7 +40,8 @@
     <button data-sb-open aria-label="메뉴 열기" class="-ml-1 p-1 rounded-lg hover:bg-ink/10"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
     <a href="/" aria-label="홈(대시보드)으로" class="flex-none hover:opacity-80 transition"><img src="/assets/HANCOM.png" alt="HANCOM" class="h-6 w-auto" /></a>
     <span class="hidden sm:inline w-px h-5 bg-ink/20"></span>
-    <span class="font-display font-semibold text-sm">위클리 픽</span>
+    <!-- 상세(?w=)에서는 weekly.js 가 이 자리를 목록으로 가는 링크로 바꾼다 -->
+    <span id="wkCrumb" class="font-display font-semibold text-sm">위클리 픽</span>
   </header>
 
   <!-- 폭·여백은 각 블록이 스스로 잡는다. 픽 섹션이 전체폭 다크로 깔려야 하므로

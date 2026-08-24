@@ -619,6 +619,11 @@ async function initWeekly() {
     return;
   }
 
+  /* 상세에서는 머리말의 「위클리 픽」이 목록으로 돌아가는 길이 된다.
+     불러오기 실패 화면에서도 나가는 길이 남아야 하므로 요청 전에 바꾼다. */
+  const crumb = document.getElementById('wkCrumb');
+  if (crumb) crumb.innerHTML = '<a href="/weekly" class="hover:opacity-70 transition">위클리 픽</a>';
+
   let data;
   try {
     data = isPreview ? draftToEdition(await API.weeklyPreview(w)) : await API.weekly(w, n);
