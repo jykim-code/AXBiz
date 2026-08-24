@@ -416,6 +416,9 @@ function renderEdition(d) {
   // 푸터 — 다음 동선. 대시보드보다 기업·검색을 앞세운다(대시보드는 실제로 잘 읽히지 않는다).
   h += '<div class="' + WRAP + ' mt-12">';
   h += '<div class="rule-thin pt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">' +
+    // 같은 회차를 슬라이드로 넘겨 보는 별개 페이지(2026-08-24 사용자 지시). 조판만 다르고 데이터는 같다.
+    '<a href="/news?w=' + encodeURIComponent(d.week || '') + (d.isPreview ? '&draft=1' : '') +
+    '" class="font-semibold text-lime-600 hover:text-ink">슬라이드로 넘겨 보기 →</a>' +
     '<a href="/weekly" class="font-semibold hover:text-lime-600">전체 회차 →</a>' +
     '<a href="/company" class="font-semibold hover:text-lime-600">기업 찾아보기 →</a>' +
     '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a></div>';

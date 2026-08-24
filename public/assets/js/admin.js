@@ -1024,6 +1024,8 @@ function renderWeekly() {
   h += '<div class="flex flex-wrap items-center gap-3 mt-5 pt-5 border-t border-ink/10">' +
     '<button type="button" id="wkSave" class="btn bg-ink text-white px-6 py-2.5 hover:bg-lime hover:text-ink">저장</button>' +
     '<button type="button" id="wkPreviewBtn" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">미리보기 ↗</button>' +
+    // 같은 초안을 슬라이드로 넘겨 보는 별개 페이지. 사진을 올렸으면 여기서 사진 판이 보인다.
+    '<button type="button" id="wkPreviewNews" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">뉴스레터 미리보기 ↗</button>' +
     '<button type="button" id="wkPublish" class="btn bg-lime text-ink px-6 py-2.5 hover:bg-ink hover:text-lime">' + (pub ? '다시 발행' : '발행') + '</button>' +
     (pub ? '<button type="button" id="wkCopyShare" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">공유 텍스트 복사</button>' +
            '<button type="button" id="wkUnpublish" class="btn border border-red-300 text-red-600 px-4 py-2.5 hover:bg-red-500 hover:text-white hover:border-red-500">발행 회수</button>' : '') +
@@ -1190,6 +1192,10 @@ function wkBind() {
   document.getElementById('wkPreviewBtn').addEventListener('click', async () => {
     if (!(await wkSaveDraft(false))) return;
     window.open('/weekly?w=' + encodeURIComponent(WK.week) + '&draft=1', '_blank');
+  });
+  document.getElementById('wkPreviewNews').addEventListener('click', async () => {
+    if (!(await wkSaveDraft(false))) return;
+    window.open('/news?w=' + encodeURIComponent(WK.week) + '&draft=1', '_blank');
   });
   const unp = document.getElementById('wkUnpublish');
   if (unp) unp.addEventListener('click', async () => {
