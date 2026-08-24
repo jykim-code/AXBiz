@@ -42,9 +42,7 @@ export function buildWeeklyMessage(ed, origin) {
 
   const lines = [];
 
-  // 제목과 링크를 맨 위에 둔다 — 메신저가 긴 글을 접으면 링크가 「더보기」 뒤로 숨는다.
   lines.push('🎯 *[' + label + ' Weekly Picks]*');
-  lines.push('🔗 링크: ' + url);
   lines.push('');
   lines.push('안녕하세요. AX Biz Radar입니다.');
   lines.push('지난주 AX 동향 중 주요 이슈를 Pick하여 Weekly Picks 리포트로 공유드립니다 :)');
@@ -77,8 +75,14 @@ export function buildWeeklyMessage(ed, origin) {
     if (rest > 0) lines.push(BULLET + '외 ' + rest + '건');
   }
 
+  /* 링크는 맺음말 바로 앞에 한 번만 둔다(2026-08-24 사용자 지시).
+     `<주소|라벨>` 은 Google Chat 문법으로, 주소를 감추고 라벨만 눌리게 한다.
+     주소를 맨 텍스트로 두면 회차 주소가 길어 줄을 먹고, 대괄호로 감싸면 자동 링크가
+     닫는 괄호까지 주소로 먹어 깨진다 — 그래서 이 형태를 쓴다.
+     맺음말이 「상단 링크」가 아니라 「위 링크」인 이유: 링크가 바로 위 줄에 있다. */
   lines.push('');
-  lines.push('자세한 내용은 상단 링크를 참고해 주세요. 감사합니다 🙌');
+  lines.push('👉 <' + url + '|' + label + ' Weekly Pick 링크>');
+  lines.push('자세한 내용은 위 링크를 참고해 주세요. 감사합니다 🙌');
 
   return lines.join('\n');
 }
