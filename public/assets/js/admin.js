@@ -887,15 +887,29 @@ function wkNumbersHTML(s) {
     ((s.newCompanies || []).length ? '<div class="text-xs opacity-60 mt-1">신규 편입 기업 ' + escapeHtml(s.newCompanies.join(', ')) + '</div>' : '');
 }
 
+/* 신호 칩 — 숫자 하나로는 왜 위에 올라왔는지 알 수 없어 신호 이름을 그대로 보여 준다.
+   선별은 사람이 하고 이 칩은 「먼저 볼 만한 것」 표시일 뿐이다. 뜻은 title 로 붙인다. */
+const WK_SIGNAL_HINT = {
+  신규기업: '이번에 처음 레이더에 들어온 기업',
+  새영역: '추적 중인 기업이 지금까지 다루지 않던 주제로 움직임',
+  공통주제: '이 주에 3곳 이상이 같은 주제로 움직임',
+  신규주제: '이력에 없던 주제가 이 주에 2건 이상 등장',
+};
+// 기업 축(신규기업·새영역)은 라임으로 띄우고 주제 축은 회색으로 둔다 — 정렬 가중치와 같은 위계.
+const wkSignalChip = (s) =>
+  '<span class="text-[10px] font-bold rounded-full px-2 py-0.5 ' +
+  (s === '신규기업' || s === '새영역' ? 'bg-lime text-ink' : 'bg-ink/8 text-ink/55') +
+  '" title="' + escapeHtml(WK_SIGNAL_HINT[s] || '') + '">' + escapeHtml(s) + '</span>';
+
 function wkRowHTML(c) {
   const on = WK_PICKS.some((p) => p.key === c.key);
   return '<label class="flex items-start gap-3 py-2.5 cursor-pointer hover:bg-beige/60 px-1 rounded-lg">' +
     '<input type="checkbox" class="wk-cb mt-1 flex-none accent-lime-600 w-4 h-4" data-key="' + escapeHtml(c.key) + '"' + (on ? ' checked' : '') + ' />' +
     '<span class="min-w-0 flex-1">' +
-    '<span class="flex items-baseline gap-2">' +
+    '<span class="flex items-baseline flex-wrap gap-x-2 gap-y-1">' +
     '<b class="text-sm">' + escapeHtml(c.company) + '</b>' +
     '<span class="text-[11px] opacity-45">' + escapeHtml(c.date) + '</span>' +
-    (c.score ? '<span class="text-[10px] font-bold text-lime-600" title="다건·신규·상위 태그 신호를 더한 정렬용 점수(선별은 사람이 합니다)">신호 ' + c.score + '</span>' : '') +
+    (c.signals || []).map(wkSignalChip).join('') +
     '</span>' +
     '<span class="block text-xs opacity-65 truncate">' + escapeHtml(c.title || (c.keyPoints || [])[0] || '') + '</span>' +
     '</span></label>';

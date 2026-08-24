@@ -96,6 +96,7 @@ function toItem(date, c) {
 // 1위로 올라와(실측: 한 주 9건) 바로 아래 「신규 편입 기업 N곳」과 같은 말을 두 번 하게 된다.
 // 항목 자체의 태그 칩에는 그대로 남는다. 원본 데이터를 고치는 것이 아니라 집계에서만 제외한다.
 const META_TAGS = new Set(['신규편입', 'AX신규진입']);
+const EMPTY_SET = new Set();
 
 /* ===== 수치 집계 (코드) =====
    그 주 전체 기준으로 센다 — 「20건 중 3건을 골랐다」가 드러나야 선별이 신뢰받는다.
@@ -106,6 +107,8 @@ async function collect(env, start, end) {
 
   const items = [];
   const seenCompany = new Set(), seenTag = new Set(); // 기간 시작 이전 이력
+  // 기업별 과거 주제. 「추적 중인 기업이 새 영역으로 움직였나」 판정에 쓴다.
+  const priorTagsByCompany = {};
   const countByDate = {};
   for (const r of rows) {
     const list = parseJson(r.companies, []);
@@ -118,7 +121,8 @@ async function collect(env, start, end) {
     for (const c of list) {
       if (!c || !c.name) continue;
       seenCompany.add(c.name);
-      for (const t of (c.tags || [])) seenTag.add(t);
+      const bag = priorTagsByCompany[c.name] ||= new Set();
+      for (const t of (c.tags || [])) { seenTag.add(t); if (!META_TAGS.has(t)) bag.add(t); }
     }
   }
 
@@ -170,18 +174,48 @@ async function collect(env, start, end) {
     picks: 0, // 발행 시 채움
   };
 
-  // 후보 점수 — 선별용이 아니라 정렬용이다(선별은 사람이 한다). 무엇이 눈에 띄는지 위로 올린다.
-  // 「신규 등장 태그 포함」은 신호로 쓰지 않는다: 태그가 항목마다 매우 구체적이라 거의 모든
-  // 항목에 신규 태그가 하나씩 붙고(실측: 한 주 17건에 신규 태그 60여 종) 점수가 평평해진다.
-  const top3 = new Set(topTags.slice(0, 3).map((t) => t.tag));
+  /* ===== 후보 신호 =====
+     선별용이 아니라 정렬용이다(선별은 사람이 한다). 무엇이 눈에 띄는지 위로 올린다.
+
+     2026-08-24 에 실제 데이터(최근 8주)로 적중률을 재고 신호를 다시 짰다. 버린 것:
+     - 「한컴 인사이트 2개 이상」 90%, 「한컴 비교 기준 어휘 언급」 96% — 이 데이터는 애초에
+       컨플루언스 작성자가 AX 관점으로 걸러 넣은 것이라 내용 키워드로는 아무것도 구분되지 않는다
+     - 「금주 상위 태그」 38% — 방향이 거꾸로다. 그 주 가장 흔한 주제를 위로 올린다
+     - 「다건 기업」 40% — 많이 냈다고 주목할 것은 아니다(사용자 판단)
+     - 「희귀 주제(이력 3회 이하)」 87%, 「8주 이상 공백 후 재등장」 2% — 둘 다 구간을 벗어난다
+
+     남은 네 개는 적중률 17~33% 이고 서로 겹침이 18~31% 라 각각 독립된 정보를 준다.
+     축이 둘이다: 기업 축(기업이 새롭다 / 기업의 움직임이 새롭다), 주제 축(여럿이 몰린다 /
+     주제 자체가 처음). 기업 축에 가중치를 더 준다 — 편집 판단에 더 가깝다. */
+  const NEW_CO = '신규기업', NEW_AREA = '새영역', SHARED = '공통주제', NEW_TOPIC = '신규주제';
+  const SIGNAL_WEIGHT = { [NEW_CO]: 2, [NEW_AREA]: 2, [SHARED]: 1, [NEW_TOPIC]: 1 };
+  const SHARED_MIN_COMPANIES = 3; // 그 주에 이 주제를 다룬 기업 수
+  const NEW_TOPIC_MIN_ITEMS = 2;  // 신규 주제가 「확산」으로 보이는 최소 건수
+
   const newCoSet = new Set(newCompanies);
+  // 주제 신호는 실제 주제만 본다. 메타 태그(신규편입 등)를 넣으면 신규 기업 신호와 같은 말을 두 번 한다.
+  const topicTags = (it) => it.tags.filter((t) => !META_TAGS.has(t));
+
+  // 그 주에 각 주제를 다룬 기업 수 (같은 기업이 두 건 내도 1로 센다)
+  const tagCompanies = {};
+  for (const it of items) for (const t of topicTags(it)) (tagCompanies[t] ||= new Set()).add(it.company);
+
   for (const it of items) {
-    let s = 0;
-    if (countByCompany[it.company] > 1) s += 2;
-    if (newCoSet.has(it.company)) s += 2;
-    if (it.hancomInsight.length >= 2) s += 1;
-    if (it.tags.some((t) => top3.has(t))) s += 1;
-    it.score = s;
+    const sig = [];
+    const mine = topicTags(it);
+    if (newCoSet.has(it.company)) {
+      sig.push(NEW_CO);
+    } else {
+      // 추적 중인 기업이 지금까지 다루지 않던 주제로 움직였나. 과거 주제가 없으면 판정하지 않는다
+      // (신규 기업과 상호배타적이라 두 신호가 같은 줄에 붙지 않는다).
+      const past = priorTagsByCompany[it.company];
+      if (mine.length && past && past.size && !mine.some((t) => past.has(t))) sig.push(NEW_AREA);
+    }
+    if (mine.some((t) => (tagCompanies[t] || EMPTY_SET).size >= SHARED_MIN_COMPANIES)) sig.push(SHARED);
+    if (mine.some((t) => !seenTag.has(t) && tagFreq[t] >= NEW_TOPIC_MIN_ITEMS)) sig.push(NEW_TOPIC);
+
+    it.signals = sig;
+    it.score = sig.reduce((n, s) => n + (SIGNAL_WEIGHT[s] || 0), 0);
   }
   items.sort((a, b) => b.score - a.score || (b.date || '').localeCompare(a.date || '') || a.company.localeCompare(b.company));
   return { items, stats };
