@@ -1172,7 +1172,7 @@ function wkBind() {
     if (!btn) return;
     btn.addEventListener('click', async () => {
       const payload = wkPayload();
-      if (!payload.picks.length) { toast('먼저 주목 동향을 고르세요', false); return; }
+      if (!payload.picks.length) { toast('먼저 주요 동향을 고르세요', false); return; }
       const el2 = document.getElementById(targetId);
       if (el2.value.trim() && !confirm('이미 쓴 내용을 AI 초안으로 덮어쓸까요?')) return;
       btn.textContent = '생성 중…'; btn.disabled = true;
@@ -1212,10 +1212,14 @@ function wkBind() {
     nf.disabled = true;
     try {
       const dry = await API.weeklyAction({ action: 'notify', week: WK.week, dryRun: true }, adminPin);
+      if (!dry.configured) { toast('웹훅 주소가 설정되지 않았습니다 (Pages 환경변수 WEEKLY_WEBHOOK_URL)', false); return; }
       const sent = dry.notifiedAt
         ? '⚠ 이미 보낸 회차입니다 (' + String(dry.notifiedAt).slice(0, 16).replace('T', ' ') + ')\n\n'
         : '';
-      if (!confirm(sent + '아래 내용으로 보냅니다.\n\n' + dry.text)) return;
+      /* 목적지를 먼저 말한다. stg 와 운영의 관리자 화면이 똑같이 생겼는데 방이 다르고,
+         전사 라운지로 잘못 나가면 되돌릴 수 없다(2026-08-24 사용자 지시로 웹훅이 둘이 됐다). */
+      const where = dry.target ? '보낼 곳: ' + dry.target + '\n\n' : '';
+      if (!confirm(sent + where + '아래 내용으로 보냅니다.\n\n' + dry.text)) return;
       await API.weeklyAction({ action: 'notify', week: WK.week }, adminPin);
       toast('메시지를 보냈습니다', true);
       loadWeekly();
@@ -1247,7 +1251,7 @@ async function wkSaveDraft(notify) {
 
 async function wkPublish() {
   const payload = wkPayload();
-  if (!payload.picks.length) { toast('주목 동향을 최소 1건 고르세요', false); return; }
+  if (!payload.picks.length) { toast('주요 동향을 최소 1건 고르세요', false); return; }
   const missing = payload.picks.filter((p) => !String(p.why || '').trim()).map((p) => p.company);
   if (missing.length) {
     toast('「주목(Pick) 이유」가 빈 항목: ' + missing.join(', ') + ' — 이 한 줄이 없으면 대시보드와 같은 화면이 됩니다', false);

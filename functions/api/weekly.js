@@ -12,7 +12,7 @@
 //  - 발행본은 스냅샷이다. publish 시점의 항목 내용을 payload 에 복사해 고정하므로 원본(reports)이
 //    나중에 바뀌어도 이미 공유한 링크의 내용은 변하지 않는다. 재발행할 때만 갱신된다.
 //  - 선별은 사람이 한다. LLM 은 고른 것을 엮는 문장만 쓰고(assist), 무엇을 고를지는 정하지 않는다.
-//  - 수치는 항상 코드 집계다. LLM 이 실패해도 수치와 주목 동향은 나온다.
+//  - 수치는 항상 코드 집계다. LLM 이 실패해도 수치와 주요 동향은 나온다.
 import { pinOk, forbidden } from '../_auth.js';
 import { entryKey } from '../_publish.js';
 import { stripTrailingPeriod, replaceEmDash, replaceAxisWord, hasAxisWord } from '../_style.js';
@@ -245,7 +245,7 @@ ${STYLE}
 문장만 출력하고 다른 텍스트를 붙이지 않는다.`,
 
   overview: `당신은 "AX Biz Radar" 위클리 픽의 편집자입니다.
-이번 주 주목 동향들을 묶어 한 주의 흐름을 1~2문장으로 쓰세요.
+이번 주 주요 동향들을 묶어 한 주의 흐름을 1~2문장으로 쓰세요.
 
 - 개별 기업 나열이 아니라 공통 흐름·방향이 드러나게 쓴다
 - 100~200자
@@ -467,7 +467,7 @@ function sanitizeImage(v) {
   };
 }
 
-// 저장·발행에 담기는 주목 동향. 관리자가 고친 제목·이유를 받고 본문은 후보에서 그대로 승계한다.
+// 저장·발행에 담기는 주요 동향. 관리자가 고친 제목·이유를 받고 본문은 후보에서 그대로 승계한다.
 function sanitizePick(p) {
   if (!p || !p.company || !DATE_RE.test(String(p.date || ''))) return null;
   return {
@@ -608,7 +608,15 @@ export async function onRequestPost({ request, env }) {
       const origin = (env.SITE_ORIGIN || new URL(request.url).origin).replace(/\/$/, '');
       const text = buildWeeklyMessage(ed, origin);
 
-      if (body.dryRun) return Response.json({ ok: true, text, notifiedAt: payload.notifiedAt || null });
+      /* 웹훅은 환경별로 다른 방을 가리킨다(2026-08-24 사용자 지시) —
+         Preview(stg)=테스트 스페이스, Production=전사 라운지.
+         관리자 화면이 두 환경에서 똑같이 생겼고 D1 도 공유하므로 어디로 나가는지 이름을 보여 준다.
+         이름은 WEEKLY_WEBHOOK_LABEL 로 따로 받는다 — 주소에 key·token 이 들어 있어 화면에 쓸 수 없다. */
+      const target = String(env.WEEKLY_WEBHOOK_LABEL || '').slice(0, 60);
+
+      if (body.dryRun) {
+        return Response.json({ ok: true, text, target, notifiedAt: payload.notifiedAt || null, configured: !!env.WEEKLY_WEBHOOK_URL });
+      }
       if (!env.WEEKLY_WEBHOOK_URL) return Response.json({ error: 'NO_WEBHOOK' }, { status: 500 });
 
       let res;
