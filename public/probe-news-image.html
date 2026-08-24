@@ -33,6 +33,11 @@
     엣지에서 <code class="text-lime">og:image</code> 를 뽑아 실제 슬라이드 판(620px)에 넣어 본다.
     회차 데이터에는 아무것도 저장하지 않는다. 법적 사용 가능 여부와는 별개로 <b class="text-white/70">기술적으로 되는지</b>만 본다.
   </p>
+  <p class="text-[12.5px] text-yellow-400/80 mt-3 leading-relaxed border-l-2 border-yellow-400/40 pl-3">
+    우리 사이트 CSP 가 <code>img-src 'self' data:</code> 라서 <b>외부 도메인 이미지는 매체가 허용하든 말든 브라우저가 막는다</b>(<code>public/_headers</code>).
+    그래서 이 페이지는 사진을 우리 엔드포인트로 받아 <code>data:</code> URL 로 바꿔 넣는다.
+    아래 「이미지 (우리 도메인)」 줄은 서버에서 Referer 를 우리 도메인으로 넣어 재 본 것이라 <b>매체의 핫링크 차단 여부</b>를 뜻하고, CSP 와는 별개다.
+  </p>
 
   <div class="mt-6 flex flex-wrap gap-2 items-center">
     <input id="url" type="url" placeholder="기사 주소 붙여넣기 (추적 매체만 허용)"
@@ -78,6 +83,24 @@ function pin() {
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const out = document.getElementById('out');
+
+/* 사진을 화면에 띄우는 유일한 방법.
+   우리 사이트 CSP 가 `img-src 'self' data:` 라서 <img src="타사 주소"> 는 매체가 허용하든
+   말든 브라우저가 막는다(_headers). CSP 를 건드리지 않고 사진을 보려면
+   우리 엔드포인트로 받아 data: URL 로 바꿔 넣는 수밖에 없다.
+   PIN 은 헤더로만 보낸다 — 주소에 붙이면 로그·리퍼러에 남는다. */
+async function toDataUrl(imgUrl) {
+  const r = await fetch('/api/dev/og-image?img=' + encodeURIComponent(imgUrl), { headers: { 'x-admin-pin': pin() } });
+  if (!r.ok) {
+    let why = r.status;
+    try { const j = await r.json(); why = (j.error || r.status) + (j.status ? ' (' + j.status + ')' : ''); } catch {}
+    throw new Error(String(why));
+  }
+  const buf = new Uint8Array(await r.arrayBuffer());
+  let s = '';
+  for (let i = 0; i < buf.length; i += 8192) s += String.fromCharCode.apply(null, buf.subarray(i, i + 8192));
+  return 'data:' + (r.headers.get('content-type') || 'image/jpeg') + ';base64,' + btoa(s);
+}
 
 let PANEL_H = 260;              // 판 높이 (210 / 260 / 300)
 let PANEL_POS = 'center';       // object-position — 사진에서 어디를 남기고 자를지
@@ -163,10 +186,8 @@ async function run(url) {
     '<div>' +
       '<div class="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-2">슬라이드 비주얼 판 실제 크기</div>' +
       '<div class="relative overflow-hidden bg-panel" data-panel style="width:620px;max-width:100%;height:' + PANEL_H + 'px">' +
-        '<img data-cover src="' + esc(img.url) + '" alt="" referrerpolicy="no-referrer-when-downgrade" ' +
-          'class="absolute inset-0 w-full h-full object-cover" style="object-position:' + PANEL_POS + '" ' +
-          'onerror="this.dataset.broken=1;this.style.display=\'none\';this.parentElement.querySelector(\'[data-broken-msg]\').style.display=\'block\'" />' +
-        '<div data-broken-msg style="display:none" class="absolute inset-0 flex items-center justify-center text-[13px] text-red-400 bg-panel">브라우저에서 이미지가 막혔습니다 (핫링크 차단)</div>' +
+        '<img data-cover alt="" class="absolute inset-0 w-full h-full object-cover" style="object-position:' + PANEL_POS + '" />' +
+        '<div data-msg class="absolute inset-0 flex items-center justify-center text-[13px] text-white/40 bg-panel">사진 받는 중…</div>' +
         // 실제 조판에서 활자가 사진 위에 얹히므로 가독성까지 같이 본다
         '<div data-ov class="absolute inset-0 p-6 flex flex-col justify-between pointer-events-none">' +
           '<div class="font-display font-bold text-[22px] tracking-tight text-white drop-shadow">기업명</div>' +
@@ -190,23 +211,33 @@ async function run(url) {
       '</div>' +
       '<div class="pt-2 border-t border-white/10">' +
         '<div class="text-white/35 mb-1">원본 전체</div>' +
-        '<img src="' + esc(img.url) + '" alt="" class="max-w-[260px] w-full border border-white/10" />' +
+        '<img data-full alt="" class="max-w-[260px] w-full border border-white/10" />' +
         '<div class="text-[11px] text-white/25 mt-1.5 break-all">' + esc(img.url.split('/').pop()) + '</div>' +
       '</div>' +
     '</div></div>';
 
-  // 실제 픽셀 크기는 브라우저가 받아 봐야 안다 (CORS 없이도 naturalWidth 는 읽힌다)
-  const probe = new Image();
-  probe.onload = () => {
-    const [tag, msg, cls] = verdict(probe.naturalWidth, probe.naturalHeight);
-    const v = el.querySelector('[data-verdict]');
-    if (v) v.innerHTML = '<span class="' + cls + '">' + tag + '</span> <span class="text-white/50 font-normal text-[12.5px]">' + esc(msg) + '</span>';
-  };
-  probe.onerror = () => {
-    const v = el.querySelector('[data-verdict]');
-    if (v) v.innerHTML = '<span class="text-red-400">브라우저에서 못 받음</span> <span class="text-white/50 font-normal text-[12.5px]">핫링크가 막혔거나 원본이 사라진 경우</span>';
-  };
-  probe.src = img.url;
+  // 우리 도메인으로 받아 data: URL 로 바꿔 넣는다. 실제 픽셀 크기도 이때 재진다.
+  const setV = (html) => { const v = el.querySelector('[data-verdict]'); if (v) v.innerHTML = html; };
+  try {
+    const data = await toDataUrl(img.url);
+    const cover = el.querySelector('[data-cover]');
+    const full = el.querySelector('[data-full]');
+    const msg = el.querySelector('[data-msg]');
+    const probe = new Image();
+    probe.onload = () => {
+      const [tag, m, cls] = verdict(probe.naturalWidth, probe.naturalHeight);
+      setV('<span class="' + cls + '">' + tag + '</span> <span class="text-white/50 font-normal text-[12.5px]">' + esc(m) + '</span>');
+      if (cover) cover.src = data;
+      if (full) full.src = data;
+      if (msg) msg.remove();
+    };
+    probe.onerror = () => setV('<span class="text-red-400">받은 것이 이미지가 아님</span>');
+    probe.src = data;
+  } catch (e) {
+    setV('<span class="text-red-400">엣지에서 이미지를 못 받음</span> <span class="text-white/50 font-normal text-[12.5px]">' + esc(e.message) + '</span>');
+    const msg = el.querySelector('[data-msg]');
+    if (msg) { msg.textContent = '이미지를 받지 못했습니다 (' + e.message + ')'; msg.className = msg.className.replace('text-white/40', 'text-red-400'); }
+  }
 }
 
 document.getElementById('run').onclick = () => run(document.getElementById('url').value.trim());

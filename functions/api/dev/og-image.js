@@ -49,10 +49,37 @@ async function probeImage(url, referer) {
   };
 }
 
+// 이미지를 우리 도메인으로 되돌려 준다.
+//   우리 사이트 CSP 가 `img-src 'self' data:` 라서 외부 도메인 이미지는 브라우저가 전부 막는다.
+//   매체가 막는 것이 아니라 우리가 막는 것이고, 그래서 <img src="타사 주소"> 는 애초에 뜨지 않는다.
+//   확인 페이지는 이 응답을 data: URL 로 바꿔 쓴다(CSP 를 건드리지 않고 사진을 보기 위한 것).
+async function proxyImage(imgUrl) {
+  const r = await fetch(imgUrl, { headers: { 'User-Agent': UA }, redirect: 'follow' });
+  const type = r.headers.get('content-type') || '';
+  if (!r.ok) return Response.json({ error: 'IMAGE_FETCH_FAILED', status: r.status }, { status: 502 });
+  if (!/^image\//i.test(type)) return Response.json({ error: 'NOT_AN_IMAGE', type }, { status: 415 });
+  const buf = await r.arrayBuffer();
+  if (buf.byteLength > 8 * 1024 * 1024) return Response.json({ error: 'IMAGE_TOO_LARGE' }, { status: 413 });
+  return new Response(buf, { headers: { 'Content-Type': type, 'Cache-Control': 'no-store' } });
+}
+
 export async function onRequestGet({ request, env }) {
   if (!pinOk(env, request)) return forbidden();
 
-  const raw = new URL(request.url).searchParams.get('url') || '';
+  const qs = new URL(request.url).searchParams;
+
+  // 이미지 되돌려주기 모드. 이미지 CDN 은 매체의 하위 도메인이라(cdn.aitimes.com,
+  // img.etnews.com, image.zdnet.co.kr) 같은 허용 목록으로 걸러진다.
+  const imgParam = qs.get('img') || '';
+  if (imgParam) {
+    let iu;
+    try { iu = new URL(imgParam); } catch { return Response.json({ error: 'INVALID_URL' }, { status: 400 }); }
+    if (!/^https?:$/.test(iu.protocol)) return Response.json({ error: 'SCHEME_NOT_ALLOWED' }, { status: 400 });
+    if (!hostOk(iu.hostname)) return Response.json({ error: 'HOST_NOT_ALLOWED', host: iu.hostname }, { status: 400 });
+    return proxyImage(iu.href);
+  }
+
+  const raw = qs.get('url') || '';
   let target;
   try { target = new URL(raw); } catch { return Response.json({ error: 'INVALID_URL' }, { status: 400 }); }
   if (!/^https?:$/.test(target.protocol)) return Response.json({ error: 'SCHEME_NOT_ALLOWED' }, { status: 400 });
