@@ -162,7 +162,9 @@
      — 캐러셀에서는 스크롤 끝을 짐작할 수 없어 이 목차가 그 역할을 대신한다. */
   function intro(d, s, picks) {
     const tags = (s.topTags || []).slice(0, 4).map((t) => '#' + escapeHtml(t.tag) + (t.isNew ? '(NEW)' : '')).join(' ');
-    return '<div class="h-full bg-panel relative nw-fade flex flex-col">' +
+    /* text-white 를 판에 박아 둔다 — 이 조판은 상세 페이지 위에 겹쳐서도 쓰이는데
+       그 페이지 body 는 ink 라, 색을 물려받게 두면 다크 판에서 글자가 안 보인다. */
+    return '<div class="h-full bg-panel text-white relative nw-fade flex flex-col">' +
       '<div class="nw-scroll flex-1 px-6 sm:px-7 pt-7 pb-12">' +
       '<div class="text-[10px] font-bold uppercase tracking-[.2em] text-lime mb-3">이번 주 흐름</div>' +
       (d.payload.overview
@@ -239,7 +241,8 @@
     const linkCls = 'font-semibold text-white/70 hover:text-lime underline underline-offset-2 decoration-white/20';
 
     // 상단 출처 표기는 두지 않는다(2026-08-24 사용자 지시) — 아래에 출처 기사 링크가 있어 겹친다.
-    let h = '<div class="flex-1 min-h-0 bg-panel relative nw-fade">' +
+    // text-white 를 판에 박는 이유는 intro() 와 같다(겹쳐 띄운 페이지의 ink 를 물려받지 않게).
+    let h = '<div class="flex-1 min-h-0 bg-panel text-white relative nw-fade">' +
       '<div class="nw-scroll h-full px-6 pt-5 pb-12">' +
 
       '<div class="flex items-center gap-2.5 min-w-0 mb-4">' +
@@ -337,8 +340,8 @@
       '<div class="nw-frame"><div id="nwTrack" class="nw-track" tabindex="0" aria-roledescription="carousel"></div></div>' +
       // 하단 조작 줄 — 키보드·스와이프를 모르는 사람에게도 넘길 수단을 준다.
       '<div class="nw-bar mt-3 flex items-center gap-3">' +
-      '<button type="button" id="nwPrev" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-25 flex items-center justify-center text-[15px]" aria-label="이전">&#8592;</button>' +
-      '<button type="button" id="nwNext" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-25 flex items-center justify-center text-[15px]" aria-label="다음">&#8594;</button>' +
+      '<button type="button" id="nwPrev" class="w-9 h-9 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-25 flex items-center justify-center text-[15px]" aria-label="이전">&#8592;</button>' +
+      '<button type="button" id="nwNext" class="w-9 h-9 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-25 flex items-center justify-center text-[15px]" aria-label="다음">&#8594;</button>' +
       '<div id="nwCounter" class="font-display font-bold text-[12px] tracking-widest text-white/50"></div>' +
       '<div class="ml-auto text-[10.5px] text-white/25 tracking-wide hidden sm:block">스와이프 · &#8592; &#8594; · space</div>' +
       '</div>';
