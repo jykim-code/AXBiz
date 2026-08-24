@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>위클리 픽 — 뉴스레터안 (슬라이드 캐러셀)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500', panel: '#161616' },
+    fontFamily: { sans: ['Inter','Pretendard','sans-serif'], display: ['"Space Grotesk"','Pretendard','sans-serif'] },
+  }}};
+</script>
+<style>
+  /* 현행 `/weekly`(F안 매거진 인덱스)와 **의도적으로 다른** 조판이다.
+     F안 = 베이지 바탕 + 선으로만 구분하는 「발행물」, 세로 스크롤.
+     이 안 = 한 장씩 넘기는 「슬라이드」. 참고는 사용자가 준 인스타 캐러셀이다.
+     핵심은 모양이 아니라 **넘기는 동작**이다 — 스와이프 / ← → / space / PageUp·Down.
+     세로 스크롤로 카드를 쌓는 이전 시안은 폐기했다(슬라이드 문법이 안 살아난다). */
+  body { font-family:'Inter','Pretendard',sans-serif; -webkit-font-smoothing:antialiased; background:#0b0b0b; color:#fff; }
+  h1,h2,h3 { font-family:'Space Grotesk','Pretendard',sans-serif; }
+  ::selection { background:#c8f200; color:#111; }
+
+  /* 폭 620 고정이 기본이다(사용자 확정). 390 은 단톡방 유입 실폭 확인용으로만 남긴다.
+     높이는 화면에 맞춰 줄어들되 데스크톱에서 지나치게 길어지지 않게 상한을 둔다. */
+  :root { --col: 620px; --frameH: min(calc(100dvh - 104px), 880px); }
+
+  .frame { width:min(100vw, var(--col)); height:var(--frameH); margin:0 auto; }
+
+  /* 넘기는 동작의 실체. 가로 scroll-snap 이라 터치 스와이프·트랙패드 가로 제스처가
+     별도 구현 없이 그대로 동작하고, 키보드는 아래 JS 가 같은 스크롤을 호출한다.
+     드래그 물리를 직접 구현하지 않는 이유 — 본문 세로 스크롤과 선택(드래그)을 깨뜨린다. */
+  .track {
+    display:flex; height:100%; overflow-x:auto; overflow-y:hidden;
+    scroll-snap-type:x mandatory; overscroll-behavior-x:contain;
+    scrollbar-width:none; -ms-overflow-style:none;
+  }
+  .track::-webkit-scrollbar { display:none; }
+
+  .slide { flex:0 0 100%; width:100%; height:100%; scroll-snap-align:start; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* 본문이 한 장에 안 들어가면 그 판만 세로로 흐른다. 세로 제스처는 이 안에서 먹고
+     가로 제스처는 위 트랙으로 올라가므로 두 축이 싸우지 않는다.
+     overscroll-behavior-y:contain 이 있어야 끝에서 페이지가 튀지 않는다. */
+  .scroller { overflow-y:auto; overscroll-behavior-y:contain; scrollbar-width:none; -ms-overflow-style:none; }
+  .scroller::-webkit-scrollbar { display:none; }
+
+  .hair { border-top:1px solid rgba(255,255,255,.10); }
+  /* 아래로 더 있다는 신호. 스크롤이 끝에 닿으면 JS 가 없앤다. */
+  .fade-b::after { content:''; position:absolute; left:0; right:0; bottom:0; height:44px; pointer-events:none;
+                   background:linear-gradient(to top, #161616, rgba(22,22,22,0)); transition:opacity .2s; }
+  .fade-b.at-end::after { opacity:0; }
+</style>
+</head>
+<body class="min-h-[100dvh] flex flex-col items-center justify-center py-5">
+
+<!-- ▼ 조판 확인용 컨트롤. 실제 페이지에 들어가지 않는다. -->
+<div class="fixed right-3 top-3 z-50 flex items-center gap-1 bg-white/10 backdrop-blur px-2 py-1.5 rounded-full text-[11px]">
+  <span class="text-white/40 pl-1 pr-1">폭</span>
+  <button data-w="390" class="px-2 py-1 rounded-full hover:bg-white/15">390</button>
+  <button data-w="620" class="px-2 py-1 rounded-full bg-lime text-ink font-bold">620</button>
+  <button data-w="860" class="px-2 py-1 rounded-full hover:bg-white/15">860</button>
+</div>
+
+<!-- 진행 세그먼트 — 인스타 스토리처럼 「몇 장 중 몇 번째」를 활자 없이 먼저 보여준다. 눌러서 이동도 된다. -->
+<div id="segs" class="flex gap-1 mb-3" style="width:min(100vw, var(--col)); padding-left:20px; padding-right:20px;"></div>
+
+<div class="frame">
+  <div id="track" class="track" tabindex="0" aria-roledescription="carousel"></div>
+</div>
+
+<!-- 하단 조작 줄. 키보드·스와이프를 모르는 사람에게도 넘길 수단을 준다. -->
+<div class="mt-3 flex items-center gap-3" style="width:min(100vw, var(--col)); padding-left:20px; padding-right:20px;">
+  <button id="prev" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-25 disabled:hover:bg-white/10 flex items-center justify-center text-[15px]" aria-label="이전">&#8592;</button>
+  <button id="next" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-25 disabled:hover:bg-white/10 flex items-center justify-center text-[15px]" aria-label="다음">&#8594;</button>
+  <div id="counter" class="font-display font-bold text-[12px] tracking-widest text-white/50"></div>
+  <div class="ml-auto text-[10.5px] text-white/25 tracking-wide hidden sm:block">스와이프 · &#8592; &#8594; · space</div>
+</div>
+
+<script>
+/* ===== 데이터 — weekly-preview-f.html 과 같은 2026-W34 초안을 쓴다 (조판만 비교하려는 것) =====
+   추가된 필드 두 개는 이 조판이 새로 요구하는 것이다:
+   · figure  : 비주얼 판의 대문 수치. 레퍼런스의 「화면 캡처」자리를 대신한다.
+               사진을 쓰지 않기로 한 결정(2026-08-24)을 유지하면서 그 자리에 정보를 넣는 방법이다.
+               ⚠ 지금 데이터에 없는 필드다 — 도입하면 관리자 화면에 입력칸 2개(값·설명)가 늘어난다.
+   · source  : 우상단 출처 표기. sourceUrl 호스트에서 유도할 수 있어 새 입력은 필요 없다.
+               (아래 값은 조판 확인용 샘플이다) */
+const D = {
+  issueNo: 1, label: '2026년 8월 3주', range: '8/17 ~ 8/23', published: '2026-08-21',
+  overview: '모두의 AI 공모에서 중견 SW·통신사 대규모 컨소시엄이 공공 AI 주관사로 등장한 가운데, 차별화된 에이전틱 AI 성능과 모델 중립 전략이 정부 평가의 별도 항목으로 부상하며 후속 조달 경쟁의 비교 기준이 다양화되는 흐름',
+  hancom: [
+    '여러 국산 모델을 결합한 KT 컨소시엄 구성과 LG CNS의 에이전틱 AI 차별성 평가 부상으로 한컴 Agentic OS의 모델 중립성·조율·권한 통제 성능을 정량 증빙하는 시급성 확대',
+    'ESTsoft 컨소시엄과 폴라리스오피스의 공공 AI 진입으로 문서 소프트웨어 진영 경로가 형성되었으나 대국민 서비스와 기업 내부 시스템 조율 계층이 구분되므로 한컴 차별화 지점은 폐쇄망 배포와 권한 통제가 붙은 실행 환경에 집중',
+    'LG AI연구원 독파모 3차 진출을 통해 LG CNS 오케스트레이션과의 직접 경합 가능성이 높아진 만큼 한컴 Agentic OS는 모델 신뢰성과 에이전트 협업 조율 성능을 정부 평가 기준에 맞춰 정리할 필요',
+  ],
+  stats: { total: 33, companies: 25, newCo: 11, picks: 3 },
+  topTags: ['모두의AI', '컨소시엄', '에이전틱AI', '모델중립'],
+  picks: [
+    {
+      company: 'ESTsoft', category: '스타트업·중소', date: '08-19',
+      figure: { value: '4곳', caption: 'ESTsoft 주관 컨소시엄 참여사' },
+      title: '모두의 AI 공모에 컨소시엄 주관사로 접수',
+      why: '중견 SW 컨소시엄이 공공 AI 주관사로 등장하며 대기업 통신사와 플랫폼 기업 중심의 경쟁 구도를 벗어난 새로운 사업 참여 경로가 형성된 점',
+      keyPoints: ['모두의 AI 공모에 컨소시엄 주관사로 접수','참여사는 메가존, 와이즈넛, 폴라리스오피스, 슈어소프트테크','대기업 통신사와 플랫폼 기업 사이에서 중견 사업자 주관 컨소시엄으로 참여'],
+      implications: ['중견 소프트웨어 기업이 주관사로 나선 유일한 구성이며 통신사 대비 인프라 열위를 파트너로 보완','문서 소프트웨어 사업자 폴라리스오피스가 컨소시엄에 편입된 점이 사업 범위상 특이 사항','메가존과 와이즈넛 편입으로 클라우드 운영과 에이전트 구축 역량을 외부 조달'],
+      hancomInsight: ['폴라리스오피스가 국가 단위 AI 서비스 사업 컨소시엄에 들어간 사례이므로 문서 소프트웨어 진영의 공공 AI 진입 경로로 추적 필요','다만 이번 사업 범위는 대국민 챗봇과 공공 AI 에이전트이며 기업 업무 조율 계층과는 구분됨','한컴 차별화 지점은 폐쇄망 배포와 권한 통제가 붙은 실행 환경이며 대국민 서비스 실적과는 평가 기준이 다름'],
+      tags: ['모두의AI','폴라리스오피스','메가존클라우드','컨소시엄','문서소프트웨어'],
+      source: 'zdnet.co.kr', sourceUrl: '#', confluenceUrl: '#',
+    },
+    {
+      company: 'KT', category: '대기업', date: '08-19',
+      figure: { value: '16곳', caption: 'KT 컨소시엄 참여 기관' },
+      title: '정부 모두의 AI 사업 공모에 컨소시엄 주관사로 참여 발표',
+      why: 'KT의 대규모 컨소시엄 구성과 모델 중립 전략이 한컴 Agentic OS와 접근 방식을 공유하나, 공공 AI 에이전트 시장 내 후속 조달 경합 가능성 점검 필요',
+      keyPoints: ['정부 모두의 AI 사업 공모에 컨소시엄 주관사로 참여 발표, 참여 기관 16곳','AI 서비스 영역 참여사는 다음, 솔트룩스, 무신사, 직방, 커넥트웨이브, 매스프레소, EBS, BC카드, 딥서치','AI 모델·플랫폼 영역 참여사는 업스테이지, 모티프테크놀로지스, NC AI, 액션파워','자사 모델 믿:음에 솔라, 모티프, 배키를 결합하는 구성으로 모델 라인업 확대'],
+      implications: ['독파모에서 탈락한 모티프를 모델 영역에 편입해 국산 모델 다중 탑재 구성을 확보','생활 서비스 사업자를 다수 묶어 서비스 다양성 항목에서 평가 우위를 노리는 구성','모델 개발보다 운영·유통 역량을 제안 근거로 제시한 포지셔닝'],
+      hancomInsight: ['여러 국산 모델을 한 서비스에 결합하는 구성이라 한컴 Agentic OS의 모델 중립 구조와 접근 방식이 같은 지점','다만 대상이 대국민 챗봇과 공공 AI 에이전트이며 기업 내부 시스템 조율 계층은 아님','공공 AI 에이전트 구축이 사업 범위에 포함된 만큼 후속 기관 확산 단계에서 조달 경합 가능성 점검 필요'],
+      tags: ['모두의AI','컨소시엄','믿음','업스테이지','공공AI에이전트','모델중립'],
+      source: 'etnews.com', sourceUrl: '#', confluenceUrl: '#',
+    },
+    {
+      company: 'LG AI연구원', category: '대기업', date: '08-18',
+      figure: { value: '3차', caption: '독파모 단계평가 진출' },
+      title: '독파모 2차 단계평가 통과, 3차 단계 진출 확정',
+      why: '에이전틱 AI 차별성과 모델 신뢰성이 정부 평가의 별도 항목으로 부상하며, 한컴 Agentic OS의 조율·권한 통제 성능과 모델 중립 전략에 대한 정량적 증빙 필요성 확대',
+      keyPoints: ['독파모 2차 단계평가 통과, 3차 단계 진출 확정','전문가위원회 평가에서 글로벌 협업 전략, 에이전틱 AI 차별성, 모델 신뢰성에서 높은 평가','4개 정예팀 개발 모델 4종이 에포크 AI의 2026년 주목할 만한 AI 모델에 등재'],
+      implications: ['정부 평가에서 에이전틱 AI 차별성이 별도 평가 항목으로 작동한 첫 사례','LG 진영은 LG AI연구원 모델과 LG CNS 플랫폼·SI를 묶어 계열 단위로 AX 스택을 구성','모델 신뢰성 평가는 규제 산업 조달에서 요구되는 항목과 직결'],
+      hancomInsight: ['LG AI연구원 모델과 LG CNS 오케스트레이션이 결합하면 에이전트 조율 계층에서 한컴과 직접 경합 가능','에이전틱 AI 차별성이 정부 평가 항목이 된 만큼 한컴도 조율·권한 통제 성능을 정량 자료로 제시할 필요','모델 신뢰성 항목은 한컴이 모델 중립 구조에서 어떤 모델을 기본 탑재할지 결정하는 판단 근거'],
+      tags: ['독파모','에이전틱AI','모델신뢰성','에포크AI'],
+      source: 'aitimes.com', sourceUrl: '#', confluenceUrl: '#',
+    },
+  ],
+};
+
+const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const pad2 = (n) => String(n).padStart(2, '0');
+const wkTitle = (label) => String(label || '').replace(/^\d{4}년\s*/, '') + '차';
+
+/* 하위 3항목. 헤드라인·주목 이유(피드 문법) 아래에 낮은 위계로 붙인다.
+   레퍼런스에는 없는 층이지만, 단톡방에서 들어온 사람이 이 페이지만 읽고 끝낼 수 있어야 한다는
+   기존 결정을 지키려면 접어 두지 않고 그대로 펴 둔다. 한 장에 안 들어가면 그 판만 세로로 흐른다. */
+const BODY = [
+  { k: 'keyPoints', label: '주요 내용' },
+  { k: 'implications', label: '시사점' },
+  { k: 'hancomInsight', label: '한컴 인사이트' },
+];
+
+/* 비주얼 판 배색 3종을 순번으로 순환한다.
+   ⚠ 셋 다 밝은 계열로 둔다 — 아래 텍스트 판이 다크이므로 「밝은 위 / 어두운 아래」 분할이
+     레퍼런스의 인상을 만든다. 비주얼 판까지 어두우면 슬라이드 경계가 사라진다. */
+const SKINS = [
+  { bg: 'bg-lime',  fg: 'text-ink', sub: 'text-ink/55', fig: 'text-ink',       rule: 'border-ink/20', num: 'text-ink/[.10]' },
+  { bg: 'bg-white', fg: 'text-ink', sub: 'text-ink/50', fig: 'text-lime-600',  rule: 'border-ink/12', num: 'text-ink/[.07]' },
+  { bg: 'bg-beige', fg: 'text-ink', sub: 'text-ink/50', fig: 'text-ink',       rule: 'border-ink/12', num: 'text-lime-600/25' },
+];
+
+/* ===== 1장: 표지 =====
+   캐러셀은 첫 장에서 「무엇을 넘기게 되는가」를 말해야 한다. 라임 전면이라 넘기기 전에도
+   회차 표지로 읽히고, 그대로 목록 썸네일(4:5 커버)과 같은 어휘를 쓴다. */
+function cover() {
+  return '<div class="h-full bg-lime text-ink relative overflow-hidden flex flex-col p-7">' +
+    '<span aria-hidden="true" class="pointer-events-none absolute -right-6 -bottom-16 font-display font-bold leading-none tracking-tighter text-[220px] text-ink/[.07]">' + pad2(D.issueNo) + '</span>' +
+
+    '<div class="relative flex items-center gap-2">' +
+    '<img src="public/assets/HANCOM.png" alt="HANCOM" class="h-4 w-auto" onerror="this.style.display=\'none\'" />' +
+    '<span class="w-px h-3.5 bg-ink/25"></span>' +
+    '<span class="font-display font-bold text-[11px] uppercase tracking-[.2em]">AX Biz Radar News</span>' +
+    '<span class="ml-auto font-display font-bold text-[11px] tracking-widest">No.' + pad2(D.issueNo) + '</span></div>' +
+
+    '<div class="relative mt-auto">' +
+    '<h1 class="font-display font-bold text-[52px] sm:text-[64px] leading-[.92] tracking-tighter">' + esc(wkTitle(D.label)) + '</h1>' +
+    '<div class="mt-3 text-[12.5px] font-semibold text-ink/60">' + esc(D.range) + ' · 발행 ' + esc(D.published) + '</div>' +
+    '<div class="mt-6 pt-4 border-t border-ink/20 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12px] font-semibold text-ink/70">' +
+    '<span>동향 ' + D.stats.total + '건</span><span>기업 ' + D.stats.companies + '곳</span>' +
+    '<span>신규 ' + D.stats.newCo + '곳</span><span class="text-ink">주목 ' + D.stats.picks + '건</span></div>' +
+    '<div class="mt-5 text-[11px] font-semibold text-ink/45">' + D.topTags.map((t) => '#' + esc(t)).join(' ') + '</div>' +
+    // 조작 안내는 첫 장에만 둔다. 두 번째 장부터는 이미 넘겨 본 사람이다.
+    '<div class="mt-7 inline-flex items-center gap-2 text-[11px] font-bold text-ink/50">' +
+    '<span class="px-2 py-1 rounded-full bg-ink/10">&#8592; &#8594;</span>' +
+    '<span class="px-2 py-1 rounded-full bg-ink/10">space</span>' +
+    '<span>또는 스와이프로 넘기기</span></div>' +
+    '</div></div>';
+}
+
+/* ===== 2장: 이번 주 흐름 =====
+   뉴스레터는 「이번 호에 무엇이 들었는가」를 먼저 말한다. 목차 줄은 눌러서 해당 장으로 건너뛴다
+   (캐러셀에서 스크롤 끝을 짐작할 수 없다는 문제를 이 목차가 대신 해결한다). */
+function intro() {
+  return '<div class="h-full bg-panel relative fade-b flex flex-col">' +
+    '<div class="scroller flex-1 px-6 sm:px-7 pt-7 pb-12">' +
+    '<div class="text-[10px] font-bold uppercase tracking-[.2em] text-lime mb-3">이번 주 흐름</div>' +
+    '<p class="font-display font-medium text-[18px] sm:text-[20px] leading-[1.55] text-white/90">' + esc(D.overview) + '</p>' +
+
+    '<div class="mt-7 grid grid-cols-4 gap-px bg-white/10">' +
+    [['동향', D.stats.total], ['기업', D.stats.companies], ['신규', D.stats.newCo], ['주목', D.stats.picks]]
+      .map(([k, v]) => '<div class="bg-panel pt-3 pb-1.5">' +
+        '<div class="font-display font-bold text-[24px] leading-none tracking-tighter">' + v + '</div>' +
+        '<div class="text-[9px] font-bold uppercase tracking-widest text-white/35 mt-1.5">' + k + '</div></div>').join('') +
+    '</div>' +
+
+    '<div class="mt-7 text-[10px] font-bold uppercase tracking-[.2em] text-white/30 mb-1">이번 호 주목 동향</div>' +
+    '<div>' + D.picks.map((p, i) =>
+      '<button data-go="' + (i + 2) + '" class="w-full text-left flex items-baseline gap-3 py-2.5 border-b border-white/[.07] hover:bg-white/[.04] transition-colors">' +
+      '<span class="font-display font-bold text-[11px] text-lime w-5 flex-none">' + pad2(i + 1) + '</span>' +
+      '<span class="font-display font-bold text-[14.5px] tracking-tight flex-none">' + esc(p.company) + '</span>' +
+      '<span class="text-[11.5px] text-white/40 truncate flex-1">' + esc(p.title) + '</span></button>').join('') +
+    '</div></div></div>';
+}
+
+/* ===== 픽 한 장 =====
+   레퍼런스 조판을 그대로 옮긴다:
+     위 비주얼 판(밝음) — 기업·분류 / 대문 수치 / 순번 / 로고
+     아래 다크 판       — 카테고리 라벨 | 기업, 우상단 출처, 큰 헤드라인, 주목 이유, 하위 3항목
+   본문 자리에는 `why`(주목 이유)를 쓴다. 레퍼런스의 3줄 카피와 길이·역할이 같고(60~140자),
+   이 페이지에서 사람이 판단해 쓴 유일한 문장이라 가장 크게 읽혀야 하는 것이 맞다.
+   `title` 을 헤드라인으로 쓰므로 매주 새로 쓸 카피는 늘지 않는다. */
+function pickSlide(p, i) {
+  const s = SKINS[i % SKINS.length];
+  const n = pad2(i + 1);
+
+  /* --- 비주얼 판 --- 슬라이드 높이의 3분의 1 남짓. 아래 읽을 것이 많으므로
+       레퍼런스보다 낮게 잡되, 「볼 것」이 사라지지 않는 최소 높이는 지킨다. */
+  let h = '<div class="flex-none relative overflow-hidden ' + s.bg + ' ' + s.fg + '" style="height:clamp(210px, 34%, 300px)">' +
+    '<span aria-hidden="true" class="pointer-events-none absolute -right-4 -bottom-10 font-display font-bold leading-none tracking-tighter text-[150px] ' + s.num + '">' + n + '</span>' +
+    '<div class="relative h-full flex flex-col p-6">' +
+
+    '<div class="flex items-start justify-between gap-3">' +
+    '<div class="min-w-0">' +
+    '<div class="font-display font-bold text-[21px] sm:text-[24px] tracking-tight leading-none truncate">' + esc(p.company) + '</div>' +
+    '<div class="text-[10px] font-bold uppercase tracking-widest ' + s.sub + ' mt-1.5">' + esc(p.category) + ' · ' + esc(p.date) + '</div>' +
+    '</div>' +
+    '<img src="public/assets/HANCOM.png" alt="HANCOM" class="h-3.5 w-auto flex-none opacity-60" onerror="this.style.display=\'none\'" />' +
+    '</div>';
+
+  // 대문 수치 — 레퍼런스의 화면 캡처 자리. 사진 없이도 이 판이 「볼 것」을 갖게 하는 장치다.
+  // 수치가 없는 회차 항목이면 제목 앞부분을 큰 활자로 대신 세운다(빈 판을 만들지 않는다).
+  h += '<div class="mt-auto">';
+  if (p.figure) {
+    h += '<div class="font-display font-bold text-[58px] sm:text-[68px] leading-none tracking-tighter ' + s.fig + '">' +
+      esc(p.figure.value) + '</div>' +
+      '<div class="text-[12px] font-semibold ' + s.sub + ' mt-1.5">' + esc(p.figure.caption) + '</div>';
+  } else {
+    h += '<div class="font-display font-bold text-[27px] leading-[1.15] tracking-tight max-w-[22ch]">' + esc(p.title) + '</div>';
+  }
+  h += '<div class="mt-4 pt-3 border-t ' + s.rule + ' text-[10px] font-semibold uppercase tracking-[.18em] ' + s.sub + '">' +
+    'Weekly Picks No.' + pad2(D.issueNo) + ' — ' + n + ' / ' + pad2(D.picks.length) + '</div>';
+  h += '</div></div></div>';
+
+  /* --- 다크 텍스트 판 --- 남는 높이를 다 쓰고, 넘치면 이 판만 세로로 흐른다. */
+  h += '<div class="flex-1 min-h-0 bg-panel relative fade-b">' +
+    '<div class="scroller h-full px-6 pt-5 pb-12">' +
+
+    // 순번 배지 + 카테고리 라벨 | 기업  /  우상단 출처
+    '<div class="flex items-start justify-between gap-3 mb-4">' +
+    '<div class="flex items-center gap-2.5 min-w-0">' +
+    '<span class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-display font-bold text-[14px] text-white/70 flex-none">' + n + '</span>' +
+    '<span class="min-w-0 flex items-center gap-2 text-[11.5px]">' +
+    '<span class="font-bold text-lime uppercase tracking-wider">AX News</span>' +
+    '<span class="w-px h-3 bg-white/20"></span>' +
+    '<span class="font-semibold text-white/80 truncate">' + esc(p.company) + '</span></span></div>' +
+    '<span class="text-[10px] text-white/30 flex-none pt-1">출처 / ' + esc(p.source) + '</span>' +
+    '</div>';
+
+  // 헤드라인 — 이 판에서 가장 큰 활자. 레퍼런스처럼 2~3줄 안에 떨어지는 것을 노린다.
+  h += '<h2 class="font-display font-bold text-[26px] sm:text-[31px] leading-[1.15] tracking-tighter mb-4">' +
+    esc(p.title) + '</h2>';
+
+  // 본문 = 주목 이유. 라벨을 붙이지 않으면 사실 요약으로 읽히므로 라임 한 줄로 표시한다.
+  h += '<div class="mb-5">' +
+    '<div class="text-[10px] font-bold uppercase tracking-widest text-lime mb-2">주목 이유</div>' +
+    '<p class="text-[14.5px] leading-[1.72] text-white/85">' + esc(p.why) + '</p></div>';
+
+  // 하위 3항목 — 위계를 낮춘 보고서 층
+  h += '<div class="hair pt-4 space-y-4">' + BODY.filter((b) => (p[b.k] || []).length).map((b) =>
+    '<div>' +
+    '<div class="text-[9px] font-bold uppercase tracking-widest text-white/30 mb-1.5">' + b.label + '</div>' +
+    '<ul class="space-y-1.5 text-[12.5px] leading-[1.7] text-white/60">' +
+    p[b.k].map((x) => '<li class="pl-3 relative"><span class="absolute left-0 top-[.62em] w-1 h-1 rounded-full bg-white/25"></span>' +
+      esc(x) + '</li>').join('') + '</ul></div>').join('') + '</div>';
+
+  // 태그 / 링크 / 브랜드 마크
+  h += '<div class="mt-5 text-[11px] text-white/25">' + p.tags.map((t) => '#' + esc(t)).join(' ') + '</div>';
+  h += '<div class="mt-4 flex items-end justify-between gap-3">' +
+    '<div class="flex flex-wrap gap-x-4 gap-y-1 text-[12px]">' +
+    '<a href="' + esc(p.sourceUrl) + '" class="font-semibold text-white/70 hover:text-lime underline underline-offset-2 decoration-white/20">출처 기사 ↗</a>' +
+    '<a href="' + esc(p.confluenceUrl) + '" class="font-semibold text-white/70 hover:text-lime underline underline-offset-2 decoration-white/20">상세 모니터링 ↗</a>' +
+    '</div>' +
+    '<span class="font-display font-bold text-[11px] tracking-[.18em] text-white/40 flex-none">AX BIZ RADAR</span>' +
+    '</div>';
+
+  return h + '</div></div>';
+}
+
+/* ===== 마지막 장: 한컴 관점 =====
+   레퍼런스 캐러셀의 마지막 장(브랜드 마무리) 자리다. 여기서는 브랜드 대신 결론을 놓는다.
+   라임 반전이라 더 넘길 것이 없다는 신호가 된다. */
+function closing() {
+  return '<div class="h-full bg-lime text-ink flex flex-col">' +
+    '<div class="scroller flex-1 px-6 sm:px-7 pt-7 pb-7">' +
+    '<div class="text-[10px] font-bold uppercase tracking-[.2em] text-ink/50 mb-1">Conclusion</div>' +
+    '<h2 class="font-display font-bold text-[30px] tracking-tighter leading-none mb-6">한컴 관점</h2>' +
+    '<div class="space-y-4">' + D.hancom.map((x, i) =>
+      '<div class="flex gap-3">' +
+      '<span class="font-display font-bold text-[13px] text-ink/40 flex-none pt-1">' + pad2(i + 1) + '</span>' +
+      '<p class="text-[14px] leading-[1.7]">' + esc(x) + '</p></div>').join('') +
+    '</div>' +
+    '<div class="mt-7 pt-5 border-t border-ink/20 flex flex-col gap-2 text-[13px]">' +
+    '<a href="#" class="font-bold hover:underline">금주 동향 ' + D.stats.total + '건 전체 →</a>' +
+    '<a href="#" class="font-bold hover:underline">기업 찾아보기 →</a>' +
+    '<a href="#" class="font-semibold text-ink/55 hover:underline">전체 회차 →</a></div>' +
+    '</div></div>';
+}
+
+/* ===== 조립 ===== */
+const PAGES = [cover(), intro()].concat(D.picks.map(pickSlide)).concat([closing()]);
+const track = document.getElementById('track');
+const segs = document.getElementById('segs');
+const counter = document.getElementById('counter');
+const btnPrev = document.getElementById('prev');
+const btnNext = document.getElementById('next');
+
+track.innerHTML = PAGES.map((h, i) => '<section class="slide" data-i="' + i + '" aria-label="' + (i + 1) + ' / ' + PAGES.length + '">' + h + '</section>').join('');
+segs.innerHTML = PAGES.map((_, i) => '<button data-seg="' + i + '" class="flex-1 h-[3px] rounded-full bg-white/15 hover:bg-white/30 transition-colors" aria-label="' + (i + 1) + '번째 장"></button>').join('');
+
+let idx = 0;
+
+function paint() {
+  segs.querySelectorAll('[data-seg]').forEach((el, i) => {
+    el.className = 'flex-1 h-[3px] rounded-full transition-colors ' + (i === idx ? 'bg-lime' : 'bg-white/15 hover:bg-white/30');
+  });
+  counter.textContent = pad2(idx + 1) + ' / ' + pad2(PAGES.length);
+  btnPrev.disabled = idx === 0;
+  btnNext.disabled = idx === PAGES.length - 1;
+}
+
+/* 넘기기 = 트랙을 한 칸 스크롤하는 것. 키보드·버튼·목차가 모두 이 한 곳을 지난다. */
+function go(i, smooth) {
+  idx = Math.max(0, Math.min(PAGES.length - 1, i));
+  track.scrollTo({ left: idx * track.clientWidth, behavior: smooth === false ? 'auto' : 'smooth' });
+  paint();
+}
+
+/* 스와이프·트랙패드로 넘긴 경우엔 스크롤 위치가 먼저 바뀌므로 거기서 순번을 되읽는다. */
+let raf = 0;
+track.addEventListener('scroll', () => {
+  if (raf) return;
+  raf = requestAnimationFrame(() => {
+    raf = 0;
+    const i = Math.round(track.scrollLeft / track.clientWidth);
+    if (i !== idx) { idx = i; paint(); }
+  });
+}, { passive: true });
+
+btnPrev.addEventListener('click', () => go(idx - 1));
+btnNext.addEventListener('click', () => go(idx + 1));
+segs.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-seg]');
+  if (b) go(Number(b.dataset.seg));
+});
+/* 목차 줄 → 해당 장 */
+track.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-go]');
+  if (b) go(Number(b.dataset.go));
+});
+
+/* 키보드. 세로(↑↓)는 넘기지 않고 본문 판 안에서 읽는 데 쓴다 — 두 축의 역할을 섞지 않는다.
+   preventDefault 를 하지 않으면 트랙이 브라우저 기본 스크롤로 한 번 더 움직여 두 칸 넘어간다. */
+addEventListener('keydown', (e) => {
+  if (e.target.matches('input, textarea, select')) return;
+  const k = e.key;
+  if (k === 'ArrowRight' || k === 'PageDown') { e.preventDefault(); go(idx + 1); }
+  else if (k === 'ArrowLeft' || k === 'PageUp') { e.preventDefault(); go(idx - 1); }
+  else if (e.code === 'Space' || k === ' ') { e.preventDefault(); go(idx + (e.shiftKey ? -1 : 1)); }
+  else if (k === 'Home') { e.preventDefault(); go(0); }
+  else if (k === 'End') { e.preventDefault(); go(PAGES.length - 1); }
+});
+
+/* 폭·창 크기가 바뀌면 칸 폭도 바뀐다. 현재 장을 다시 정렬하지 않으면 두 장이 반쯤 걸쳐 보인다. */
+addEventListener('resize', () => go(idx, false));
+
+/* 「아래로 더 있음」 그림자는 끝에 닿으면 지운다. 안 지우면 다 읽었는데도 더 있는 것처럼 보인다. */
+track.querySelectorAll('.fade-b').forEach((box) => {
+  const sc = box.querySelector('.scroller');
+  if (!sc) return;
+  const check = () => {
+    const more = sc.scrollHeight - sc.clientHeight - sc.scrollTop > 8;
+    box.classList.toggle('at-end', !more);
+  };
+  sc.addEventListener('scroll', check, { passive: true });
+  addEventListener('resize', check);
+  setTimeout(check, 50);   // 웹폰트가 붙으면서 높이가 바뀐 뒤 다시 잰다
+  setTimeout(check, 600);
+});
+
+paint();
+
+/* 폭 토글 — 프리뷰 전용 */
+document.querySelectorAll('[data-w]').forEach((b) => {
+  b.addEventListener('click', () => {
+    document.documentElement.style.setProperty('--col', b.dataset.w + 'px');
+    document.querySelectorAll('[data-w]').forEach((x) => {
+      const on = x === b;
+      x.className = 'px-2 py-1 rounded-full ' + (on ? 'bg-lime text-ink font-bold' : 'hover:bg-white/15');
+    });
+    requestAnimationFrame(() => go(idx, false));
+  });
+});
+</script>
+</body>
+</html>
