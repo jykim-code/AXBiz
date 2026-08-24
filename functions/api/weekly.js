@@ -1,4 +1,5 @@
 // /api/weekly — 위클리 픽 발행물 (단톡방 주 1회 공유용)
+//   GET  ?list=1            (공개) 발행 회차 목록. `/weekly` 썸네일 목록이 쓴다(커버용 값만)
 //   GET  ?w=2026-W34        (공개) 그 주차 발행본. w·n·date 가 없으면 최신 발행 회차
 //   GET  ?n=12              (공개) 회차 번호로 조회
 //   GET  ?date=2026-08-19   (공개) 그 날짜가 속한 주차로 정규화
@@ -11,13 +12,17 @@
 //  - 발행본은 스냅샷이다. publish 시점의 항목 내용을 payload 에 복사해 고정하므로 원본(reports)이
 //    나중에 바뀌어도 이미 공유한 링크의 내용은 변하지 않는다. 재발행할 때만 갱신된다.
 //  - 선별은 사람이 한다. LLM 은 고른 것을 엮는 문장만 쓰고(assist), 무엇을 고를지는 정하지 않는다.
-//  - 수치는 항상 코드 집계다. LLM 이 실패해도 수치와 주목 동향은 나온다.
+//  - 수치는 항상 코드 집계다. LLM 이 실패해도 수치와 주요 동향은 나온다.
 import { pinOk, forbidden } from '../_auth.js';
 import { entryKey } from '../_publish.js';
 import { stripTrailingPeriod, replaceEmDash, replaceAxisWord, hasAxisWord } from '../_style.js';
+import { buildWeeklyMessage } from '../_weekly-message.js';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MAX_PICKS = 5;
+// 픽 수는 제한하지 않는다 — 그 주에 주목할 것이 많으면 많이 싣는다(2026-08-24 사용자 지시).
+// 이 값은 편집 기준이 아니라 폭주 방지용 상한이다. 실제 상한은 그 주 후보 수(보통 20~35건)이고,
+// 배열 상한 50 은 `_publish.js` 의 관례를 따른 것이다.
+const MAX_PICKS = 50;
 const WEEK_RE = /^(\d{4})-W(\d{1,2})$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86400000;
@@ -92,6 +97,7 @@ function toItem(date, c) {
 // 1위로 올라와(실측: 한 주 9건) 바로 아래 「신규 편입 기업 N곳」과 같은 말을 두 번 하게 된다.
 // 항목 자체의 태그 칩에는 그대로 남는다. 원본 데이터를 고치는 것이 아니라 집계에서만 제외한다.
 const META_TAGS = new Set(['신규편입', 'AX신규진입']);
+const EMPTY_SET = new Set();
 
 /* ===== 수치 집계 (코드) =====
    그 주 전체 기준으로 센다 — 「20건 중 3건을 골랐다」가 드러나야 선별이 신뢰받는다.
@@ -102,6 +108,8 @@ async function collect(env, start, end) {
 
   const items = [];
   const seenCompany = new Set(), seenTag = new Set(); // 기간 시작 이전 이력
+  // 기업별 과거 주제. 「추적 중인 기업이 새 영역으로 움직였나」 판정에 쓴다.
+  const priorTagsByCompany = {};
   const countByDate = {};
   for (const r of rows) {
     const list = parseJson(r.companies, []);
@@ -114,7 +122,8 @@ async function collect(env, start, end) {
     for (const c of list) {
       if (!c || !c.name) continue;
       seenCompany.add(c.name);
-      for (const t of (c.tags || [])) seenTag.add(t);
+      const bag = priorTagsByCompany[c.name] ||= new Set();
+      for (const t of (c.tags || [])) { seenTag.add(t); if (!META_TAGS.has(t)) bag.add(t); }
     }
   }
 
@@ -166,18 +175,48 @@ async function collect(env, start, end) {
     picks: 0, // 발행 시 채움
   };
 
-  // 후보 점수 — 선별용이 아니라 정렬용이다(선별은 사람이 한다). 무엇이 눈에 띄는지 위로 올린다.
-  // 「신규 등장 태그 포함」은 신호로 쓰지 않는다: 태그가 항목마다 매우 구체적이라 거의 모든
-  // 항목에 신규 태그가 하나씩 붙고(실측: 한 주 17건에 신규 태그 60여 종) 점수가 평평해진다.
-  const top3 = new Set(topTags.slice(0, 3).map((t) => t.tag));
+  /* ===== 후보 신호 =====
+     선별용이 아니라 정렬용이다(선별은 사람이 한다). 무엇이 눈에 띄는지 위로 올린다.
+
+     2026-08-24 에 실제 데이터(최근 8주)로 적중률을 재고 신호를 다시 짰다. 버린 것:
+     - 「한컴 인사이트 2개 이상」 90%, 「한컴 비교 기준 어휘 언급」 96% — 이 데이터는 애초에
+       컨플루언스 작성자가 AX 관점으로 걸러 넣은 것이라 내용 키워드로는 아무것도 구분되지 않는다
+     - 「금주 상위 태그」 38% — 방향이 거꾸로다. 그 주 가장 흔한 주제를 위로 올린다
+     - 「다건 기업」 40% — 많이 냈다고 주목할 것은 아니다(사용자 판단)
+     - 「희귀 주제(이력 3회 이하)」 87%, 「8주 이상 공백 후 재등장」 2% — 둘 다 구간을 벗어난다
+
+     남은 네 개는 적중률 17~33% 이고 서로 겹침이 18~31% 라 각각 독립된 정보를 준다.
+     축이 둘이다: 기업 축(기업이 새롭다 / 기업의 움직임이 새롭다), 주제 축(여럿이 몰린다 /
+     주제 자체가 처음). 기업 축에 가중치를 더 준다 — 편집 판단에 더 가깝다. */
+  const NEW_CO = '신규기업', NEW_AREA = '새영역', SHARED = '공통주제', NEW_TOPIC = '신규주제';
+  const SIGNAL_WEIGHT = { [NEW_CO]: 2, [NEW_AREA]: 2, [SHARED]: 1, [NEW_TOPIC]: 1 };
+  const SHARED_MIN_COMPANIES = 3; // 그 주에 이 주제를 다룬 기업 수
+  const NEW_TOPIC_MIN_ITEMS = 2;  // 신규 주제가 「확산」으로 보이는 최소 건수
+
   const newCoSet = new Set(newCompanies);
+  // 주제 신호는 실제 주제만 본다. 메타 태그(신규편입 등)를 넣으면 신규 기업 신호와 같은 말을 두 번 한다.
+  const topicTags = (it) => it.tags.filter((t) => !META_TAGS.has(t));
+
+  // 그 주에 각 주제를 다룬 기업 수 (같은 기업이 두 건 내도 1로 센다)
+  const tagCompanies = {};
+  for (const it of items) for (const t of topicTags(it)) (tagCompanies[t] ||= new Set()).add(it.company);
+
   for (const it of items) {
-    let s = 0;
-    if (countByCompany[it.company] > 1) s += 2;
-    if (newCoSet.has(it.company)) s += 2;
-    if (it.hancomInsight.length >= 2) s += 1;
-    if (it.tags.some((t) => top3.has(t))) s += 1;
-    it.score = s;
+    const sig = [];
+    const mine = topicTags(it);
+    if (newCoSet.has(it.company)) {
+      sig.push(NEW_CO);
+    } else {
+      // 추적 중인 기업이 지금까지 다루지 않던 주제로 움직였나. 과거 주제가 없으면 판정하지 않는다
+      // (신규 기업과 상호배타적이라 두 신호가 같은 줄에 붙지 않는다).
+      const past = priorTagsByCompany[it.company];
+      if (mine.length && past && past.size && !mine.some((t) => past.has(t))) sig.push(NEW_AREA);
+    }
+    if (mine.some((t) => (tagCompanies[t] || EMPTY_SET).size >= SHARED_MIN_COMPANIES)) sig.push(SHARED);
+    if (mine.some((t) => !seenTag.has(t) && tagFreq[t] >= NEW_TOPIC_MIN_ITEMS)) sig.push(NEW_TOPIC);
+
+    it.signals = sig;
+    it.score = sig.reduce((n, s) => n + (SIGNAL_WEIGHT[s] || 0), 0);
   }
   items.sort((a, b) => b.score - a.score || (b.date || '').localeCompare(a.date || '') || a.company.localeCompare(b.company));
   return { items, stats };
@@ -206,7 +245,7 @@ ${STYLE}
 문장만 출력하고 다른 텍스트를 붙이지 않는다.`,
 
   overview: `당신은 "AX Biz Radar" 위클리 픽의 편집자입니다.
-이번 주 주목 동향들을 묶어 한 주의 흐름을 1~2문장으로 쓰세요.
+이번 주 주요 동향들을 묶어 한 주의 흐름을 1~2문장으로 쓰세요.
 
 - 개별 기업 나열이 아니라 공통 흐름·방향이 드러나게 쓴다
 - 100~200자
@@ -301,18 +340,30 @@ function editionResponse(row, prev) {
   });
 }
 
-// 발행 회차 목록(푸터 아카이브). payload 전체를 읽지 않고 필요한 값만 뽑아 가볍게 유지한다.
+// 발행 회차 목록. 상세 하단 아카이브와 `/weekly` 썸네일 목록이 같이 쓴다.
+// payload·stats 전체(픽 본문 포함)를 읽지 않고 커버가 쓰는 값만 json_extract 로 뽑는다 —
+// 회차가 쌓여도 목록 응답이 커지지 않게 한다.
 async function publishedList(env, limit) {
   const rows = (await env.DB.prepare(
-    `SELECT week, issue_no, range_start, range_end,
+    `SELECT week, issue_no, range_start, range_end, published_at,
             json_extract(payload, '$.overview') AS overview,
-            json_extract(stats, '$.total') AS total
+            json_extract(stats, '$.total') AS total,
+            -- stats.picks 가 아니라 payload 를 직접 센다. stats 는 발행 시점에 굳는데 payload 는
+            -- [저장]으로도 바뀌어 어긋난다(실측: stats 2 / payload 6). 커버에 찍히는 수는
+            -- 실제 실린 픽 수여야 한다.
+            json_array_length(payload, '$.picks') AS picks,
+            json_extract(stats, '$.companies') AS companies,
+            json_extract(stats, '$.topTags') AS top_tags
        FROM weekly_edition WHERE status = 'published'
       ORDER BY range_end DESC LIMIT ?`
   ).bind(limit).all()).results || [];
   return rows.map((r) => ({
     week: r.week, issueNo: r.issue_no, start: r.range_start, end: r.range_end,
     label: weekLabel(r.week), overview: r.overview || '', total: r.total || 0,
+    picks: r.picks || 0, companies: r.companies || 0,
+    publishedAt: r.published_at,
+    // 커버에 3개만 얹으므로 여기서 자른다(태그 6개를 다 내려보내지 않는다)
+    topTags: (parseJson(r.top_tags, []) || []).slice(0, 3).map((t) => String((t && t.tag) || '')).filter(Boolean),
   }));
 }
 
@@ -351,6 +402,13 @@ export async function onRequestGet({ request, env }) {
           picks: payload.picks || [],
         },
       });
+    }
+
+    /* --- 공개: 발행 회차 목록 (썸네일 목록용) --- */
+    if (u.searchParams.get('list') === '1') {
+      // 상한을 둔다. 주 1회 발행이라 60이면 1년이 넘고, 목록은 스크롤로 다 보이는 화면이라
+      // 페이지네이션을 두지 않는다(넘칠 시점에 「연도별」로 나누는 것이 맞다).
+      return Response.json({ editions: await publishedList(env, 60) });
     }
 
     /* --- 공개: 발행본 1건 (LLM 호출 없음, D1 읽기만) --- */
@@ -392,11 +450,29 @@ async function resolveIssueNo(env, week, desired) {
   return ((mx && mx.m) || 0) + 1;
 }
 
-// 저장·발행에 담기는 주목 동향. 관리자가 고친 제목·이유를 받고 본문은 후보에서 그대로 승계한다.
+// 픽 이미지. 관리자가 /api/pick-image 로 올린 것만 실린다 — 키 형식을 서버에서 다시 확인해
+// 화면을 우회한 요청으로 임의 키가 들어오는 것을 막는다.
+const IMG_KEY_RE = /^[0-9a-f]{32}\.(jpg|png|webp)$/;
+const IMG_POS = ['top', 'center', 'bottom'];
+function sanitizeImage(v) {
+  if (!v || !IMG_KEY_RE.test(String(v.key || ''))) return null;
+  // 출처·권리 근거가 없으면 싣지 않는다. 반년 뒤에 이 사진을 어디서 가져왔는지
+  // 아무도 모르는 상태를 만들지 않기 위한 것이고, 문제가 생기면 이 기록이 방어의 전부다.
+  const credit = str(v.credit, 200);
+  if (!credit) return null;
+  return {
+    key: String(v.key),
+    credit,
+    pos: IMG_POS.includes(String(v.pos)) ? String(v.pos) : 'center',
+  };
+}
+
+// 저장·발행에 담기는 주요 동향. 관리자가 고친 제목·이유를 받고 본문은 후보에서 그대로 승계한다.
 function sanitizePick(p) {
   if (!p || !p.company || !DATE_RE.test(String(p.date || ''))) return null;
   return {
     key: String(p.key || '').slice(0, 1200),
+    image: sanitizeImage(p.image),
     company: String(p.company).slice(0, 200),
     category: String(p.category || '').slice(0, 40),
     date: String(p.date),
@@ -510,6 +586,61 @@ export async function onRequestPost({ request, env }) {
     if (action === 'unpublish') {
       await env.DB.prepare("UPDATE weekly_edition SET status = 'draft', updated_at = datetime('now') WHERE week = ?").bind(week).run();
       return Response.json({ ok: true, week });
+    }
+
+    /* 회차를 메신저로 보낸다(2026-08-24 사용자 지시).
+       발행과 분리한 이유 — 오타를 고쳐 재발행하는 일이 흔한데 발행에 묶으면 그때마다 다시 나간다.
+       dryRun 이면 보내지 않고 문구만 돌려준다(관리자가 나갈 것을 그대로 보고 확인한다). */
+    if (action === 'notify') {
+      const row = await env.DB.prepare(
+        "SELECT week, issue_no, range_start, range_end, stats, payload FROM weekly_edition WHERE week = ? AND status = 'published'"
+      ).bind(week).first();
+      if (!row) return Response.json({ error: 'NOT_PUBLISHED' }, { status: 404 });
+
+      const payload = parseJson(row.payload, {});
+      const ed = {
+        week: row.week, issueNo: row.issue_no, label: weekLabel(row.week),
+        start: row.range_start, end: row.range_end,
+        stats: parseJson(row.stats, {}), payload,
+      };
+      /* 링크는 발행 도메인을 가리켜야 한다. stg 에서 눌러 보면 요청 origin 이 stg 라
+         메시지에 stg 주소가 들어간다 — 그래서 SITE_ORIGIN 을 두면 그것을 우선한다. */
+      const origin = (env.SITE_ORIGIN || new URL(request.url).origin).replace(/\/$/, '');
+      const text = buildWeeklyMessage(ed, origin);
+
+      /* 웹훅은 환경별로 다른 방을 가리킨다(2026-08-24 사용자 지시) —
+         Preview(stg)=테스트 스페이스, Production=전사 라운지.
+         관리자 화면이 두 환경에서 똑같이 생겼고 D1 도 공유하므로 어디로 나가는지 이름을 보여 준다.
+         이름은 WEEKLY_WEBHOOK_LABEL 로 따로 받는다 — 주소에 key·token 이 들어 있어 화면에 쓸 수 없다. */
+      const target = String(env.WEEKLY_WEBHOOK_LABEL || '').slice(0, 60);
+
+      if (body.dryRun) {
+        return Response.json({ ok: true, text, target, notifiedAt: payload.notifiedAt || null, configured: !!env.WEEKLY_WEBHOOK_URL });
+      }
+      if (!env.WEEKLY_WEBHOOK_URL) return Response.json({ error: 'NO_WEBHOOK' }, { status: 500 });
+
+      let res;
+      try {
+        res = await fetch(env.WEEKLY_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+      } catch (e) {
+        return Response.json({ error: 'WEBHOOK_UNREACHABLE', detail: String((e && e.message) || e) }, { status: 502 });
+      }
+      if (!res.ok) {
+        const detail = (await res.text().catch(() => '')).slice(0, 300);
+        return Response.json({ error: 'WEBHOOK_FAILED', status: res.status, detail }, { status: 502 });
+      }
+
+      /* 보낸 시각은 payload 에 적는다. 컬럼을 새로 만들면 기존 테이블에 수동 ALTER 가 필요하고
+         (schema.sql 은 IF NOT EXISTS 라 반영되지 않는다) 그 대가를 치를 만한 정보가 아니다. */
+      payload.notifiedAt = new Date().toISOString();
+      await env.DB.prepare("UPDATE weekly_edition SET payload = ?, updated_at = datetime('now') WHERE week = ?")
+        .bind(JSON.stringify(payload), week).run();
+
+      return Response.json({ ok: true, week, text, notifiedAt: payload.notifiedAt });
     }
 
     return Response.json({ error: 'BAD_REQUEST' }, { status: 400 });

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AX Biz Radar News</title>
+<link rel="icon" type="image/png" href="/assets/hancom_favicon.png" />
+<!-- 단톡방 링크 미리보기용. 회차별 제목 주입(동적 OG)은 상세 페이지와 함께 Phase 2. -->
+<meta name="description" content="한 주의 AX 시장 동향에서 주목할 것만 골라 슬라이드로 넘겨 보는 발행물." />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="HANCOM AX Biz Radar" />
+<meta property="og:title" content="AX Biz Radar News" />
+<meta property="og:description" content="한 주의 AX 시장 동향에서 주목할 것만 골라 슬라이드로 넘겨 보는 발행물." />
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500', panel: '#161616' },
+    fontFamily: { sans: ['Inter','Pretendard','ui-sans-serif','system-ui','sans-serif'], display: ['"Space Grotesk"','Pretendard','ui-sans-serif','system-ui','sans-serif'] },
+  }}};
+</script>
+<style>
+  /* 상세 페이지(/weekly?w=)와 **의도적으로 다른** 화면이다.
+     상세 = 베이지 바탕에 선으로만 구분하는 매거진 조판, 세로로 읽는다.
+     이 화면 = 어두운 바탕에 한 장씩 넘기는 슬라이드. 같은 회차 데이터를 다른 방식으로 읽는다.
+     둘을 한 페이지에 섞지 않는다 — 섞으면 어느 쪽 문법도 안 읽힌다. */
+  body { background:#0b0b0b; color:#fff; font-family:'Inter','Pretendard',sans-serif; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3 { font-family:'Space Grotesk','Pretendard',sans-serif; }
+  ::selection { background:#c8f200; color:#111; }
+
+  /* 캐러셀 CSS 는 news.js 가 넣는다(같은 조판을 상세 페이지에서도 겹쳐 띄우므로 한 곳에 둔다).
+     이 페이지가 정하는 것은 폭과 높이뿐이다 — 폭 620 고정(2026-08-24 사용자 확정),
+     높이는 상단 바 56px + 진행 세그먼트·하단 조작 줄 96px 을 뺀 값. */
+  :root { --nw-col: 620px; --nw-h: min(calc(100dvh - 152px), 880px); }
+</style>
+</head>
+<body class="min-h-[100dvh] flex flex-col">
+
+  <header class="h-14 flex-none bg-lime text-ink flex items-center gap-3 px-4 sm:px-5">
+    <button data-sb-open aria-label="메뉴 열기" class="-ml-1 p-1 rounded-lg hover:bg-ink/10"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    <a href="/" aria-label="홈(대시보드)으로" class="flex-none hover:opacity-80 transition"><img src="/assets/HANCOM.png" alt="HANCOM" class="h-5 w-auto" /></a>
+    <span class="hidden sm:inline w-px h-4 bg-ink/25"></span>
+    <span class="font-display font-bold text-[12px] uppercase tracking-[.18em]">AX Biz Radar News</span>
+    <!-- 같은 회차를 세로로 읽는 화면으로 건너가는 길. 두 조판이 별개 페이지이므로 서로를 가리킨다. -->
+    <a id="nwToDetail" href="/weekly" class="ml-auto text-[12px] font-bold hover:underline flex-none">상세로 →</a>
+  </header>
+
+  <main id="nwRoot" class="flex-1 flex flex-col justify-center py-4">
+    <div class="text-sm text-white/40 py-16 text-center">불러오는 중…</div>
+  </main>
+
+<script src="/assets/js/util.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/news.js"></script>
+<script src="/assets/js/sidebar.js"></script>
+</body>
+</html>

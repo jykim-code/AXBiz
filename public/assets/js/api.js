@@ -224,8 +224,15 @@ const API = {
 
   // ===== 위클리 픽 =====
   // 발행본 조회 (공개). w 없으면 최신 회차. { available, week, issueNo, label, stats, payload, prev[] }
-  weekly(w) {
-    return getJSON('/api/weekly' + (w ? '?w=' + encodeURIComponent(w) : ''));
+  // n = 회차 번호로 조회. w·n 모두 없으면 최신 회차.
+  weekly(w, n) {
+    const q = w ? '?w=' + encodeURIComponent(w) : (n ? '?n=' + encodeURIComponent(n) : '');
+    return getJSON('/api/weekly' + q);
+  },
+  // 발행 회차 목록 (공개). `/weekly` 썸네일 목록용 — 커버가 쓰는 값만 담긴 가벼운 응답.
+  // { editions: [{week, issueNo, label, overview, total, picks, companies, topTags[]}] }
+  weeklyList() {
+    return getJSON('/api/weekly?list=1');
   },
   // 초안 + 그 주 후보 목록 (관리자, PIN). 주차('2026-W34') 또는 그 주의 아무 날짜('2026-08-19') 모두 받는다
   // — 주차 계산은 서버에 두고 화면은 서버가 준 week 값을 그대로 쓴다.
@@ -242,6 +249,24 @@ const API = {
   // 초안 저장 / LLM 초안 / 발행 / 회수 (관리자, PIN)
   weeklyAction(payload, pin) {
     return postPin('/api/weekly', payload, pin);
+  },
+  // 픽 이미지 업로드 (관리자, PIN). JSON 이 아니라 파일 바이트를 그대로 보낸다 —
+  // multipart 를 쓰면 Function 쪽에 파싱이 붙는데 파일이 하나라 그럴 이유가 없다.
+  // 응답의 key 를 픽에 저장하고, 화면에서는 /api/pick-image?k=<key> 로 불러온다.
+  async uploadPickImage(file, pin) {
+    const res = await fetch('/api/pick-image', {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-admin-pin': pin || '' },
+      body: file,
+    });
+    let data = {};
+    try { data = await res.json(); } catch { /* no body */ }
+    if (!res.ok) {
+      const err = new Error(data.error || 'UPLOAD_FAILED');
+      err.status = res.status; err.data = data;
+      throw err;
+    }
+    return data;
   },
 
   // ===== dev 검수·배포 (PIN, sessionStorage devPin) =====

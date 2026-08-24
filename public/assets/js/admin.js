@@ -837,7 +837,8 @@ async function clearSameRv() {
    그 주 동향에서 3~5건을 골라 「주목(Pick) 이유」를 쓰고 발행한다.
    선별과 이유는 사람이 쓴다(AI 초안은 빈 칸을 메우는 보조). 수치는 서버가 집계한다.
    발행하면 그 시점 내용이 payload 에 고정되므로 이미 공유한 링크의 내용은 바뀌지 않는다. */
-const WK_MAX = 5;
+// 픽 수는 제한하지 않는다(2026-08-24 사용자 지시) — 그 주에 주목할 것이 많으면 많이 싣는다.
+// 서버 MAX_PICKS(50)는 폭주 방지용 상한이며 편집 기준이 아니다.
 let WK = null;      // 서버 초안 상태 {week,start,end,label,status,issueNo,stats,candidates,payload}
 let WK_PICKS = [];  // 선택 항목(순서 유지) [{key,title,why}]
 
@@ -871,7 +872,7 @@ async function loadWeekly() {
   }
   // 저장된 선택 복원. 원본이 지워졌거나 출처 URL 이 바뀌면 후보와 짝이 맞지 않으므로 알리고 뺀다.
   const saved = (WK.payload && WK.payload.picks) || [];
-  WK_PICKS = saved.filter((p) => wkCand(p.key)).map((p) => ({ key: p.key, title: p.title || '', why: p.why || '' }));
+  WK_PICKS = saved.filter((p) => wkCand(p.key)).map((p) => ({ key: p.key, title: p.title || '', why: p.why || '', image: p.image || null }));
   if (saved.length !== WK_PICKS.length) toast('원본이 바뀐 ' + (saved.length - WK_PICKS.length) + '건은 선택에서 빠졌습니다. 다시 골라 주세요', false);
   meta.textContent = WK.label + ' · ' + WK.start + ' ~ ' + WK.end + ' · 동향 ' + (WK.stats.total || 0) + '건 · ' + wkStatusLabel(WK.status);
   renderWeekly();
@@ -886,18 +887,77 @@ function wkNumbersHTML(s) {
     ((s.newCompanies || []).length ? '<div class="text-xs opacity-60 mt-1">신규 편입 기업 ' + escapeHtml(s.newCompanies.join(', ')) + '</div>' : '');
 }
 
+/* 신호 칩 — 숫자 하나로는 왜 위에 올라왔는지 알 수 없어 신호 이름을 그대로 보여 준다.
+   선별은 사람이 하고 이 칩은 「먼저 볼 만한 것」 표시일 뿐이다. 뜻은 title 로 붙인다. */
+const WK_SIGNAL_HINT = {
+  신규기업: '이번에 처음 레이더에 들어온 기업',
+  새영역: '추적 중인 기업이 지금까지 다루지 않던 주제로 움직임',
+  공통주제: '이 주에 3곳 이상이 같은 주제로 움직임',
+  신규주제: '이력에 없던 주제가 이 주에 2건 이상 등장',
+};
+// 기업 축(신규기업·새영역)은 라임으로 띄우고 주제 축은 회색으로 둔다 — 정렬 가중치와 같은 위계.
+const wkSignalChip = (s) =>
+  '<span class="text-[10px] font-bold rounded-full px-2 py-0.5 ' +
+  (s === '신규기업' || s === '새영역' ? 'bg-lime text-ink' : 'bg-ink/8 text-ink/55') +
+  '" title="' + escapeHtml(WK_SIGNAL_HINT[s] || '') + '">' + escapeHtml(s) + '</span>';
+
 function wkRowHTML(c) {
   const on = WK_PICKS.some((p) => p.key === c.key);
   return '<label class="flex items-start gap-3 py-2.5 cursor-pointer hover:bg-beige/60 px-1 rounded-lg">' +
     '<input type="checkbox" class="wk-cb mt-1 flex-none accent-lime-600 w-4 h-4" data-key="' + escapeHtml(c.key) + '"' + (on ? ' checked' : '') + ' />' +
     '<span class="min-w-0 flex-1">' +
-    '<span class="flex items-baseline gap-2">' +
+    '<span class="flex items-baseline flex-wrap gap-x-2 gap-y-1">' +
     '<b class="text-sm">' + escapeHtml(c.company) + '</b>' +
     '<span class="text-[11px] opacity-45">' + escapeHtml(c.date) + '</span>' +
-    (c.score ? '<span class="text-[10px] font-bold text-lime-600" title="다건·신규·상위 태그 신호를 더한 정렬용 점수(선별은 사람이 합니다)">신호 ' + c.score + '</span>' : '') +
+    (c.signals || []).map(wkSignalChip).join('') +
     '</span>' +
     '<span class="block text-xs opacity-65 truncate">' + escapeHtml(c.title || (c.keyPoints || [])[0] || '') + '</span>' +
     '</span></label>';
+}
+
+/* 픽 이미지 — 선택 입력이다. 올리면 사진이 실리고, 안 올리면 활자 판으로 나간다.
+   매주 올려야 하는 의무로 만들지 않기 위한 것이다(2026-08-24 사용자 지시).
+   기사 사진을 내려받아 올리는 것은 링크가 아니라 복제라 위험이 더 크다. 그래서 출처·권리
+   근거를 필수로 받고, 비면 서버가 이미지를 버린다(functions/api/weekly.js sanitizeImage). */
+const WK_IMG_POS = [['top', '위'], ['center', '가운데'], ['bottom', '아래']];
+
+function wkImageHTML(p) {
+  const img = p.image || null;
+  const pos = (img && img.pos) || 'center';
+
+  let h = '<div class="mt-4 pt-4 border-t border-ink/8">' +
+    '<div class="flex items-center justify-between mb-2">' +
+    '<div class="label normal-case">이미지 <span class="font-normal opacity-45">선택 · 안 올리면 활자 판으로 나갑니다</span></div>' +
+    (img ? '<button type="button" class="wk-img-del text-xs font-semibold text-red-600 hover:text-ink">이미지 빼기</button>' : '') +
+    '</div>';
+
+  if (img) {
+    h += '<div class="flex flex-wrap gap-3">' +
+      // 미리보기는 실제 판 비율(620×260)을 줄인 것이다. 여기서 잘려 보이는 대로 페이지에서도 잘린다.
+      '<div class="w-[248px] h-[104px] flex-none overflow-hidden bg-beige border border-ink/10">' +
+      '<img class="wk-img-prev w-full h-full object-cover" style="object-position:' + pos + '" ' +
+      'src="/api/pick-image?k=' + encodeURIComponent(img.key) + '" alt="" /></div>' +
+      '<div class="min-w-0 flex-1 basis-[260px]">' +
+      '<div class="label normal-case mb-1">출처·권리 근거 <span class="text-red-500">필수</span></div>' +
+      '<input class="field wk-img-credit" maxlength="200" value="' + escapeHtml(img.credit || '') + '" ' +
+      'placeholder="예: 한컴 제공 / 과기정통부 보도자료(공공누리 1유형) / 직접 작성" />' +
+      '<div class="flex items-center gap-1.5 mt-2">' +
+      '<span class="text-[11px] opacity-45 mr-1">잘리는 기준</span>' +
+      WK_IMG_POS.map(([v, label]) =>
+        '<button type="button" class="wk-img-pos text-[11px] font-semibold rounded-full px-2.5 py-1 ' +
+        (v === pos ? 'bg-lime text-ink' : 'bg-ink/8 hover:bg-ink/15') + '" data-pos="' + v + '">' + label + '</button>').join('') +
+      '</div>' +
+      '<div class="wk-img-warn text-[11px] mt-1.5"></div>' +
+      '</div></div>';
+  }
+
+  h += '<div class="' + (img ? 'mt-3' : '') + ' flex flex-wrap items-center gap-2">' +
+    '<label class="btn border border-ink/15 px-4 py-2 text-xs hover:bg-ink hover:text-white cursor-pointer">' +
+    (img ? '다른 파일로 교체' : '파일 선택') +
+    '<input type="file" class="wk-img-file hidden" accept="image/jpeg,image/png,image/webp" /></label>' +
+    '<span class="wk-img-msg text-[11px] opacity-45">JPG·PNG·WebP · 5MB 이하 · 1240×520 이상 권장</span>' +
+    '</div></div>';
+  return h;
 }
 
 function wkPickHTML(p, i) {
@@ -920,6 +980,7 @@ function wkPickHTML(p, i) {
     '<button type="button" class="wk-ai text-xs font-semibold text-lime-600 hover:text-ink">AI 초안</button></div>' +
     '<textarea class="field wk-why" rows="2" maxlength="300">' + escapeHtml(why) + '</textarea>' +
     '<div class="text-[11px] opacity-45 mt-1"><span class="wk-len">' + why.length + '</span>자</div>' +
+    wkImageHTML(p) +
     '</div>';
 }
 
@@ -939,8 +1000,8 @@ function renderWeekly() {
 
   h += '<div class="bg-white rounded-2xl border border-ink/5 shadow p-5 mb-5">' +
     '<div class="flex items-baseline justify-between mb-3">' +
-    '<div class="label">이 주 동향 ' + (WK.candidates || []).length + '건 — 주목할 3~5건 선택</div>' +
-    '<span id="wkSelCnt" class="text-xs font-semibold">' + WK_PICKS.length + ' / ' + WK_MAX + '</span></div>' +
+    '<div class="label">이 주 동향 ' + (WK.candidates || []).length + '건 — 주목할 것 선택 (건별)</div>' +
+    '<span id="wkSelCnt" class="text-xs font-semibold">' + WK_PICKS.length + '건 선택</span></div>' +
     ((WK.candidates || []).length
       ? '<div class="divide-y divide-ink/5 max-h-[420px] overflow-y-auto">' + WK.candidates.map(wkRowHTML).join('') + '</div>'
       : '<div class="text-sm opacity-50 py-6 text-center">이 주에는 발행된 동향이 없습니다</div>') +
@@ -963,8 +1024,11 @@ function renderWeekly() {
   h += '<div class="flex flex-wrap items-center gap-3 mt-5 pt-5 border-t border-ink/10">' +
     '<button type="button" id="wkSave" class="btn bg-ink text-white px-6 py-2.5 hover:bg-lime hover:text-ink">저장</button>' +
     '<button type="button" id="wkPreviewBtn" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">미리보기 ↗</button>' +
+    // 같은 초안을 슬라이드로 넘겨 보는 별개 페이지. 사진을 올렸으면 여기서 사진 판이 보인다.
+    '<button type="button" id="wkPreviewNews" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">뉴스레터 미리보기 ↗</button>' +
     '<button type="button" id="wkPublish" class="btn bg-lime text-ink px-6 py-2.5 hover:bg-ink hover:text-lime">' + (pub ? '다시 발행' : '발행') + '</button>' +
-    (pub ? '<button type="button" id="wkCopyShare" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">공유 텍스트 복사</button>' +
+    // 공유 텍스트 복사는 없앴다(2026-08-24 사용자 지시) — 공유는 웹훅 메시지 하나로 한다.
+    (pub ? '<button type="button" id="wkNotify" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">메시지 보내기</button>' +
            '<button type="button" id="wkUnpublish" class="btn border border-red-300 text-red-600 px-4 py-2.5 hover:bg-red-500 hover:text-white hover:border-red-500">발행 회수</button>' : '') +
     '<span id="wkStatus" class="text-sm"></span></div>';
 
@@ -979,6 +1043,9 @@ function wkSync() {
     if (!WK_PICKS[i]) return;
     WK_PICKS[i].title = node.querySelector('.wk-title').value;
     WK_PICKS[i].why = node.querySelector('.wk-why').value;
+    // 출처 칸은 이미지가 있을 때만 그려진다. 잘리는 기준은 칩을 누를 때 이미 상태에 반영된다.
+    const cr = node.querySelector('.wk-img-credit');
+    if (cr && WK_PICKS[i].image) WK_PICKS[i].image.credit = cr.value;
   });
   const iss = document.getElementById('wkIssue');
   if (iss && WK) WK.issueNo = iss.value ? +iss.value : null;
@@ -996,7 +1063,7 @@ function wkPayload() {
   const picks = WK_PICKS.map((p) => {
     const c = wkCand(p.key);
     if (!c) return null;
-    return Object.assign({}, c, { title: p.title, why: p.why, score: undefined });
+    return Object.assign({}, c, { title: p.title, why: p.why, image: p.image || null, score: undefined });
   }).filter(Boolean);
   return {
     overview: (WK.payload && WK.payload.overview) || '',
@@ -1014,11 +1081,6 @@ function wkBind() {
       wkSync();
       const key = cb.dataset.key;
       if (cb.checked) {
-        if (WK_PICKS.length >= WK_MAX) {
-          cb.checked = false;
-          toast('주목 동향은 최대 ' + WK_MAX + '건입니다. 읽는 사람이 훑을 수 있는 분량으로 제한합니다', false);
-          return;
-        }
         const c = wkCand(key);
         WK_PICKS.push({ key, title: (c && c.title) || '', why: '' });
       } else {
@@ -1055,6 +1117,54 @@ function wkBind() {
       } catch (e) { toast('AI 초안 실패: ' + (e.status || e.message), false); }
       btn.textContent = 'AI 초안'; btn.disabled = false;
     });
+
+    /* --- 이미지 --- 올리면 즉시 R2 에 올라가고 픽에는 키만 남는다. */
+    const imgFile = node.querySelector('.wk-img-file');
+    const imgMsg = node.querySelector('.wk-img-msg');
+    const imgHint = 'JPG·PNG·WebP · 5MB 이하 · 1240×520 이상 권장';
+    if (imgFile) imgFile.addEventListener('change', async () => {
+      const f = imgFile.files && imgFile.files[0];
+      if (!f) return;
+      if (f.size > 5 * 1024 * 1024) {
+        toast('5MB 이하만 올릴 수 있습니다 (' + (Math.round(f.size / 1024 / 1024 * 10) / 10) + 'MB)', false);
+        imgFile.value = ''; return;
+      }
+      wkSync();                       // 올리면 다시 그리므로 입력 중이던 값을 먼저 거둔다
+      if (imgMsg) imgMsg.textContent = '올리는 중…';
+      try {
+        const r = await API.uploadPickImage(f, adminPin);
+        const old = WK_PICKS[i].image || {};
+        WK_PICKS[i].image = { key: r.key, credit: old.credit || '', pos: old.pos || 'center' };
+        renderWeekly();
+        toast('이미지를 올렸습니다. 출처·권리 근거를 적어 주세요', true);
+      } catch (e) {
+        if (imgMsg) imgMsg.textContent = imgHint;
+        toast('업로드 실패: ' + (e.message || e.status), false);
+      }
+    });
+
+    const imgDel = node.querySelector('.wk-img-del');
+    if (imgDel) imgDel.addEventListener('click', () => { wkSync(); WK_PICKS[i].image = null; renderWeekly(); });
+
+    node.querySelectorAll('.wk-img-pos').forEach((b) => b.addEventListener('click', () => {
+      wkSync();
+      if (WK_PICKS[i].image) WK_PICKS[i].image.pos = b.dataset.pos;
+      renderWeekly();
+    }));
+
+    // 실제 픽셀 크기는 브라우저가 받아 봐야 안다 — Workers 에 이미지 처리가 없어 서버가 못 재 준다.
+    const imgPrev = node.querySelector('.wk-img-prev'), imgWarn = node.querySelector('.wk-img-warn');
+    if (imgPrev && imgWarn) {
+      const measure = () => {
+        const w = imgPrev.naturalWidth, hgt = imgPrev.naturalHeight;
+        if (!w) return;
+        const ok = w >= 1240;
+        imgWarn.textContent = w + '×' + hgt + (ok ? ' · 판을 채우기에 충분합니다' : ' · 1240px 보다 작아 화면에서 뭉개집니다');
+        imgWarn.className = 'wk-img-warn text-[11px] mt-1.5 font-semibold ' + (ok ? 'text-lime-600' : 'text-red-600');
+      };
+      imgPrev.addEventListener('load', measure);
+      if (imgPrev.complete) measure();   // 캐시에서 바로 온 경우엔 load 가 이미 지나갔다
+    }
   });
 
   const aiText = async (kind, btnId, targetId, join) => {
@@ -1062,7 +1172,7 @@ function wkBind() {
     if (!btn) return;
     btn.addEventListener('click', async () => {
       const payload = wkPayload();
-      if (!payload.picks.length) { toast('먼저 주목 동향을 고르세요', false); return; }
+      if (!payload.picks.length) { toast('먼저 주요 동향을 고르세요', false); return; }
       const el2 = document.getElementById(targetId);
       if (el2.value.trim() && !confirm('이미 쓴 내용을 AI 초안으로 덮어쓸까요?')) return;
       btn.textContent = '생성 중…'; btn.disabled = true;
@@ -1084,20 +1194,44 @@ function wkBind() {
     if (!(await wkSaveDraft(false))) return;
     window.open('/weekly?w=' + encodeURIComponent(WK.week) + '&draft=1', '_blank');
   });
+  document.getElementById('wkPreviewNews').addEventListener('click', async () => {
+    if (!(await wkSaveDraft(false))) return;
+    window.open('/news?w=' + encodeURIComponent(WK.week) + '&draft=1', '_blank');
+  });
   const unp = document.getElementById('wkUnpublish');
   if (unp) unp.addEventListener('click', async () => {
     if (!confirm('발행을 회수하면 공유한 링크가 빈 화면이 됩니다. 계속할까요?')) return;
     try { await API.weeklyAction({ action: 'unpublish', week: WK.week }, adminPin); toast('발행을 회수했습니다', true); loadWeekly(); }
     catch (e) { toast('회수 실패: ' + (e.status || e.message), false); }
   });
-  const cp = document.getElementById('wkCopyShare');
-  if (cp) cp.addEventListener('click', async () => {
+  /* 메시지 보내기 — 나갈 문구를 먼저 받아 그대로 보여 주고 확인받는다.
+     문구는 서버가 만든다(보낸 것과 본 것이 갈라지지 않게). 이미 보낸 회차면 그 시각을 알려
+     한 번 더 묻는다 — 같은 방에 두 번 나가는 사고가 이 화면에서 가장 흔할 일이다. */
+  const nf = document.getElementById('wkNotify');
+  if (nf) nf.addEventListener('click', async () => {
+    nf.disabled = true;
     try {
-      const ed = await API.weekly(WK.week);
-      if (!ed.available) { toast('발행본을 찾지 못했습니다', false); return; }
-      const ok = await copyToClipboard(shareText(ed));
-      toast(ok ? '공유 텍스트를 복사했습니다' : '복사에 실패했습니다', ok);
-    } catch (e) { toast('복사 실패: ' + (e.status || e.message), false); }
+      const dry = await API.weeklyAction({ action: 'notify', week: WK.week, dryRun: true }, adminPin);
+      if (!dry.configured) { toast('웹훅 주소가 설정되지 않았습니다 (Pages 환경변수 WEEKLY_WEBHOOK_URL)', false); return; }
+      const sent = dry.notifiedAt
+        ? '⚠ 이미 보낸 회차입니다 (' + String(dry.notifiedAt).slice(0, 16).replace('T', ' ') + ')\n\n'
+        : '';
+      /* 목적지를 먼저 말한다. stg 와 운영의 관리자 화면이 똑같이 생겼는데 방이 다르고,
+         전사 라운지로 잘못 나가면 되돌릴 수 없다(2026-08-24 사용자 지시로 웹훅이 둘이 됐다). */
+      const where = dry.target ? '보낼 곳: ' + dry.target + '\n\n' : '';
+      if (!confirm(sent + where + '아래 내용으로 보냅니다.\n\n' + dry.text)) return;
+      await API.weeklyAction({ action: 'notify', week: WK.week }, adminPin);
+      toast('메시지를 보냈습니다', true);
+      loadWeekly();
+    } catch (e) {
+      const m = {
+        NOT_PUBLISHED: '발행된 회차가 아닙니다',
+        NO_WEBHOOK: '웹훅 주소가 설정되지 않았습니다 (Pages 환경변수 WEEKLY_WEBHOOK_URL)',
+        WEBHOOK_UNREACHABLE: '웹훅 주소에 연결하지 못했습니다',
+        WEBHOOK_FAILED: '메신저가 거절했습니다' + (e.data && e.data.status ? ' (' + e.data.status + ')' : ''),
+      }[e.message];
+      toast(m || ('발송 실패: ' + (e.status || e.message)), false);
+    } finally { nf.disabled = false; }
   });
 }
 
@@ -1117,10 +1251,17 @@ async function wkSaveDraft(notify) {
 
 async function wkPublish() {
   const payload = wkPayload();
-  if (!payload.picks.length) { toast('주목 동향을 최소 1건 고르세요', false); return; }
+  if (!payload.picks.length) { toast('주요 동향을 최소 1건 고르세요', false); return; }
   const missing = payload.picks.filter((p) => !String(p.why || '').trim()).map((p) => p.company);
   if (missing.length) {
     toast('「주목(Pick) 이유」가 빈 항목: ' + missing.join(', ') + ' — 이 한 줄이 없으면 대시보드와 같은 화면이 됩니다', false);
+    return;
+  }
+  // 이미지를 올렸는데 출처가 비면 서버가 이미지를 버린다. 발행 후에 사진이 사라진 것을
+  // 발견하게 되므로 여기서 막는다.
+  const noCredit = payload.picks.filter((p) => p.image && !String(p.image.credit || '').trim()).map((p) => p.company);
+  if (noCredit.length) {
+    toast('이미지 출처·권리 근거가 빈 항목: ' + noCredit.join(', ') + ' — 비워 두면 이미지가 실리지 않습니다', false);
     return;
   }
   if (!(await wkSaveDraft(false))) return;

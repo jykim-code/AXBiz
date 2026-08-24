@@ -6,11 +6,11 @@
 <title>위클리 픽 — AX Biz Radar</title>
 <link rel="icon" type="image/png" href="/assets/hancom_favicon.png" />
 <!-- 단톡방 링크 미리보기용. 회차별 제목 주입(동적 OG)은 Phase 2 — 지금은 고정 문구를 쓴다. -->
-<meta name="description" content="한 주의 AX 시장 동향에서 주목할 것만 골라 이유를 붙인 주간 발행물." />
+<meta name="description" content="한 주의 AX 동향 중 주요 이슈를 Pick해 공유하는 Weekly Picks" />
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="HANCOM AX Biz Radar" />
 <meta property="og:title" content="AX Biz Radar 위클리 픽" />
-<meta property="og:description" content="한 주의 AX 시장 동향에서 주목할 것만 골라 이유를 붙인 주간 발행물." />
+<meta property="og:description" content="한 주의 AX 동향 중 주요 이슈를 Pick해 공유하는 Weekly Picks" />
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -18,7 +18,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
 <script>
   tailwind.config = { theme: { extend: {
-    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+    // panel 은 겹쳐 띄우는 뉴스레터 캐러셀의 다크 판 색이다(news.js). 없으면 그 판이 투명해진다.
+    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500', panel: '#161616' },
     fontFamily: { sans: ['Inter','Pretendard','ui-sans-serif','system-ui','sans-serif'], display: ['"Space Grotesk"','Pretendard','ui-sans-serif','system-ui','sans-serif'] },
   }}};
 </script>
@@ -53,6 +54,9 @@
 <script src="/assets/js/util.js"></script>
 <script src="/assets/js/entry.js"></script>
 <script src="/assets/js/api.js"></script>
+<!-- 뉴스레터 조판. 이 페이지에서는 표지 썸네일과 겹쳐 띄우기(window.AXNews)만 쓴다 —
+     #nwRoot 가 없으므로 news.js 자체 초기화는 그냥 지나간다. -->
+<script src="/assets/js/news.js"></script>
 <script src="/assets/js/weekly.js"></script>
 <script src="/assets/js/ask-fab.js"></script>
 <script src="/assets/js/sidebar.js"></script>
