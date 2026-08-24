@@ -347,7 +347,10 @@ async function publishedList(env, limit) {
     `SELECT week, issue_no, range_start, range_end, published_at,
             json_extract(payload, '$.overview') AS overview,
             json_extract(stats, '$.total') AS total,
-            json_extract(stats, '$.picks') AS picks,
+            -- stats.picks 가 아니라 payload 를 직접 센다. stats 는 발행 시점에 굳는데 payload 는
+            -- [저장]으로도 바뀌어 어긋난다(실측: stats 2 / payload 6). 커버에 찍히는 수는
+            -- 실제 실린 픽 수여야 한다.
+            json_array_length(payload, '$.picks') AS picks,
             json_extract(stats, '$.companies') AS companies,
             json_extract(stats, '$.topTags') AS top_tags
        FROM weekly_edition WHERE status = 'published'

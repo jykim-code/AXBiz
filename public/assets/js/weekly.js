@@ -35,11 +35,13 @@ const BODY = [
    지난 시도: 맨 텍스트로 두면 제목에 딸린 부스러기로 보였고(→ 아이콘 칩, 되돌림),
    제목과 같은 행에 두는 것도 폐기했다. 칩·라운드 박스는 F안 조판이 쓰지 않는다.
    제목은 커버와 같은 「8월 3주차」 표기를 쓴다 — 연도는 아래 메타 줄에 그대로 있다. */
-function headerHTML(d, s) {
+function headerHTML(d, s, pickCount) {
   const metaLabel = (t) => '<span class="text-[10px] font-bold uppercase tracking-widest text-lime-600 flex-none">' + t + '</span>';
   const metaValue = (t) => '<span class="font-display font-semibold">' + escapeHtml(t) + '</span>';
   const total = (s && s.total) || 0;
-  const picks = (s && s.picks) || 0;
+  // stats.picks 가 아니라 실제 렌더되는 픽 수를 받는다(statsHTML 주석 참고) —
+  // 어긋난 값을 쓰면 픽을 전부 실은 주에도 「전체보기」가 뜬다.
+  const picks = pickCount || 0;
   return '<div class="' + WRAP + ' pt-12">' +
     '<div class="text-[11px] font-bold uppercase tracking-[.2em] text-lime-600 mb-1.5">Weekly Picks' +
     (d.issueNo ? ' No.' + no2(d.issueNo) : '') + '</div>' +
@@ -71,10 +73,13 @@ function headerHTML(d, s) {
    나눈다 — 목차를 가로선으로 나누는 것과 같은 문법이다.
    전주 대비 증감은 쓰지 않는다: 데이터 수집일이 주마다 달라 증감이 시장 변화가 아니라 수집량
    차이를 보여 주는 경우가 있다(실측 -7건). stats.delta 는 서버가 계산하지만 화면에 쓰지 않는다. */
-function statsHTML(s) {
+/* pickCount 는 stats.picks 가 아니라 **실제 렌더되는 payload.picks 의 개수**를 받는다.
+   stats 는 발행 시점에 굳는데 payload 는 [저장]으로도 바뀌므로 stats.picks 를 그대로 쓰면
+   화면에 실린 건수와 어긋난다(실측: 표시 2 / 실제 6). 렌더 대상에서 직접 세면 어긋날 수 없다. */
+function statsHTML(s, pickCount) {
   return '<div class="rule pt-5 mb-10 grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-ink/10">' +
     [['금주 동향', s.total || 0], ['등장 기업', s.companies || 0],
-      ['신규 기업', (s.newCompanies || []).length], ['Weekly Picks', s.picks || 0]]
+      ['신규 기업', (s.newCompanies || []).length], ['Weekly Picks', pickCount || 0]]
       .map(([k, v], i) => '<div class="' + (i === 0 ? 'sm:pr-6' : 'sm:px-6') + ' py-3 sm:py-0">' +
         '<div class="font-display font-bold text-[34px] sm:text-[40px] leading-none tracking-tighter">' + v + '</div>' +
         '<div class="text-[10px] font-semibold uppercase tracking-widest text-ink/40 mt-2">' + k + '</div></div>').join('') +
@@ -371,7 +376,7 @@ async function copyToClipboard(text) {
 function renderEdition(d) {
   const s = d.stats || {}, p = d.payload || {};
   const picks = p.picks || [];
-  let h = headerHTML(d, s);
+  let h = headerHTML(d, s, picks.length);
 
   h += '<div class="' + WRAP + '">';
 
@@ -390,7 +395,7 @@ function renderEdition(d) {
       (thumb ? '<div class="flex-none sm:ml-auto">' + thumb + '</div>' : '') +
       '</div>';
 
-  h += statsHTML(s);
+  h += statsHTML(s, picks.length);
 
   /* 총론 → 상세 순서로 둔다(2026-08-24 사용자 지시). 한컴 관점은 그 주를 묶은 판단이고
      기업 목차는 아래 픽 섹션으로 가는 이동 장치이므로, 목차가 한컴 관점보다 앞에 오면
