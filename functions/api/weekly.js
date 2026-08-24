@@ -28,6 +28,13 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86400000;
 const WEEK_MS = 7 * DAY_MS;
 
+/* 발송 문구의 지문. 1차 리허설에서 본 것과 2차에 나갈 것이 같은지 확인하는 데만 쓴다.
+   앞 16자만 남긴다 — 사람이 화면에서 눈으로 대조할 수 있는 길이이고, 충돌을 걱정할 용도가 아니다. */
+async function textHash(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+}
+
 /* ===== ISO 주차 계산 =====
    주는 월~일이며 대시보드 periodRange 와 같은 규칙이다(두 화면의 기간이 어긋나지 않게).
    연·주차 표기는 ISO 8601(1주차 = 첫 목요일이 있는 주)을 따른다. */
@@ -607,7 +614,17 @@ export async function onRequestPost({ request, env }) {
 
     /* 회차를 메신저로 보낸다(2026-08-24 사용자 지시).
        발행과 분리한 이유 — 오타를 고쳐 재발행하는 일이 흔한데 발행에 묶으면 그때마다 다시 나간다.
-       dryRun 이면 보내지 않고 문구만 돌려준다(관리자가 나갈 것을 그대로 보고 확인한다). */
+       dryRun 이면 보내지 않고 문구만 돌려준다(관리자가 나갈 것을 그대로 보고 확인한다).
+
+       2단계로 나눈다(2026-08-24 사용자 지시) — 1차는 테스트 방, 2차가 전사 라운지다.
+       stg 에서 시험하는 것으로는 부족하다: stg 는 Preview 환경이라 SITE_ORIGIN 이 달라
+       링크 주소가 실제로 나갈 것과 다르고, 「본 것」과 「나갈 것」이 같다는 보장이 없다.
+       같은 환경에서 1차·2차를 돌리면 문구를 만드는 입력이 전부 같으므로 글자 단위로 같아진다.
+       그 「같음」을 말로 두지 않고 해시로 확인한다 — 1차 뒤에 데이터를 고치면 2차가 막힌다.
+
+       이 방법으로도 검증되지 않는 것이 하나 있다: 웹훅의 아바타·이름이다.
+       방마다 웹훅을 등록할 때 각각 설정하는 값이고 우리 payload 에 없다(본문은 text 하나뿐).
+       그쪽은 Chat 의 웹훅 관리 화면에서 두 방을 대조해야 한다. */
     if (action === 'notify') {
       const row = await env.DB.prepare(
         "SELECT week, issue_no, range_start, range_end, stats, payload FROM weekly_edition WHERE week = ? AND status = 'published'"
@@ -625,20 +642,40 @@ export async function onRequestPost({ request, env }) {
       const origin = (env.SITE_ORIGIN || new URL(request.url).origin).replace(/\/$/, '');
       const text = buildWeeklyMessage(ed, origin);
 
-      /* 웹훅은 환경별로 다른 방을 가리킨다(2026-08-24 사용자 지시) —
-         Preview(stg)=테스트 스페이스, Production=전사 라운지.
-         관리자 화면이 두 환경에서 똑같이 생겼고 D1 도 공유하므로 어디로 나가는지 이름을 보여 준다.
-         이름은 WEEKLY_WEBHOOK_LABEL 로 따로 받는다 — 주소에 key·token 이 들어 있어 화면에 쓸 수 없다. */
-      const target = String(env.WEEKLY_WEBHOOK_LABEL || '').slice(0, 60);
+      /* 단계에 따라 방이 갈린다. 기본값은 반드시 1차여야 한다 —
+         stage 를 빼먹은 호출이 전사 라운지로 가면 안 된다. */
+      const isFinal = body.stage === 'final';
+      const hookUrl = isFinal ? env.WEEKLY_WEBHOOK_URL : env.WEEKLY_WEBHOOK_TEST_URL;
+      /* 이름은 주소와 따로 받는다 — 주소에 key·token 이 들어 있어 화면에 쓸 수 없다.
+         관리자 화면이 두 환경에서 똑같이 생겼고 D1 도 공유하므로 어디로 나가는지 이름으로 말한다. */
+      const target = String((isFinal ? env.WEEKLY_WEBHOOK_LABEL : env.WEEKLY_WEBHOOK_TEST_LABEL) || '').slice(0, 60);
+      const hash = await textHash(text);
+
+      /* 방별로 따로 적는다. 회차당 한 칸(옛 notifiedAt)이면 1차 리허설이 「이미 보냄」으로
+         남아 2차에서 틀린 경고가 뜬다. 옛 값은 방을 모르는 발송으로 읽어 그대로 보여 준다. */
+      const log = payload.notifyLog && typeof payload.notifyLog === 'object' ? payload.notifyLog : {};
+      if (!log.final && payload.notifiedAt) log.final = { at: payload.notifiedAt, hash: null, target: null };
+      const reh = log.rehearsal || null;
+      // 1차를 보낸 뒤 데이터를 고쳤으면 「1차에서 본 것 = 2차에 나갈 것」이 깨진다.
+      const staleRehearsal = !!(reh && reh.hash && reh.hash !== hash);
 
       if (body.dryRun) {
-        return Response.json({ ok: true, text, target, notifiedAt: payload.notifiedAt || null, configured: !!env.WEEKLY_WEBHOOK_URL });
+        return Response.json({
+          ok: true, text, hash, stage: isFinal ? 'final' : 'rehearsal', target,
+          configured: !!hookUrl,
+          rehearsal: reh, final: log.final || null, staleRehearsal,
+          // 2차를 열어 줄지는 서버가 정한다 — 화면 상태만 믿으면 새로고침으로 우회된다
+          canFinal: !!(reh && !staleRehearsal),
+        });
       }
-      if (!env.WEEKLY_WEBHOOK_URL) return Response.json({ error: 'NO_WEBHOOK' }, { status: 500 });
+      if (!hookUrl) return Response.json({ error: isFinal ? 'NO_WEBHOOK' : 'NO_TEST_WEBHOOK' }, { status: 500 });
+      // 2차는 1차를 통과해야 열린다. 화면에서 막는 것과 별개로 서버에서 한 번 더 막는다.
+      if (isFinal && !reh) return Response.json({ error: 'REHEARSAL_REQUIRED' }, { status: 409 });
+      if (isFinal && staleRehearsal) return Response.json({ error: 'TEXT_CHANGED' }, { status: 409 });
 
       let res;
       try {
-        res = await fetch(env.WEEKLY_WEBHOOK_URL, {
+        res = await fetch(hookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text }),
@@ -651,13 +688,16 @@ export async function onRequestPost({ request, env }) {
         return Response.json({ error: 'WEBHOOK_FAILED', status: res.status, detail }, { status: 502 });
       }
 
-      /* 보낸 시각은 payload 에 적는다. 컬럼을 새로 만들면 기존 테이블에 수동 ALTER 가 필요하고
+      /* 보낸 기록은 payload 에 적는다. 컬럼을 새로 만들면 기존 테이블에 수동 ALTER 가 필요하고
          (schema.sql 은 IF NOT EXISTS 라 반영되지 않는다) 그 대가를 치를 만한 정보가 아니다. */
-      payload.notifiedAt = new Date().toISOString();
+      const at = new Date().toISOString();
+      log[isFinal ? 'final' : 'rehearsal'] = { at, hash, target: target || null };
+      payload.notifyLog = log;
+      if (isFinal) payload.notifiedAt = at;   // 옛 이름도 남긴다(다른 화면이 읽을 수 있다)
       await env.DB.prepare("UPDATE weekly_edition SET payload = ?, updated_at = datetime('now') WHERE week = ?")
         .bind(JSON.stringify(payload), week).run();
 
-      return Response.json({ ok: true, week, text, notifiedAt: payload.notifiedAt });
+      return Response.json({ ok: true, week, text, stage: isFinal ? 'final' : 'rehearsal', target, at });
     }
 
     return Response.json({ error: 'BAD_REQUEST' }, { status: 400 });

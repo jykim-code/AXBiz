@@ -397,14 +397,34 @@ Google Chat 이 카드를 그릴 때마다 재검증 요청이 간다. **내용�
 
 ### 회차를 메신저로 보내는 경로 (2026-08-24)
 
-`POST /api/weekly {action:'notify'}` (관리자 PIN) → `functions/_weekly-message.js` 가 문구를 만들어
-`WEEKLY_WEBHOOK_URL` 로 `{"text": …}` 를 보낸다(Google Chat·Slack·카카오워크·Teams 레거시가 받는 형태).
+`POST /api/weekly {action:'notify', stage}` (관리자 PIN) → `functions/_weekly-message.js` 가 문구를 만들어
+웹훅으로 `{"text": …}` 를 보낸다(Google Chat·Slack·카카오워크·Teams 레거시가 받는 형태).
 
+**2단계 발송** (2026-08-24). `stage` 가 방을 정한다. 기본값은 `rehearsal` 이다 —
+`stage` 를 빼먹은 호출이 전사 라운지로 가면 안 된다.
+
+| `stage` | 주소 | 이름표 | 무엇 |
+|---|---|---|---|
+| `rehearsal` (기본) | `WEEKLY_WEBHOOK_TEST_URL` | `WEEKLY_WEBHOOK_TEST_LABEL` | 1차, 테스트 방 |
+| `final` | `WEEKLY_WEBHOOK_URL` | `WEEKLY_WEBHOOK_LABEL` | 2차, 전사 라운지 |
+
+- **왜 stg 시험으로 부족한가.** stg 는 Preview 환경이라 `SITE_ORIGIN` 이 달라 링크 주소가 실제와
+  다르다. 즉 「stg 에서 본 문구」와 「전사에 나갈 문구」는 애초에 같은 문자열이 아니다.
+  같은 환경에서 1차·2차를 돌리면 문구를 만드는 입력이 전부 같으므로 글자 단위로 같아진다.
+- **그 「같음」을 해시로 확인한다.** 문구의 SHA-256 앞 16자를 1차 기록에 남기고, 2차에서 다시 계산해
+  비교한다. 1차 뒤에 데이터를 고쳤으면 2차가 `TEXT_CHANGED` 로 막힌다. 1차를 건너뛰면 `REHEARSAL_REQUIRED`.
+  화면에서도 막지만 서버에서 한 번 더 막는다 — 화면 상태만 믿으면 새로고침으로 우회된다.
+- **이 방법으로도 검증되지 않는 것: 웹훅의 아바타·이름.** 방마다 웹훅을 등록할 때 각각 설정하는 값이고
+  우리 payload 에 없다(본문은 `text` 하나뿐). `public/assets/ax-biz-radar-icon.png` 는 그 설정이 가리키는
+  주소일 뿐 코드가 참조하지 않는다. 두 방의 설정 일치는 Chat 의 웹훅 관리 화면에서 대조해야 한다.
 - **발행과 분리했다.** 오타를 고쳐 재발행하는 일이 흔한데 발행에 묶으면 그때마다 다시 나간다.
 - 문구를 **서버에서 만든다.** 관리자 화면은 `dryRun` 으로 같은 함수의 결과를 받아 보여 주므로
   「보낸 것과 본 것」이 갈라지지 않는다.
-- 보낸 시각은 `payload.notifiedAt` 에 적는다. 컬럼을 새로 만들면 기존 테이블에 수동 `ALTER` 가 필요하고
-  (`schema.sql` 은 `IF NOT EXISTS` 라 반영되지 않는다) 그 대가를 치를 만한 정보가 아니다.
+- 보낸 기록은 `payload.notifyLog = {rehearsal:{at,hash,target}, final:{…}}` 에 **방별로** 적는다.
+  회차당 한 칸(옛 `payload.notifiedAt`)이면 1차 리허설이 「이미 보냄」으로 남아 2차에서 틀린 경고가 뜬다.
+  옛 값은 방을 모르는 `final` 발송으로 읽어 그대로 보여 준다. 컬럼을 새로 만들지 않은 이유는
+  기존 테이블에 수동 `ALTER` 가 필요하고(`schema.sql` 은 `IF NOT EXISTS` 라 반영되지 않는다)
+  그 대가를 치를 만한 정보가 아니라서다.
 - 링크는 `SITE_ORIGIN` 을 우선한다. 없으면 요청 origin 을 쓰므로 **stg 에서 보내면 stg 주소가 나간다.**
 - 환경변수는 **배포 시점에 묶인다.** 대시보드에 넣은 뒤 재배포하지 않으면 런타임에 없다 —
   `/api/health` 가 (관리자 PIN 으로) 설정 여부만 `true/false` 로 보여 준다. 값은 어떤 경우에도 반환하지 않는다.
