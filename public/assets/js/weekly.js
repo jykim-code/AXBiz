@@ -297,7 +297,7 @@ function renderList(editions) {
     '<h1 class="text-[40px] sm:text-[52px] font-bold tracking-tighter leading-none mb-3">위클리 픽</h1>' +
     // 서비스 설명 한 줄(2026-08-24 사용자 확정). weekly.html 의 meta·og description 과 같은 문구를 쓴다.
     '<p class="text-[14px] text-ink/55 leading-relaxed max-w-[46ch]">' +
-    '한 주의 AX 동향 중 주요 이슈를 Pick해 공유하는 Weekly Pick</p>';
+    '한 주의 AX 동향 중 주요 이슈를 Pick해 공유하는 Weekly Picks</p>';
 
   if (latest) {
     /* 최신 회차 직행. 요약(금주 한 줄 요약)은 싣지 않는다(2026-08-24 사용자 지시) —
