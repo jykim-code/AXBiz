@@ -292,7 +292,7 @@ function coverHTML(e) {
 }
 
 /* ===== 목록 `/weekly` — 발행 회차 썸네일 =====
-   단톡방에 뿌리는 링크는 늘 `?w=` 가 붙으므로(shareText) 이 화면은 공유 도착지가 아니라
+   단톡방에 뿌리는 링크는 늘 `?w=` 가 붙으므로(웹훅 메시지) 이 화면은 공유 도착지가 아니라
    사이드바·대시보드에서 들어오는 「둘러보기」 입구다. 그래서 최신 회차 본문을 바로 펴지 않고
    회차가 쌓인 것을 보여 준 뒤 최신 회차로 들여보낸다. */
 function renderList(editions) {
@@ -339,18 +339,6 @@ function renderList(editions) {
    단톡방에서 실제로 읽히는 것은 붙여넣은 텍스트다(링크 클릭률은 낮다).
    「주목(Pick) 이유」가 그대로 → 줄로 들어가 관리자가 쓴 한 줄이 페이지와 텍스트 양쪽을 채운다.
    버튼은 관리자 화면에만 있고(2026-08-21 사용자 지시) 이 함수는 그쪽에서 호출한다. */
-function shareText(d) {
-  const s = d.stats || {}, p = d.payload || {};
-  const picks = p.picks || [];
-  const head = '[AX Biz Radar] 위클리 픽' + (d.issueNo ? ' ' + d.issueNo + '호' : '') + ' · ' + shortLabel(d.label);
-  const nc = (s.newCompanies || []).length;
-  const nums = '동향 ' + (s.total || 0) + '건 중 주목 ' + picks.length + '건' + (nc ? ' · 신규 기업 ' + nc + '곳' : '');
-  const body = picks.map((x, i) =>
-    (i + 1) + ') ' + x.company + '  ' + (x.title || '') + (x.why ? '\n   → ' + x.why : '')).join('\n');
-  const kw = (s.topTags || []).slice(0, 4).map((t) => '#' + t.tag + (t.isNew ? '(NEW)' : '')).join(' ');
-  const url = location.origin + '/weekly?w=' + encodeURIComponent(d.week);
-  return [head, nums, '', body, '', kw ? '키워드 ' + kw : '', url].join('\n').replace(/\n{3,}/g, '\n\n');
-}
 
 async function copyToClipboard(text) {
   try {
@@ -537,8 +525,7 @@ function openNewsOverlay(d) {
 /* ===== 초기화 ===== */
 async function initWeekly() {
   const root = document.getElementById('wkRoot');
-  // 관리자 화면도 이 파일을 불러 shareText 를 공용으로 쓴다(공유 텍스트 형식을 한 곳에 둔다).
-  // 그 경우 렌더 대상이 없으므로 여기서 끝낸다.
+  // 렌더 대상이 없는 페이지에서는 여기서 끝낸다.
   if (!root) return;
   const params = new URLSearchParams(location.search);
   const w = params.get('w') || '';

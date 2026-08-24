@@ -16,6 +16,7 @@
 import { pinOk, forbidden } from '../_auth.js';
 import { entryKey } from '../_publish.js';
 import { stripTrailingPeriod, replaceEmDash, replaceAxisWord, hasAxisWord } from '../_style.js';
+import { buildWeeklyMessage } from '../_weekly-message.js';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 // 픽 수는 제한하지 않는다 — 그 주에 주목할 것이 많으면 많이 싣는다(2026-08-24 사용자 지시).
@@ -585,6 +586,53 @@ export async function onRequestPost({ request, env }) {
     if (action === 'unpublish') {
       await env.DB.prepare("UPDATE weekly_edition SET status = 'draft', updated_at = datetime('now') WHERE week = ?").bind(week).run();
       return Response.json({ ok: true, week });
+    }
+
+    /* 회차를 메신저로 보낸다(2026-08-24 사용자 지시).
+       발행과 분리한 이유 — 오타를 고쳐 재발행하는 일이 흔한데 발행에 묶으면 그때마다 다시 나간다.
+       dryRun 이면 보내지 않고 문구만 돌려준다(관리자가 나갈 것을 그대로 보고 확인한다). */
+    if (action === 'notify') {
+      const row = await env.DB.prepare(
+        "SELECT week, issue_no, range_start, range_end, stats, payload FROM weekly_edition WHERE week = ? AND status = 'published'"
+      ).bind(week).first();
+      if (!row) return Response.json({ error: 'NOT_PUBLISHED' }, { status: 404 });
+
+      const payload = parseJson(row.payload, {});
+      const ed = {
+        week: row.week, issueNo: row.issue_no, label: weekLabel(row.week),
+        start: row.range_start, end: row.range_end,
+        stats: parseJson(row.stats, {}), payload,
+      };
+      /* 링크는 발행 도메인을 가리켜야 한다. stg 에서 눌러 보면 요청 origin 이 stg 라
+         메시지에 stg 주소가 들어간다 — 그래서 SITE_ORIGIN 을 두면 그것을 우선한다. */
+      const origin = (env.SITE_ORIGIN || new URL(request.url).origin).replace(/\/$/, '');
+      const text = buildWeeklyMessage(ed, origin);
+
+      if (body.dryRun) return Response.json({ ok: true, text, notifiedAt: payload.notifiedAt || null });
+      if (!env.WEEKLY_WEBHOOK_URL) return Response.json({ error: 'NO_WEBHOOK' }, { status: 500 });
+
+      let res;
+      try {
+        res = await fetch(env.WEEKLY_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+      } catch (e) {
+        return Response.json({ error: 'WEBHOOK_UNREACHABLE', detail: String((e && e.message) || e) }, { status: 502 });
+      }
+      if (!res.ok) {
+        const detail = (await res.text().catch(() => '')).slice(0, 300);
+        return Response.json({ error: 'WEBHOOK_FAILED', status: res.status, detail }, { status: 502 });
+      }
+
+      /* 보낸 시각은 payload 에 적는다. 컬럼을 새로 만들면 기존 테이블에 수동 ALTER 가 필요하고
+         (schema.sql 은 IF NOT EXISTS 라 반영되지 않는다) 그 대가를 치를 만한 정보가 아니다. */
+      payload.notifiedAt = new Date().toISOString();
+      await env.DB.prepare("UPDATE weekly_edition SET payload = ?, updated_at = datetime('now') WHERE week = ?")
+        .bind(JSON.stringify(payload), week).run();
+
+      return Response.json({ ok: true, week, text, notifiedAt: payload.notifiedAt });
     }
 
     return Response.json({ error: 'BAD_REQUEST' }, { status: 400 });

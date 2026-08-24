@@ -1027,7 +1027,8 @@ function renderWeekly() {
     // 같은 초안을 슬라이드로 넘겨 보는 별개 페이지. 사진을 올렸으면 여기서 사진 판이 보인다.
     '<button type="button" id="wkPreviewNews" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">뉴스레터 미리보기 ↗</button>' +
     '<button type="button" id="wkPublish" class="btn bg-lime text-ink px-6 py-2.5 hover:bg-ink hover:text-lime">' + (pub ? '다시 발행' : '발행') + '</button>' +
-    (pub ? '<button type="button" id="wkCopyShare" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">공유 텍스트 복사</button>' +
+    // 공유 텍스트 복사는 없앴다(2026-08-24 사용자 지시) — 공유는 웹훅 메시지 하나로 한다.
+    (pub ? '<button type="button" id="wkNotify" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">메시지 보내기</button>' +
            '<button type="button" id="wkUnpublish" class="btn border border-red-300 text-red-600 px-4 py-2.5 hover:bg-red-500 hover:text-white hover:border-red-500">발행 회수</button>' : '') +
     '<span id="wkStatus" class="text-sm"></span></div>';
 
@@ -1203,14 +1204,30 @@ function wkBind() {
     try { await API.weeklyAction({ action: 'unpublish', week: WK.week }, adminPin); toast('발행을 회수했습니다', true); loadWeekly(); }
     catch (e) { toast('회수 실패: ' + (e.status || e.message), false); }
   });
-  const cp = document.getElementById('wkCopyShare');
-  if (cp) cp.addEventListener('click', async () => {
+  /* 메시지 보내기 — 나갈 문구를 먼저 받아 그대로 보여 주고 확인받는다.
+     문구는 서버가 만든다(보낸 것과 본 것이 갈라지지 않게). 이미 보낸 회차면 그 시각을 알려
+     한 번 더 묻는다 — 같은 방에 두 번 나가는 사고가 이 화면에서 가장 흔할 일이다. */
+  const nf = document.getElementById('wkNotify');
+  if (nf) nf.addEventListener('click', async () => {
+    nf.disabled = true;
     try {
-      const ed = await API.weekly(WK.week);
-      if (!ed.available) { toast('발행본을 찾지 못했습니다', false); return; }
-      const ok = await copyToClipboard(shareText(ed));
-      toast(ok ? '공유 텍스트를 복사했습니다' : '복사에 실패했습니다', ok);
-    } catch (e) { toast('복사 실패: ' + (e.status || e.message), false); }
+      const dry = await API.weeklyAction({ action: 'notify', week: WK.week, dryRun: true }, adminPin);
+      const sent = dry.notifiedAt
+        ? '⚠ 이미 보낸 회차입니다 (' + String(dry.notifiedAt).slice(0, 16).replace('T', ' ') + ')\n\n'
+        : '';
+      if (!confirm(sent + '아래 내용으로 보냅니다.\n\n' + dry.text)) return;
+      await API.weeklyAction({ action: 'notify', week: WK.week }, adminPin);
+      toast('메시지를 보냈습니다', true);
+      loadWeekly();
+    } catch (e) {
+      const m = {
+        NOT_PUBLISHED: '발행된 회차가 아닙니다',
+        NO_WEBHOOK: '웹훅 주소가 설정되지 않았습니다 (Pages 환경변수 WEEKLY_WEBHOOK_URL)',
+        WEBHOOK_UNREACHABLE: '웹훅 주소에 연결하지 못했습니다',
+        WEBHOOK_FAILED: '메신저가 거절했습니다' + (e.data && e.data.status ? ' (' + e.data.status + ')' : ''),
+      }[e.message];
+      toast(m || ('발송 실패: ' + (e.status || e.message)), false);
+    } finally { nf.disabled = false; }
   });
 }
 
