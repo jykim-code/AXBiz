@@ -35,9 +35,11 @@ const BODY = [
    지난 시도: 맨 텍스트로 두면 제목에 딸린 부스러기로 보였고(→ 아이콘 칩, 되돌림),
    제목과 같은 행에 두는 것도 폐기했다. 칩·라운드 박스는 F안 조판이 쓰지 않는다.
    제목은 커버와 같은 「8월 3주차」 표기를 쓴다 — 연도는 아래 메타 줄에 그대로 있다. */
-function headerHTML(d) {
+function headerHTML(d, s) {
   const metaLabel = (t) => '<span class="text-[10px] font-bold uppercase tracking-widest text-lime-600 flex-none">' + t + '</span>';
   const metaValue = (t) => '<span class="font-display font-semibold">' + escapeHtml(t) + '</span>';
+  const total = (s && s.total) || 0;
+  const picks = (s && s.picks) || 0;
   return '<div class="' + WRAP + ' pt-12">' +
     '<div class="text-[11px] font-bold uppercase tracking-[.2em] text-lime-600 mb-1.5">Weekly Picks' +
     (d.issueNo ? ' No.' + no2(d.issueNo) : '') + '</div>' +
@@ -48,6 +50,14 @@ function headerHTML(d) {
     (d.publishedAt
       ? '<span class="w-px h-3 bg-ink/15 mx-1 flex-none"></span>' +
         metaLabel('발행') + metaValue(ymdDot(String(d.publishedAt).slice(0, 10)))
+      : '') +
+    /* 금주 동향 전체 보기 — 집계·발행과 같은 행에 둔다(2026-08-24 사용자 지시).
+       메타가 아니라 동작이므로 넓은 화면에서는 ml-auto 로 행 오른쪽 끝으로 밀어 구분한다.
+       발행물은 고른 것만 싣고 전체 목록은 그것을 담당하는 화면(대시보드)이 맡는다. */
+    (total > picks
+      ? '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="group flex items-center gap-1.5 sm:ml-auto flex-none">' +
+        '<span class="font-semibold group-hover:text-lime-600">금주 동향 ' + total + '건 전체 보러가기</span>' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>'
       : '') +
     // 마지막 </div> 로 WRAP 을 닫는다. 닫지 않으면 뒤따르는 모든 블록이 이 max-width 안에 들어가
     // 픽 섹션의 전체폭 다크 반전이 1000px 로 잘리고 좌우 패딩이 이중으로 걸린다.
@@ -164,13 +174,6 @@ function pickHTML(p, i) {
   return h + '</div></div></section>';
 }
 
-/* ===== 금주 동향 전체 보기 =====
-   발행물은 고른 것만 보여 주고, 전체 목록은 원래 그것을 담당하는 화면(대시보드)이 맡는다. */
-const allEntriesLink = (d, s) =>
-  '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="rule pt-4 mb-10 flex items-center gap-2 group">' +
-  '<span class="text-[14px] font-semibold group-hover:text-lime-600">금주 동향 ' + (s.total || 0) + '건 전체 보러가기</span>' +
-  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>';
-
 /* ===== 지난 회차 ===== */
 function prevHTML(prev) {
   if (!prev || !prev.length) return '';
@@ -261,14 +264,11 @@ function renderList(editions) {
     '한 주의 AX 시장 동향에서 주목할 것만 골라 이유를 붙인 발행물</p>';
 
   if (latest) {
-    /* 최신 회차 직행. 요약은 「금주 한 줄 요약」(payload.overview)이고 100~200자라
-       링크와 같은 행에 truncate 로 두면 거의 다 잘린다 — 아래 줄에서 통째로 흐르게 둔다. */
+    /* 최신 회차 직행. 요약(금주 한 줄 요약)은 싣지 않는다(2026-08-24 사용자 지시) —
+       바로 아래 커버 그리드가 이미 어느 회차인지 말하고, 요약은 상세에서 가장 큰 활자로 나온다. */
     h += '<div class="mt-8 rule pt-4">' +
       '<a href="/weekly?w=' + encodeURIComponent(latest.week) + '" class="font-display font-bold text-[15px] hover:text-lime-600">' +
       '최신 ' + (latest.issueNo ? no2(latest.issueNo) + '호 · ' : '') + escapeHtml(weekTitle(latest.label)) + ' 읽기 →</a>' +
-      (latest.overview
-        ? '<p class="text-[13.5px] text-ink/55 leading-relaxed max-w-[60ch] mt-1.5">' + escapeHtml(latest.overview) + '</p>'
-        : '') +
       '</div>';
   }
   h += '</div>';
@@ -335,7 +335,7 @@ async function copyToClipboard(text) {
 function renderEdition(d) {
   const s = d.stats || {}, p = d.payload || {};
   const picks = p.picks || [];
-  let h = headerHTML(d);
+  let h = headerHTML(d, s);
 
   // 금주 한 줄 요약 — 이 페이지에서 가장 큰 본문 활자
   h += '<div class="' + WRAP + '">';
@@ -343,13 +343,12 @@ function renderEdition(d) {
     h += '<p class="text-[19px] sm:text-[22px] font-display font-medium leading-[1.55] max-w-[40ch] mb-10">' + escapeHtml(p.overview) + '</p>';
 
   h += statsHTML(s);
-  /* 고르지 않은 나머지는 이 페이지에 싣지 않고 대시보드로 넘긴다(2026-08-21 사용자 지시).
-     이 링크는 원래 픽 섹션 뒤에 있었는데 상단으로 올렸다(2026-08-24 사용자 지시) — 「금주 동향 N건」
-     수치가 바로 위 4칸에 있으므로 그 수치와 붙어 있어야 「N건 중 몇 건을 골랐다」가 이어 읽힌다. */
-  if ((s.total || 0) > picks.length) h += allEntriesLink(d, s);
-  if (picks.length) h += indexHTML(picks);
 
+  /* 총론 → 상세 순서로 둔다(2026-08-24 사용자 지시). 한컴 관점은 그 주를 묶은 판단이고
+     기업 목차는 아래 픽 섹션으로 가는 이동 장치이므로, 목차가 한컴 관점보다 앞에 오면
+     결론을 읽기 전에 상세로 빠져나가게 된다. */
   if ((p.hancomConclusion || []).length) h += hancomHTML(p.hancomConclusion);
+  if (picks.length) h += indexHTML(picks);
 
   /* 금주 한눈에 — 키워드 · 신규 편입 기업 · 4주 추이.
      수치 4칸은 목차 앞에 두라는 지시였으므로(그 앞에 다른 것을 끼우지 않는다) 이 셋은

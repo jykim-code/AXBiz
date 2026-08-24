@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>위클리 픽 — 한컴 관점 · 기업 목차 조판 시안</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+    fontFamily: { sans: ['Inter','Pretendard','ui-sans-serif','system-ui','sans-serif'], display: ['"Space Grotesk"','Pretendard','ui-sans-serif','system-ui','sans-serif'] },
+  }}};
+</script>
+<style>
+  body { background:#f7f5f0; color:#111; font-family:'Inter','Pretendard',sans-serif; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family:'Space Grotesk','Pretendard',sans-serif; }
+  ::selection { background:#c8f200; color:#111; }
+  .rule      { border-top:2px solid #111; }
+  .rule-thin { border-top:1px solid rgba(17,17,17,.14); }
+  .card      { background:#fff; border-radius:20px; padding:26px 26px 30px; margin-bottom:22px; box-shadow:0 1px 3px rgba(17,17,17,.05); }
+  .tag       { font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:#7ba500; }
+  .note      { font-size:12.5px; color:rgba(17,17,17,.5); line-height:1.6; margin-top:16px; padding-top:12px; border-top:1px solid rgba(17,17,17,.08); }
+  .badge     { display:inline-block; font-size:10px; font-weight:700; padding:2px 7px; border-radius:99px; background:rgba(17,17,17,.07); color:rgba(17,17,17,.55); }
+</style>
+</head>
+<!--
+  위클리 픽 조판 시안 — 2026-08-24 사용자 지적.
+    「한컴 관점」과 「기업 목차」가 둘 다 01·02·03 숫자 체계라 같은 것으로 보인다.
+    순서도 총론 → 상세로 바꿨으므로(한컴 관점이 위) 두 블록이 서로 달라 보여야 한다.
+
+    K ~ N : 한컴 관점 (위에 오는 총론)
+    P ~ S : 기업 목차 (아래로 가는 이동 장치)
+    맨 끝에 추천 조합을 실제 순서대로 이어 붙여 두었다.
+
+  고른 안을 weekly.js 에 옮긴 뒤 이 파일은 지운다.
+-->
+<body class="min-h-screen bg-beige">
+  <div class="bg-ink text-lime">
+    <div class="max-w-[1000px] mx-auto px-5 sm:px-8 py-3 text-sm font-semibold">
+      조판 시안 — 한컴 관점(K~N) · 기업 목차(P~S)
+    </div>
+  </div>
+
+  <div class="max-w-[1000px] mx-auto px-5 sm:px-8 py-12">
+
+    <div class="card !bg-ink !text-white">
+      <div class="tag mb-3 !text-lime">지금 무엇이 문제인가</div>
+      <p class="text-[14.5px] leading-[1.75] text-white/80 max-w-[68ch]">
+        두 블록이 같은 활자 장치(라임 <b class="text-lime">01 · 02 · 03</b>)를 쓴다. 그런데 성격이 다르다:
+        한컴 관점의 번호는 <b class="text-white">순서에 뜻이 없는 장식</b>이고,
+        기업 목차의 번호는 <b class="text-white">아래 픽 섹션의 큰 순번과 짝을 이루는 기능</b>이다(눌러서 그 섹션으로 이동).
+        그래서 <b class="text-lime">목차는 번호를 지키고 한컴 관점에서 번호를 빼는 쪽</b>이 맞다고 본다.
+      </p>
+    </div>
+
+    <div class="rule mt-12 mb-6"></div>
+    <h2 class="font-display font-bold text-3xl tracking-tighter mb-2">K ~ N · 한컴 관점</h2>
+    <p class="text-[13.5px] text-ink/55 mb-8 max-w-[64ch]">문장이 주인공이 되게 하고 번호를 쓰지 않는다. 2~3개 불릿, 각 60~140자.</p>
+
+    <!-- K -->
+    <div class="card">
+      <div class="tag mb-5">후보 K · 라임 좌측 바</div>
+      <div class="rule pt-4">
+        <div class="flex items-baseline justify-between gap-4 mb-5">
+          <div class="tag">한컴 관점</div>
+          <div class="text-[12px] text-ink/40">금주 픽에서 도출한 결론</div>
+        </div>
+        <div class="space-y-4 max-w-[66ch]">
+          <p class="text-[15px] leading-[1.75] pl-4 border-l-2 border-lime">모델 중립이 홍보 문구에서 조달 요건으로 이동 중, 대응 시점을 앞당길 필요</p>
+          <p class="text-[15px] leading-[1.75] pl-4 border-l-2 border-lime">오케스트레이션 그리드의 차별화 요소를 공공 레퍼런스로 증명할 단계</p>
+          <p class="text-[15px] leading-[1.75] pl-4 border-l-2 border-lime">폐쇄망 요건이 제안서 필수 항목으로 굳어지며 배포 주권이 비교 기준으로 부상</p>
+        </div>
+      </div>
+      <p class="note">픽 섹션의 「주목(Pick) 이유」와 같은 장치다. <b>사람이 판단해 쓴 문장에는 라임 바가 붙는다</b>는 규칙이 페이지 전체에 생겨 일관된다. 목차(번호)와 확실히 달라 보인다. 가장 손이 덜 간다.</p>
+    </div>
+
+    <!-- L -->
+    <div class="card">
+      <div class="tag mb-5">후보 L · 리드 문장 + 받침</div>
+      <div class="rule pt-4">
+        <div class="tag mb-4">한컴 관점</div>
+        <p class="text-[20px] sm:text-[23px] font-display font-medium leading-[1.5] tracking-tight max-w-[40ch] mb-5">
+          모델 중립이 홍보 문구에서 조달 요건으로 이동 중, 대응 시점을 앞당길 필요
+        </p>
+        <div class="rule-thin pt-4 space-y-2.5 max-w-[66ch]">
+          <p class="text-[14px] leading-[1.75] text-ink/70">오케스트레이션 그리드의 차별화 요소를 공공 레퍼런스로 증명할 단계</p>
+          <p class="text-[14px] leading-[1.75] text-ink/70">폐쇄망 요건이 제안서 필수 항목으로 굳어지며 배포 주권이 비교 기준으로 부상</p>
+        </div>
+      </div>
+      <p class="note">한 줄만 가져가도 되게 만든다. 상단이라 「금주 한 줄 요약」과 큰 활자가 두 번 겹치는 점은 주의. 관리자가 첫 줄에 가장 센 결론을 두어야 한다(순서가 곧 위계).</p>
+    </div>
+
+    <!-- M -->
+    <div class="card">
+      <div class="tag mb-5">후보 M · 라벨 없는 문장 목록 (얇은 선 구분)</div>
+      <div class="rule pt-4">
+        <div class="flex items-baseline gap-3 mb-1">
+          <div class="tag">한컴 관점</div>
+          <div class="flex-1 border-b border-ink/10"></div>
+          <div class="text-[11px] text-ink/35">금주 픽에서 도출</div>
+        </div>
+        <div>
+          <p class="text-[15.5px] leading-[1.75] py-4 rule-thin first:border-t-0 max-w-[70ch]">모델 중립이 홍보 문구에서 조달 요건으로 이동 중, 대응 시점을 앞당길 필요</p>
+          <p class="text-[15.5px] leading-[1.75] py-4 rule-thin max-w-[70ch]">오케스트레이션 그리드의 차별화 요소를 공공 레퍼런스로 증명할 단계</p>
+          <p class="text-[15.5px] leading-[1.75] py-4 rule-thin max-w-[70ch]">폐쇄망 요건이 제안서 필수 항목으로 굳어지며 배포 주권이 비교 기준으로 부상</p>
+        </div>
+      </div>
+      <p class="note">마커를 아예 없애고 얇은 선으로만 나눈다. 가장 담백하고 공문에 가깝다. 다만 목차도 얇은 선으로 행을 나누므로 <b>선 문법이 겹칠 위험</b>이 있다.</p>
+    </div>
+
+    <!-- N -->
+    <div class="card">
+      <div class="tag mb-5">후보 N · 라임 배경 블록</div>
+      <div class="rule pt-4">
+        <div class="flex items-baseline justify-between gap-4 mb-4">
+          <div class="tag">한컴 관점</div>
+          <div class="text-[12px] text-ink/40">금주 픽에서 도출한 결론</div>
+        </div>
+        <div class="bg-lime/25 px-5 py-5 space-y-3.5 max-w-[70ch]">
+          <p class="text-[15px] leading-[1.75]">모델 중립이 홍보 문구에서 조달 요건으로 이동 중, 대응 시점을 앞당길 필요</p>
+          <p class="text-[15px] leading-[1.75]">오케스트레이션 그리드의 차별화 요소를 공공 레퍼런스로 증명할 단계</p>
+          <p class="text-[15px] leading-[1.75]">폐쇄망 요건이 제안서 필수 항목으로 굳어지며 배포 주권이 비교 기준으로 부상</p>
+        </div>
+      </div>
+      <p class="note">면으로 묶어 「여기가 결론」이 가장 분명하다. 다만 F안 조판이 <b>박스를 쓰지 않기로</b> 한 원칙과 어긋난다(라운드는 아니지만 면은 면이다). 대비를 최우선한다면 선택지.</p>
+    </div>
+
+    <div class="rule mt-12 mb-6"></div>
+    <h2 class="font-display font-bold text-3xl tracking-tighter mb-2">P ~ S · 기업 목차</h2>
+    <p class="text-[13.5px] text-ink/55 mb-8 max-w-[64ch]">아래 픽 섹션으로 가는 이동 장치다. 무엇이 실렸는지 3초 안에 파악되고 눌러서 점프해야 한다.</p>
+
+    <!-- P -->
+    <div class="card">
+      <div class="tag mb-5">후보 P · 현행 유지 (번호 + 기업명 + 제목 + 날짜)</div>
+      <div class="rule pt-3">
+        <a href="#" class="group flex items-baseline gap-4 py-3.5 rule-thin first:border-t-0 hover:bg-lime/20 transition-colors">
+          <span class="font-display font-bold text-[13px] text-lime-600 w-6 flex-none">01</span>
+          <span class="font-display font-bold text-[20px] sm:text-[24px] tracking-tight flex-none">이스트소프트</span>
+          <span class="text-[13px] text-ink/55 hidden sm:block truncate flex-1">모두의 AI 공모에 컨소시엄 주관사로 접수</span>
+          <span class="text-[11px] text-ink/35 ml-auto flex-none">2026-08-19</span>
+        </a>
+        <a href="#" class="group flex items-baseline gap-4 py-3.5 rule-thin hover:bg-lime/20 transition-colors">
+          <span class="font-display font-bold text-[13px] text-lime-600 w-6 flex-none">02</span>
+          <span class="font-display font-bold text-[20px] sm:text-[24px] tracking-tight flex-none">KT</span>
+          <span class="text-[13px] text-ink/55 hidden sm:block truncate flex-1">정부 모두의 AI 사업 공모에 컨소시엄 주관사로 참여 발표, 참여 기관 16곳</span>
+          <span class="text-[11px] text-ink/35 ml-auto flex-none">2026-08-19</span>
+        </a>
+        <a href="#" class="group flex items-baseline gap-4 py-3.5 rule-thin hover:bg-lime/20 transition-colors">
+          <span class="font-display font-bold text-[13px] text-lime-600 w-6 flex-none">03</span>
+          <span class="font-display font-bold text-[20px] sm:text-[24px] tracking-tight flex-none">LG AI연구원</span>
+          <span class="text-[13px] text-ink/55 hidden sm:block truncate flex-1">독파모 2차 단계평가를 통과하여 3차 단계 진출을 확정</span>
+          <span class="text-[11px] text-ink/35 ml-auto flex-none">2026-08-18</span>
+        </a>
+      </div>
+      <p class="note">한컴 관점에서 번호를 빼면 이것만으로도 충분히 구분된다. 번호가 아래 픽 섹션의 큰 순번과 짝을 이루는 기능이라 <b>바꾸지 않는 것이 정보적으로 이득</b>이다.</p>
+    </div>
+
+    <!-- Q -->
+    <div class="card">
+      <div class="tag mb-5">후보 Q · 날짜를 앞으로 (연혁 느낌)</div>
+      <div class="rule pt-3">
+        <a href="#" class="group flex items-baseline gap-5 py-3.5 rule-thin first:border-t-0 hover:bg-lime/20 transition-colors">
+          <span class="font-display font-bold text-[13px] text-ink/35 w-12 flex-none tabular-nums">08.19</span>
+          <span class="font-display font-bold text-[20px] sm:text-[24px] tracking-tight flex-none">이스트소프트</span>
+          <span class="text-[13px] text-ink/55 hidden sm:block truncate flex-1">모두의 AI 공모에 컨소시엄 주관사로 접수</span>
+          <span class="text-lime-600 text-[13px] font-bold ml-auto flex-none opacity-0 group-hover:opacity-100">↓</span>
+        </a>
+        <a href="#" class="group flex items-baseline gap-5 py-3.5 rule-thin hover:bg-lime/20 transition-colors">
+          <span class="font-display font-bold text-[13px] text-ink/35 w-12 flex-none tabular-nums">08.19</span>
+          <span class="font-display font-bold text-[20px] sm:text-[24px] tracking-tight flex-none">KT</span>
+          <span class="text-[13px] text-ink/55 hidden sm:block truncate flex-1">정부 모두의 AI 사업 공모에 컨소시엄 주관사로 참여 발표</span>
+          <span class="text-lime-600 text-[13px] font-bold ml-auto flex-none opacity-0 group-hover:opacity-100">↓</span>
+        </a>
+        <a href="#" class="group flex items-baseline gap-5 py-3.5 rule-thin hover:bg-lime/20 transition-colors">
+          <span class="font-display font-bold text-[13px] text-ink/35 w-12 flex-none tabular-nums">08.18</span>
+          <span class="font-display font-bold text-[20px] sm:text-[24px] tracking-tight flex-none">LG AI연구원</span>
+          <span class="text-[13px] text-ink/55 hidden sm:block truncate flex-1">독파모 2차 단계평가를 통과하여 3차 단계 진출을 확정</span>
+          <span class="text-lime-600 text-[13px] font-bold ml-auto flex-none opacity-0 group-hover:opacity-100">↓</span>
+        </a>
+      </div>
+      <p class="note">번호를 날짜로 갈아 숫자 체계 충돌이 없어진다. 시간순으로 읽히는 이점도 있다. 다만 <b>아래 픽 섹션의 큰 순번과 짝이 끊긴다</b> — 목차에서 세 번째를 눌렀는데 섹션에는 03 이 붙어 있다.</p>
+    </div>
+
+    <!-- R -->
+    <div class="card">
+      <div class="tag mb-5">후보 R · 기업명만 큰 활자로 (가장 가벼운 인덱스)</div>
+      <div class="rule pt-4">
+        <div class="tag mb-3">이번 회차에 실린 기업</div>
+        <p class="font-display font-bold text-[26px] sm:text-[32px] tracking-tighter leading-[1.25]">
+          <a href="#" class="hover:text-lime-600">이스트소프트</a><span class="text-ink/20 mx-2.5">/</span><a href="#" class="hover:text-lime-600">KT</a><span class="text-ink/20 mx-2.5">/</span><a href="#" class="hover:text-lime-600">LG AI연구원</a>
+        </p>
+      </div>
+      <p class="note">자리를 가장 적게 쓰고 기업명이 강하게 선다. 픽이 3~5건일 때 시원하다. 다만 <b>제목·날짜가 사라져</b> 무슨 일이 있었는지는 내려가서 봐야 하고, 픽이 10건을 넘으면 이름 뭉치가 된다.</p>
+    </div>
+
+    <!-- S -->
+    <div class="card">
+      <div class="tag mb-5">후보 S · 2행 (기업명 위, 제목 아래) + 분류 배지</div>
+      <div class="rule pt-3">
+        <a href="#" class="group block py-4 rule-thin first:border-t-0 hover:bg-lime/20 transition-colors">
+          <div class="flex items-baseline gap-2.5">
+            <span class="font-display font-bold text-[21px] sm:text-[25px] tracking-tight">이스트소프트</span>
+            <span class="badge">중견기업</span>
+            <span class="text-[11px] text-ink/35 ml-auto">08.19</span>
+          </div>
+          <p class="text-[13.5px] text-ink/55 leading-relaxed mt-1 max-w-[70ch]">모두의 AI 공모에 컨소시엄 주관사로 접수</p>
+        </a>
+        <a href="#" class="group block py-4 rule-thin hover:bg-lime/20 transition-colors">
+          <div class="flex items-baseline gap-2.5">
+            <span class="font-display font-bold text-[21px] sm:text-[25px] tracking-tight">KT</span>
+            <span class="badge">대기업</span>
+            <span class="text-[11px] text-ink/35 ml-auto">08.19</span>
+          </div>
+          <p class="text-[13.5px] text-ink/55 leading-relaxed mt-1 max-w-[70ch]">정부 모두의 AI 사업 공모에 컨소시엄 주관사로 참여 발표, 참여 기관 16곳</p>
+        </a>
+        <a href="#" class="group block py-4 rule-thin hover:bg-lime/20 transition-colors">
+          <div class="flex items-baseline gap-2.5">
+            <span class="font-display font-bold text-[21px] sm:text-[25px] tracking-tight">LG AI연구원</span>
+            <span class="badge">대기업</span>
+            <span class="text-[11px] text-ink/35 ml-auto">08.18</span>
+          </div>
+          <p class="text-[13.5px] text-ink/55 leading-relaxed mt-1 max-w-[70ch]">독파모 2차 단계평가를 통과하여 3차 단계 진출을 확정</p>
+        </a>
+      </div>
+      <p class="note">번호를 없애도 기업명 크기로 위계가 서고, <b>제목이 잘리지 않는다</b>(현행은 한 줄 truncate 라 KT 제목이 잘렸다). 분류 배지가 대기업·스타트업 구성을 알려 준다. 대신 행이 두 배로 높아져 픽이 많으면 목차가 길어진다.</p>
+    </div>
+
+    <div class="rule mt-12 mb-6"></div>
+    <h2 class="font-display font-bold text-3xl tracking-tighter mb-2">추천 조합 · K + P</h2>
+    <p class="text-[13.5px] text-ink/55 mb-6 max-w-[66ch]">
+      실제 순서(수치 4칸 → 한컴 관점 → 기업 목차)대로 이어 붙였다.
+      한컴 관점은 <b>라임 바 + 문장</b>, 목차는 <b>번호 + 기업명</b>이라 같은 자리에 붙어 있어도 성격이 갈린다.
+    </p>
+
+    <div class="card">
+      <!-- 수치 4칸 (맥락용) -->
+      <div class="rule pt-5 mb-10 grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-ink/10">
+        <div class="sm:pr-6 py-3 sm:py-0"><div class="font-display font-bold text-[34px] sm:text-[40px] leading-none tracking-tighter">37</div><div class="text-[10px] font-semibold uppercase tracking-widest text-ink/40 mt-2">금주 동향</div></div>
+        <div class="sm:px-6 py-3 sm:py-0"><div class="font-display font-bold text-[34px] sm:text-[40px] leading-none tracking-tighter">21</div><div class="text-[10px] font-semibold uppercase tracking-widest text-ink/40 mt-2">등장 기업</div></div>
+        <div class="sm:px-6 py-3 sm:py-0"><div class="font-display font-bold text-[34px] sm:text-[40px] leading-none tracking-tighter">9</div><div class="text-[10px] font-semibold uppercase tracking-widest text-ink/40 mt-2">신규 기업</div></div>
+        <div class="sm:px-6 py-3 sm:py-0"><div class="font-display font-bold text-[34px] sm:text-[40px] leading-none tracking-tighter">3</div><div class="text-[10px] font-semibold uppercase tracking-widest text-ink/40 mt-2">Weekly Picks</div></div>
+      </div>
+
+      <!-- K -->
+      <div class="rule pt-4">
+        <div class="flex items-baseline justify-between gap-4 mb-5">
+          <div class="tag">한컴 관점</div>
+          <div class="text-[12px] text-ink/40">금주 픽에서 도출한 결론</div>
+        </div>
+        <div class="space-y-4 max-w-[66ch]">
+          <p class="text-[15px] leading-[1.75] pl-4 border-l-2 border-lime">모델 중립이 홍보 문구에서 조달 요건으로 이동 중, 대응 시점을 앞당길 필요</p>
+          <p class="text-[15px] leading-[1.75] pl-4 border-l-2 border-lime">오케스트레이션 그리드의 차별화 요소를 공공 레퍼런스로 증명할 단계</p>
+          <p class="text-[15px] leading-[1.75] pl-4 border-l-2 border-lime">폐쇄망 요건이 제안서 필수 항목으로 굳어지며 배포 주권이 비교 기준으로 부상</p>
+        </div>
+      </div>
+
+      <!-- P -->
+      <div class="rule pt-3 mt-10">
+        <a href="#" class="group flex items-baseline gap-4 py-3.5 rule-thin first:border-t-0 hover:bg-lime/20 transition-colors">
+          <span class="font-display font-bold text-[13px] text-lime-600 w-6 flex-none">01</span>
+          <span class="font-display font-bold text-[20px] sm:text-[24px] tracking-tight flex-none">이스트소프트</span>
+          <span class="text-[13px] text-ink/55 hidden sm:block truncate flex-1">모두의 AI 공모에 컨소시엄 주관사로 접수</span>
+          <span class="text-[11px] text-ink/35 ml-auto flex-none">2026-08-19</span>
+        </a>
+        <a href="#" class="group flex items-baseline gap-4 py-3.5 rule-thin hover:bg-lime/20 transition-colors">
+          <span class="font-display font-bold text-[13px] text-lime-600 w-6 flex-none">02</span>
+          <span class="font-display font-bold text-[20px] sm:text-[24px] tracking-tight flex-none">KT</span>
+          <span class="text-[13px] text-ink/55 hidden sm:block truncate flex-1">정부 모두의 AI 사업 공모에 컨소시엄 주관사로 참여 발표, 참여 기관 16곳</span>
+          <span class="text-[11px] text-ink/35 ml-auto flex-none">2026-08-19</span>
+        </a>
+        <a href="#" class="group flex items-baseline gap-4 py-3.5 rule-thin hover:bg-lime/20 transition-colors">
+          <span class="font-display font-bold text-[13px] text-lime-600 w-6 flex-none">03</span>
+          <span class="font-display font-bold text-[20px] sm:text-[24px] tracking-tight flex-none">LG AI연구원</span>
+          <span class="text-[13px] text-ink/55 hidden sm:block truncate flex-1">독파모 2차 단계평가를 통과하여 3차 단계 진출을 확정</span>
+          <span class="text-[11px] text-ink/35 ml-auto flex-none">2026-08-18</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tag mb-3">대안 조합 · K + S</div>
+      <p class="text-[13px] text-ink/55 leading-relaxed mb-6">목차에서 번호를 아예 없애고 제목 잘림도 없애는 조합. 목차가 길어지는 것을 받아들이는 쪽.</p>
+      <div class="rule pt-4">
+        <div class="flex items-baseline justify-between gap-4 mb-5">
+          <div class="tag">한컴 관점</div>
+          <div class="text-[12px] text-ink/40">금주 픽에서 도출한 결론</div>
+        </div>
+        <div class="space-y-4 max-w-[66ch]">
+          <p class="text-[15px] leading-[1.75] pl-4 border-l-2 border-lime">모델 중립이 홍보 문구에서 조달 요건으로 이동 중, 대응 시점을 앞당길 필요</p>
+          <p class="text-[15px] leading-[1.75] pl-4 border-l-2 border-lime">오케스트레이션 그리드의 차별화 요소를 공공 레퍼런스로 증명할 단계</p>
+        </div>
+      </div>
+      <div class="rule pt-3 mt-10">
+        <a href="#" class="group block py-4 rule-thin first:border-t-0 hover:bg-lime/20 transition-colors">
+          <div class="flex items-baseline gap-2.5">
+            <span class="font-display font-bold text-[21px] sm:text-[25px] tracking-tight">이스트소프트</span>
+            <span class="badge">중견기업</span>
+            <span class="text-[11px] text-ink/35 ml-auto">08.19</span>
+          </div>
+          <p class="text-[13.5px] text-ink/55 leading-relaxed mt-1 max-w-[70ch]">모두의 AI 공모에 컨소시엄 주관사로 접수</p>
+        </a>
+        <a href="#" class="group block py-4 rule-thin hover:bg-lime/20 transition-colors">
+          <div class="flex items-baseline gap-2.5">
+            <span class="font-display font-bold text-[21px] sm:text-[25px] tracking-tight">KT</span>
+            <span class="badge">대기업</span>
+            <span class="text-[11px] text-ink/35 ml-auto">08.19</span>
+          </div>
+          <p class="text-[13.5px] text-ink/55 leading-relaxed mt-1 max-w-[70ch]">정부 모두의 AI 사업 공모에 컨소시엄 주관사로 참여 발표, 참여 기관 16곳</p>
+        </a>
+      </div>
+    </div>
+
+    <div class="h-16"></div>
+  </div>
+</body>
+</html>
