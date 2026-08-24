@@ -230,7 +230,8 @@ const API = {
     return getJSON('/api/weekly' + q);
   },
   // 발행 회차 목록 (공개). `/weekly` 썸네일 목록용 — 커버가 쓰는 값만 담긴 가벼운 응답.
-  // { editions: [{week, issueNo, label, overview, total, picks, companies, topTags[]}] }
+  // { editions: [{week, issueNo, label, overview, total, picks, companies, topTags[]}],
+  //   upcoming: {week, label, start, end} | null }  ← 「발행 예정」 자리. 오늘 주가 이미 발행됐으면 null
   weeklyList() {
     return getJSON('/api/weekly?list=1');
   },

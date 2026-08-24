@@ -147,22 +147,23 @@ const EXT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
    가져오지 않는다. 없으면 이 밴드를 그리지 않는다. 그것이 지금 조판의 기본 상태이고,
    큰 순번 숫자가 이미 시각 요소 역할을 한다.
 
-   사진은 원본 비율·크기 그대로 싣는다(2026-08-24 사용자 지시).
-   12:5 로 판을 고정해 두었더니 원본이 1.33~2.55 로 제각각이라 위아래가 잘렸다. 잘라 맞추는
-   대신 이미지가 자기 크기를 갖게 두고, 두 가지만 상한으로 건다 —
-     · max-w-full : 본문 폭을 넘지 않게 (넘으면 좌우로 삐져나온다)
-     · max-h      : 세로로 긴 사진이 한 화면을 다 먹지 않게
-   폭을 강제하지 않으므로 작은 사진은 늘리지 않는다(늘리면 뭉개진다).
-   잘리지 않으니 잘리는 기준(im.pos)은 여기서 쓰지 않는다 — 뉴스레터 슬라이드는 판 높이가
-   고정이라 거기서는 그대로 쓴다.
+   사진은 12:5 판에 맞춰 싣는다(2026-08-24 사용자 지시로 원상복구).
+   원본 비율·크기 그대로 두었더니 사진마다 크기와 세로 길이가 제각각이라 픽이 이어지는 조판이
+   흐트러졌다. 판을 고정하면 순번·기업명·본문 3열이 매 픽에서 같은 자리에 온다.
+   잘리는 기준은 서버에서 top·center·bottom 으로 좁혀 두었지만 화면에서도 흰 목록으로 받는다.
+   판보다 작은 사진은 레터박스(옅은 베이지/흰색)로 메운다.
    이미지 출처는 화면에 표기하지 않는다(2026-08-24 사용자 지시). 관리자 입력에는 여전히
    필수라 기록은 회차 데이터에 남는다. */
-function pickImageHTML(p) {
+const PICK_IMG_POS = { top: 'top', center: 'center', bottom: 'bottom' };
+
+function pickImageHTML(p, dark) {
   const im = p.image;
   if (!im || !im.key) return '';
   return '<div class="mb-5">' +
+    '<div class="w-full overflow-hidden ' + (dark ? 'bg-white/5' : 'bg-beige') + '" style="aspect-ratio:12/5">' +
     '<img src="/api/pick-image?k=' + encodeURIComponent(im.key) + '" alt="" loading="lazy" decoding="async" ' +
-    'class="block max-w-full h-auto" style="max-height:560px" /></div>';
+    'class="w-full h-full object-cover" style="object-position:' + (PICK_IMG_POS[im.pos] || 'center') + '" /></div>' +
+    '</div>';
 }
 
 function pickHTML(p, i) {
@@ -175,7 +176,7 @@ function pickHTML(p, i) {
     '<div class="font-display font-bold text-[72px] leading-none ' + (dark ? 'text-lime/30' : 'num-out') + '">' + no2(i + 1) + '</div>' +
     '<div>';
 
-  h += pickImageHTML(p);
+  h += pickImageHTML(p, dark);
 
   h += '<div class="flex items-baseline gap-3 mb-2">' +
     '<a href="/company?name=' + encodeURIComponent(p.company) + '" class="text-[28px] sm:text-[34px] font-display font-bold tracking-tight leading-none hover:text-lime-600">' +
@@ -291,11 +292,50 @@ function coverHTML(e) {
     '</div></div></div></a>';
 }
 
+/* ===== 「발행 예정」 커버 =====
+   회차가 아직 한둘이라 그리드가 비어 보이는 것을 다음 회차 자리로 메운다(2026-08-24 사용자 지시).
+   어느 주가 예정인지는 서버가 정한다(`upcoming`) — 오늘이 속한 주이며, 그 주가 이미 발행됐으면
+   내려오지 않는다. 주차 라벨을 화면에서 다시 계산하지 않는 이유는 서버 weekLabel 과 어긋나면
+   같은 주가 두 이름으로 보이기 때문이다.
+
+   조판으로 「아직 아닌 것」을 말한다: 배색 3종(ink·라임·흰)을 쓰지 않고 점선 테두리 + 베이지
+   바탕만 둔다. 색을 주면 발행된 회차와 나란히 놓였을 때 눌러도 되는 것으로 읽힌다.
+   `<a>` 가 아니라 `<div>` 인 이유도 같다 — 갈 곳이 없다.
+   베이지 커버를 쓰지 않는다는 원칙(경계가 사라진다)의 예외이며, 여기서는 점선이 그 경계를 대신한다.
+   회차 번호는 발행 시점에 붙으므로 쓰지 않는다. 이 자리를 지키는 정보는 주차 하나다. */
+function upcomingCoverHTML(u) {
+  if (!u || !u.label) return '';
+  const range = u.start && u.end ? md(u.start) + ' ~ ' + md(u.end) : '';
+  return '<div class="relative aspect-[4/5] overflow-hidden bg-beige border-2 border-dashed border-ink/20 text-ink">' +
+    '<div class="relative h-full flex flex-col p-4 sm:p-5">' +
+
+    // 상단 — 발행된 커버의 「Weekly Picks No.xx」 자리에 상태를 넣는다. 여기서 가장 먼저
+    // 읽혀야 하는 것은 회차 이름이 아니라 아직 나오지 않았다는 사실이다.
+    '<div class="flex items-start justify-between gap-2">' +
+    '<div class="flex items-center gap-1.5 min-w-0">' +
+    '<span class="w-[3px] h-3 bg-ink/25 flex-none"></span>' +
+    '<span class="font-display font-bold text-[9px] sm:text-[10px] uppercase tracking-[.16em] truncate text-ink/45">Coming soon</span>' +
+    '</div>' +
+    '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-3 sm:h-3.5 w-auto flex-none opacity-30" />' +
+    '</div>' +
+
+    // 하단 — 발행된 커버와 같은 위계(주차 크게 / 브랜드 줄 한 단계 작게)를 쓰되 톤을 낮춘다
+    '<div class="mt-auto">' +
+    '<h3 class="font-display font-bold tracking-tighter leading-[1.08]">' +
+    '<span class="block text-[21px] sm:text-[26px] md:text-[30px] text-ink/70">' +
+    escapeHtml(weekTitle(u.label)) + '</span>' +
+    '<span class="block mt-0.5 text-[13px] sm:text-[16px] md:text-[18px] text-ink/35">AX Biz Radar News</span>' +
+    '</h3>' +
+    '<div class="mt-3 pt-2.5 border-t border-dashed border-ink/20 text-[10px] sm:text-[11px] text-ink/40 leading-relaxed">' +
+    escapeHtml([range, '발행 예정'].filter(Boolean).join(' · ')) +
+    '</div></div></div></div>';
+}
+
 /* ===== 목록 `/weekly` — 발행 회차 썸네일 =====
    단톡방에 뿌리는 링크는 늘 `?w=` 가 붙으므로(웹훅 메시지) 이 화면은 공유 도착지가 아니라
    사이드바·대시보드에서 들어오는 「둘러보기」 입구다. 그래서 최신 회차 본문을 바로 펴지 않고
    회차가 쌓인 것을 보여 준 뒤 최신 회차로 들여보낸다. */
-function renderList(editions) {
+function renderList(editions, upcoming) {
   const latest = editions[0];
   let h = '<div class="' + WRAP + ' pt-12">' +
     '<div class="text-[11px] font-bold uppercase tracking-[.2em] text-lime-600 mb-2">Weekly Picks</div>' +
@@ -325,8 +365,9 @@ function renderList(editions) {
   }
 
   h += '<div class="' + WRAP + ' mt-10">' +
+    // 예정 자리는 맨 앞이다 — 목록이 최신 순이고, 예정 회차가 그 중 가장 최신이다
     '<div class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">' +
-    editions.map(coverHTML).join('') + '</div>' +
+    upcomingCoverHTML(upcoming) + editions.map(coverHTML).join('') + '</div>' +
     '<div class="mt-10 rule-thin pt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">' +
     '<a href="/company" class="font-semibold hover:text-lime-600">기업 찾아보기 →</a>' +
     '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a>' +
@@ -543,7 +584,7 @@ async function initWeekly() {
         '<a href="/" class="text-lime-600 font-semibold hover:underline">대시보드로</a></div>';
       return;
     }
-    root.innerHTML = renderList((list && list.editions) || []);
+    root.innerHTML = renderList((list && list.editions) || [], list && list.upcoming);
     document.title = '위클리 픽 — AX Biz Radar';
     return;
   }
