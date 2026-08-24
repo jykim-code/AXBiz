@@ -13,8 +13,6 @@
   const no2 = (n) => String(n).padStart(2, '0');
   const weekTitle = (label) => { const s = String(label || '').replace(/^\d{4}년\s*/, ''); return s ? s + '차' : ''; };
   const mdSlash = (d) => (d && d.length >= 10 ? +d.slice(5, 7) + '/' + +d.slice(8, 10) : '');
-  // 출처 표기는 sourceUrl 의 호스트에서 끌어낸다 — 새 입력을 만들지 않기 위한 것이다.
-  const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
   // 서버에서 top·center·bottom 으로 좁혀 두었지만 화면에서도 흰 목록으로 받는다.
   const POS = { top: 'top', center: 'center', bottom: 'bottom' };
 
@@ -167,35 +165,38 @@
      위 비주얼 판(밝음 또는 사진) + 아래 다크 텍스트 판. 비주얼 판이 두 갈래다.
      · 관리자가 이미지를 올린 항목 → 사진이 판을 채우고 활자를 얹는다
      · 안 올린 항목 → 배색 판 + 제목 큰 활자. 이것이 기본 상태이며 사진은 선택이다 */
-  /* 사진 판 — 기업명·분류는 사진 위에 얹는다. 사진이 무엇을 보여주는지 그 자리에서
-     알아야 하고, 한 장만 캡처해 공유해도 무엇인지 남아야 한다.
-     큰 제목은 얹지 않는다 — 바로 아래 헤드라인과 같은 문장이라 두 번 읽힌다(2026-08-24 사용자 지시).
-     그늘은 위(기업명)와 아래(출처) 두 곳에만 넣어 사진 가운데를 가리지 않는다. */
+  /* 판 머리 — 기업명·분류·날짜·로고. 사진 판과 도형 판이 같은 것을 쓴다(2026-08-24 사용자 지시).
+     큰 제목은 얹지 않는다 — 바로 아래 헤드라인과 같은 문장이라 두 번 읽힌다.
+     다크 배경에서는 로고를 반전한다(회차 커버와 같은 처리). */
+  function panelHead(p, dark) {
+    return '<div class="flex items-start justify-between gap-3">' +
+      '<div class="min-w-0">' +
+      '<div class="font-display font-bold text-[21px] sm:text-[24px] tracking-tight leading-none truncate">' + escapeHtml(p.company) + '</div>' +
+      '<div class="text-[10px] font-bold uppercase tracking-widest ' + (dark ? 'text-white/75' : 'text-ink/55') + ' mt-1.5">' +
+      escapeHtml([p.category, p.date].filter(Boolean).join(' · ')) + '</div></div>' +
+      '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-3.5 w-auto flex-none ' +
+      (dark ? 'opacity-85 brightness-0 invert' : 'opacity-60') + '" /></div>';
+  }
+
+  /* 사진 판. 이미지 출처는 화면에 표기하지 않는다(2026-08-24 사용자 지시) — 관리자 입력에는
+     여전히 필수라 기록은 회차 데이터에 남는다. 그늘은 머리 활자가 읽힐 만큼만 위에 넣고,
+     아래는 다크 텍스트 판과 이어지도록 살짝만 어둡게 한다. */
   function photoPanel(p) {
     return '<div class="flex-none relative overflow-hidden bg-ink text-white" style="height:clamp(210px, 34%, 300px)">' +
       '<img src="/api/pick-image?k=' + encodeURIComponent(p.image.key) + '" alt="" loading="lazy" decoding="async" ' +
       'class="absolute inset-0 w-full h-full object-cover" style="object-position:' + (POS[p.image.pos] || 'center') + '" />' +
-      '<div class="absolute inset-0" aria-hidden="true" style="background:linear-gradient(to bottom, rgba(0,0,0,.58), rgba(0,0,0,.08) 38%, rgba(0,0,0,.08) 60%, rgba(0,0,0,.62))"></div>' +
-      '<div class="relative h-full flex flex-col p-6">' +
-      '<div class="flex items-start justify-between gap-3">' +
-      '<div class="min-w-0">' +
-      '<div class="font-display font-bold text-[21px] sm:text-[24px] tracking-tight leading-none truncate">' + escapeHtml(p.company) + '</div>' +
-      '<div class="text-[10px] font-bold uppercase tracking-widest text-white/70 mt-1.5">' +
-      escapeHtml([p.category, p.date].filter(Boolean).join(' · ')) + '</div></div>' +
-      '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-3.5 w-auto flex-none opacity-80" /></div>' +
-      (p.image.credit
-        ? '<div class="mt-auto text-right"><span class="text-[9.5px] text-white/60">이미지 ' + escapeHtml(p.image.credit) + '</span></div>'
-        : '') +
-      '</div></div>';
+      '<div class="absolute inset-0" aria-hidden="true" style="background:linear-gradient(to bottom, rgba(0,0,0,.58), rgba(0,0,0,.06) 45%, rgba(0,0,0,.22))"></div>' +
+      '<div class="relative h-full flex flex-col p-6">' + panelHead(p, true) + '</div></div>';
   }
 
-  /* 사진이 없는 판 — 배색 + 관계망 도형만. 활자를 넣지 않는다(2026-08-24 사용자 지시).
+  /* 사진이 없는 판 — 배색 + 관계망 도형 위에 같은 머리를 올린다.
      씨앗은 픽 식별값이라 같은 픽은 늘 같은 모양이고, 배색은 순번으로 순환해 장이 넘어간 것이 보인다. */
   function artPanel(p, i) {
     const s = SKINS[i % SKINS.length];
     const seed = p.key || (p.company + '|' + p.date + '|' + (p.title || ''));
-    return '<div class="flex-none relative overflow-hidden ' + s.bg + '" style="height:clamp(210px, 34%, 300px)">' +
-      graphArt(seed, s) + '</div>';
+    return '<div class="flex-none relative overflow-hidden ' + s.bg + ' text-ink" style="height:clamp(210px, 34%, 300px)">' +
+      graphArt(seed, s) +
+      '<div class="relative h-full flex flex-col p-6">' + panelHead(p, false) + '</div></div>';
   }
 
   /* 다크 텍스트 판 — 남는 높이를 다 쓰고 넘치면 이 판만 세로로 흐른다.
@@ -204,20 +205,18 @@
   function textPanel(p, i, issueNo) {
     const n = no2(i + 1);
     const src = safeUrl(p.sourceUrl), conf = safeUrl(p.confluenceUrl);
-    const source = hostOf(p.sourceUrl);
     const linkCls = 'font-semibold text-white/70 hover:text-lime underline underline-offset-2 decoration-white/20';
 
+    // 상단 출처 표기는 두지 않는다(2026-08-24 사용자 지시) — 아래에 출처 기사 링크가 있어 겹친다.
     let h = '<div class="flex-1 min-h-0 bg-panel relative fade-b">' +
       '<div class="scroller h-full px-6 pt-5 pb-12">' +
 
-      '<div class="flex items-start justify-between gap-3 mb-4">' +
-      '<div class="flex items-center gap-2.5 min-w-0">' +
+      '<div class="flex items-center gap-2.5 min-w-0 mb-4">' +
       '<span class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-display font-bold text-[14px] text-white/70 flex-none">' + n + '</span>' +
       '<span class="min-w-0 flex items-center gap-2 text-[11.5px]">' +
       '<span class="font-bold text-lime uppercase tracking-wider">AX News</span>' +
       '<span class="w-px h-3 bg-white/20"></span>' +
-      '<span class="font-semibold text-white/80 truncate">' + escapeHtml(p.company) + '</span></span></div>' +
-      (source ? '<span class="text-[10px] text-white/30 flex-none pt-1">출처 / ' + escapeHtml(source) + '</span>' : '') +
+      '<span class="font-semibold text-white/80 truncate">' + escapeHtml(p.company) + '</span></span>' +
       '</div>';
 
     if (p.title)
@@ -230,13 +229,15 @@
         '<div class="text-[10px] font-bold uppercase tracking-widest text-lime mb-2">주목 이유</div>' +
         '<p class="text-[14.5px] leading-[1.72] text-white/85">' + escapeHtml(p.why) + '</p></div>';
 
+    /* 하위 3항목 — 위계는 「주목 이유」보다 낮게 두되 읽을 수 있어야 한다(2026-08-24 사용자 지시).
+       흰색 60%·12.5px 는 다크 배경에서 너무 흐려 읽히지 않았다. 라벨과 불릿을 함께 올린다. */
     const cols = BODY.filter(function (b) { return (p[b.k] || []).length; });
     if (cols.length)
       h += '<div class="hair pt-4 space-y-4">' + cols.map(function (b) {
-        return '<div><div class="text-[9px] font-bold uppercase tracking-widest text-white/30 mb-1.5">' + b.label + '</div>' +
-          '<ul class="space-y-1.5 text-[12.5px] leading-[1.7] text-white/60">' +
+        return '<div><div class="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">' + b.label + '</div>' +
+          '<ul class="space-y-2 text-[13.5px] leading-[1.75] text-white/85">' +
           p[b.k].map(function (x) {
-            return '<li class="pl-3 relative"><span class="absolute left-0 top-[.62em] w-1 h-1 rounded-full bg-white/25"></span>' +
+            return '<li class="pl-3.5 relative"><span class="absolute left-0 top-[.6em] w-1 h-1 rounded-full bg-lime"></span>' +
               escapeHtml(x) + '</li>';
           }).join('') + '</ul></div>';
       }).join('') + '</div>';
