@@ -302,11 +302,32 @@ function coverHTML(e) {
    바탕만 둔다. 색을 주면 발행된 회차와 나란히 놓였을 때 눌러도 되는 것으로 읽힌다.
    `<a>` 가 아니라 `<div>` 인 이유도 같다 — 갈 곳이 없다.
    베이지 커버를 쓰지 않는다는 원칙(경계가 사라진다)의 예외이며, 여기서는 점선이 그 경계를 대신한다.
-   회차 번호는 발행 시점에 붙으므로 쓰지 않는다. 이 자리를 지키는 정보는 주차 하나다. */
+   회차 번호는 발행 시점에 붙으므로 쓰지 않는다. 이 자리를 지키는 정보는 주차 하나다.
+
+   활자만 두었더니 발행 커버의 큰 회차 번호가 채우던 우하단이 빈 칸으로 보였다(2026-08-24 사용자 지시).
+   그 무게를 색이 아니라 텍스처·도형으로 채운다: ① 대각 해칭, ② 점선 관계망 도형(모티프는
+   대시보드 지식 그래프·뉴스레터 비주얼 판), ③ 라임 점 하나로 「지금 쌓이는 중」. 셋 다 ink 계열
+   저채도이므로 나란히 놓인 발행 커버와 위계가 바뀌지 않는다. */
 function upcomingCoverHTML(u) {
   if (!u || !u.label) return '';
   const range = u.start && u.end ? md(u.start) + ' ~ ' + md(u.end) : '';
   return '<div class="relative aspect-[4/5] overflow-hidden bg-beige border-2 border-dashed border-ink/20 text-ink">' +
+
+    // 대각 해칭 — 「아직 채워지지 않은 판」을 활자 없이 말한다. Tailwind 로 만들 수 없는 패턴이라
+    // repeating-linear-gradient 를 인라인으로 둔다.
+    '<div aria-hidden="true" class="pointer-events-none absolute inset-0" ' +
+    'style="background-image:repeating-linear-gradient(135deg,rgba(17,17,17,.05) 0 1px,transparent 1px 10px)"></div>' +
+
+    // 관계망 도형 — 발행 커버의 큰 회차 번호와 같은 자리(우하단)·같은 무게. 번호는 발행 시점에
+    // 정해지므로 그 자리에 놓을 활자가 없고, 대신 회차가 무엇으로 채워지는지를 도형으로 말한다.
+    '<svg aria-hidden="true" viewBox="0 0 100 100" fill="none" stroke="rgba(17,17,17,.17)" stroke-width="1.2" ' +
+    'class="pointer-events-none absolute -right-7 -bottom-9 w-[80%] h-auto">' +
+    '<path stroke-dasharray="3 3" d="M52 50 16 24M52 50 86 18M52 50 18 76M52 50 88 70M52 50 48 94" />' +
+    '<circle cx="52" cy="50" r="10" stroke-dasharray="4 4" />' +
+    '<circle cx="16" cy="24" r="4.5" /><circle cx="86" cy="18" r="5.5" /><circle cx="18" cy="76" r="5" />' +
+    '<circle cx="88" cy="70" r="4" /><circle cx="48" cy="94" r="3.5" />' +
+    '</svg>' +
+
     '<div class="relative h-full flex flex-col p-4 sm:p-5">' +
 
     // 상단 — 발행된 커버의 「Weekly Picks No.xx」 자리에 상태를 넣는다. 여기서 가장 먼저
@@ -317,6 +338,15 @@ function upcomingCoverHTML(u) {
     '<span class="font-display font-bold text-[9px] sm:text-[10px] uppercase tracking-[.16em] truncate text-ink/45">Coming soon</span>' +
     '</div>' +
     '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-3 sm:h-3.5 w-auto flex-none opacity-30" />' +
+    '</div>' +
+
+    // 상태 한 줄 — 예정 주차는 서버가 「오늘이 속한 주」로 정하므로 지금 실제로 쌓이는 중인 주다.
+    // 라임 점은 이 카드에서 유일한 색이며, 판 전체에 색을 주면 눌러도 되는 것으로 읽히는 문제를 피한다.
+    '<div class="mt-3 flex items-center gap-1.5 min-w-0">' +
+    '<span class="relative flex-none w-1.5 h-1.5">' +
+    '<span class="absolute inset-0 rounded-full bg-lime animate-ping opacity-70 motion-reduce:hidden"></span>' +
+    '<span class="absolute inset-0 rounded-full bg-lime"></span></span>' +
+    '<span class="text-[9.5px] sm:text-[10.5px] font-semibold text-ink/45 truncate">이번 주 동향 수집 중</span>' +
     '</div>' +
 
     // 하단 — 발행된 커버와 같은 위계(주차 크게 / 브랜드 줄 한 단계 작게)를 쓰되 톤을 낮춘다
