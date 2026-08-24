@@ -68,6 +68,22 @@ function weekLabel(w) {
   return thu.getUTCFullYear() + '년 ' + (thu.getUTCMonth() + 1) + '월 ' + Math.ceil(thu.getUTCDate() / 7) + '주';
 }
 
+// 오늘(KST). Workers 는 UTC 로 돌아 자정~오전 9시 사이에 하루 전으로 읽힌다. 그대로 두면
+// 월요일 아침에 지난 주가 「발행 예정」으로 걸리므로 9시간을 더해 한국 날짜로 맞춘다.
+const todayKST = () => fmt(new Date(Date.now() + 9 * 3600000));
+
+/* 「발행 예정」 자리 — 회차가 몇 개 없을 때 목록이 비어 보이는 것을 다음 회차 자리로 메운다
+   (2026-08-24 사용자 지시). 기준은 「최신 회차 + 1주」가 아니라 **오늘이 속한 주**다.
+   한 주를 건너뛰면 최신+1 은 이미 지난 주를 예정으로 내걸게 된다.
+   오늘 주가 이미 발행됐으면 null 을 주고 화면은 이 자리를 그리지 않는다. */
+function upcomingWeek(editions) {
+  const week = isoWeekOf(todayKST());
+  const r = rangeOfWeek(week);
+  if (!r) return null;
+  if (editions.some((e) => e.week === week)) return null;
+  return { week, label: weekLabel(week), start: r[0], end: r[1] };
+}
+
 /* ===== 공용 ===== */
 const arr = (v, max, len) =>
   (Array.isArray(v) ? v : []).slice(0, max).map((x) => stripTrailingPeriod(replaceEmDash(String(x == null ? '' : x).trim())).slice(0, len)).filter(Boolean);
@@ -408,7 +424,8 @@ export async function onRequestGet({ request, env }) {
     if (u.searchParams.get('list') === '1') {
       // 상한을 둔다. 주 1회 발행이라 60이면 1년이 넘고, 목록은 스크롤로 다 보이는 화면이라
       // 페이지네이션을 두지 않는다(넘칠 시점에 「연도별」로 나누는 것이 맞다).
-      return Response.json({ editions: await publishedList(env, 60) });
+      const editions = await publishedList(env, 60);
+      return Response.json({ editions, upcoming: upcomingWeek(editions) });
     }
 
     /* --- 공개: 발행본 1건 (LLM 호출 없음, D1 읽기만) --- */
