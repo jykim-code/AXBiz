@@ -12,6 +12,9 @@
 
 const WRAP = 'max-w-[1000px] mx-auto px-5 sm:px-8';
 const md = (d) => (d && d.length >= 10 ? +d.slice(5, 7) + '/' + +d.slice(8, 10) : '');
+// 헤더 메타용 — '2026-08-17' → '2026.08.17' / '08.17'. 자리수를 고정해 두 날짜가 나란히 서게 한다.
+const ymdDot = (d) => (d && d.length >= 10 ? d.slice(0, 4) + '.' + d.slice(5, 7) + '.' + d.slice(8, 10) : '');
+const mdDot = (d) => (d && d.length >= 10 ? d.slice(5, 7) + '.' + d.slice(8, 10) : '');
 const shortLabel = (label) => String(label || '').replace(/^\d{4}년\s*/, ''); // '2026년 8월 3주' → '8월 3주'
 const weekTitle = (label) => { const s = shortLabel(label); return s ? s + '차' : ''; }; // → '8월 3주차'
 // 회차·순번 2자리 표기. pad2 는 util.js 에 이미 있어 여기서 다시 선언하면 같은 페이지에서
@@ -26,20 +29,29 @@ const BODY = [
   { k: 'hancomInsight', label: '한컴 인사이트' },
 ];
 
-/* ===== 헤더 ===== */
+/* ===== 헤더 =====
+   후보 C(2026-08-24 사용자 선택). 제목 아래 한 줄 메타로, 라임 라벨을 값 앞에 붙여
+   무슨 날짜인지 바로 읽히게 한다. 상단을 가볍게 두고 본문(금주 한 줄 요약)을 빨리 보여준다.
+   지난 시도: 맨 텍스트로 두면 제목에 딸린 부스러기로 보였고(→ 아이콘 칩, 되돌림),
+   제목과 같은 행에 두는 것도 폐기했다. 칩·라운드 박스는 F안 조판이 쓰지 않는다.
+   제목은 커버와 같은 「8월 3주차」 표기를 쓴다 — 연도는 아래 메타 줄에 그대로 있다. */
 function headerHTML(d) {
+  const metaLabel = (t) => '<span class="text-[10px] font-bold uppercase tracking-widest text-lime-600 flex-none">' + t + '</span>';
+  const metaValue = (t) => '<span class="font-display font-semibold">' + escapeHtml(t) + '</span>';
   return '<div class="' + WRAP + ' pt-12">' +
-    '<div class="flex items-end justify-between rule-thin pb-4 mb-8">' +
-    '<div>' +
     '<div class="text-[11px] font-bold uppercase tracking-[.2em] text-lime-600 mb-1.5">Weekly Picks' +
     (d.issueNo ? ' No.' + no2(d.issueNo) : '') + '</div>' +
-    '<h1 class="text-[40px] sm:text-[52px] font-bold tracking-tighter leading-none">' + escapeHtml(d.label) + '</h1></div>' +
-    '<div class="text-right text-[12px] text-ink/45 leading-relaxed flex-none pl-4">' +
-    escapeHtml(md(d.start) + ' ~ ' + md(d.end)) +
-    (d.publishedAt ? '<br/>발행 ' + escapeHtml(String(d.publishedAt).slice(0, 10)) : '') +
+    '<h1 class="text-[40px] sm:text-[52px] font-bold tracking-tighter leading-none mb-4">' +
+    escapeHtml(weekTitle(d.label)) + '</h1>' +
+    '<div class="rule pt-3 mb-8 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[12.5px]">' +
+    metaLabel('집계') + metaValue(ymdDot(d.start) + ' – ' + mdDot(d.end)) +
+    (d.publishedAt
+      ? '<span class="w-px h-3 bg-ink/15 mx-1 flex-none"></span>' +
+        metaLabel('발행') + metaValue(ymdDot(String(d.publishedAt).slice(0, 10)))
+      : '') +
     // 마지막 </div> 로 WRAP 을 닫는다. 닫지 않으면 뒤따르는 모든 블록이 이 max-width 안에 들어가
     // 픽 섹션의 전체폭 다크 반전이 1000px 로 잘리고 좌우 패딩이 이중으로 걸린다.
-    '</div></div></div>';
+    '</div></div>';
 }
 
 /* ===== 수치 =====
@@ -67,12 +79,22 @@ function indexHTML(picks) {
     '<span class="text-[11px] text-ink/35 ml-auto flex-none">' + escapeHtml(p.date || '') + '</span></a>').join('') + '</div>';
 }
 
-/* ===== 라벨 / 내용 2열 행 — 한컴 관점·금주 한눈에가 공유하는 문법 ===== */
-const labelRow = (label, sub, content) =>
-  '<div class="grid sm:grid-cols-[1fr,1fr] gap-x-10 gap-y-3 rule pt-5">' +
-  '<div><div class="text-[11px] font-bold uppercase tracking-widest text-lime-600 mb-2">' + escapeHtml(label) + '</div>' +
-  (sub ? '<p class="text-[13px] text-ink/45 leading-relaxed">' + escapeHtml(sub) + '</p>' : '') + '</div>' +
-  '<div>' + content + '</div></div>';
+/* ===== 한컴 관점 =====
+   후보 F(2026-08-24 사용자 선택). 사람이 판단해 쓴 이 페이지의 알맹이라 결론이 몇 개인지
+   한눈에 보이고 각 항목이 독립된 주장으로 읽혀야 한다. 큰 순번은 픽 섹션이 쓰는 활자 장치와
+   같은 것이라 페이지 안에서 리듬이 이어진다.
+   이전 조판(라벨 왼쪽 / 문단 오른쪽 2열)은 결론이 그냥 쌓여 보여 폐기했다. */
+function hancomHTML(items) {
+  return '<div class="mt-10 rule pt-4">' +
+    '<div class="flex items-baseline justify-between gap-4 mb-5">' +
+    '<div class="text-[11px] font-bold uppercase tracking-widest text-lime-600">한컴 관점</div>' +
+    '<div class="text-[12px] text-ink/40">금주 픽에서 도출한 결론</div></div>' +
+    items.map((x, i) =>
+      '<div class="flex gap-4 sm:gap-5 py-4 rule-thin first:border-t-0">' +
+      '<div class="font-display font-bold text-[26px] sm:text-[30px] leading-none text-lime-600 flex-none w-8 sm:w-9">' + no2(i + 1) + '</div>' +
+      '<p class="text-[14.5px] sm:text-[15px] leading-[1.7] flex-1">' + escapeHtml(x) + '</p></div>').join('') +
+    '</div>';
+}
 
 const glanceRow = (label, content) =>
   '<div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-5 py-3 rule-thin first:border-t-0">' +
@@ -141,6 +163,13 @@ function pickHTML(p, i) {
 
   return h + '</div></div></section>';
 }
+
+/* ===== 금주 동향 전체 보기 =====
+   발행물은 고른 것만 보여 주고, 전체 목록은 원래 그것을 담당하는 화면(대시보드)이 맡는다. */
+const allEntriesLink = (d, s) =>
+  '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="rule pt-4 mb-10 flex items-center gap-2 group">' +
+  '<span class="text-[14px] font-semibold group-hover:text-lime-600">금주 동향 ' + (s.total || 0) + '건 전체 보러가기</span>' +
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>';
 
 /* ===== 지난 회차 ===== */
 function prevHTML(prev) {
@@ -232,10 +261,14 @@ function renderList(editions) {
     '한 주의 AX 시장 동향에서 주목할 것만 골라 이유를 붙인 발행물</p>';
 
   if (latest) {
-    h += '<div class="mt-8 rule pt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1">' +
+    /* 최신 회차 직행. 요약은 「금주 한 줄 요약」(payload.overview)이고 100~200자라
+       링크와 같은 행에 truncate 로 두면 거의 다 잘린다 — 아래 줄에서 통째로 흐르게 둔다. */
+    h += '<div class="mt-8 rule pt-4">' +
       '<a href="/weekly?w=' + encodeURIComponent(latest.week) + '" class="font-display font-bold text-[15px] hover:text-lime-600">' +
       '최신 ' + (latest.issueNo ? no2(latest.issueNo) + '호 · ' : '') + escapeHtml(weekTitle(latest.label)) + ' 읽기 →</a>' +
-      (latest.overview ? '<span class="text-[13px] text-ink/50 truncate max-w-full">' + escapeHtml(latest.overview) + '</span>' : '') +
+      (latest.overview
+        ? '<p class="text-[13.5px] text-ink/55 leading-relaxed max-w-[60ch] mt-1.5">' + escapeHtml(latest.overview) + '</p>'
+        : '') +
       '</div>';
   }
   h += '</div>';
@@ -310,13 +343,13 @@ function renderEdition(d) {
     h += '<p class="text-[19px] sm:text-[22px] font-display font-medium leading-[1.55] max-w-[40ch] mb-10">' + escapeHtml(p.overview) + '</p>';
 
   h += statsHTML(s);
+  /* 고르지 않은 나머지는 이 페이지에 싣지 않고 대시보드로 넘긴다(2026-08-21 사용자 지시).
+     이 링크는 원래 픽 섹션 뒤에 있었는데 상단으로 올렸다(2026-08-24 사용자 지시) — 「금주 동향 N건」
+     수치가 바로 위 4칸에 있으므로 그 수치와 붙어 있어야 「N건 중 몇 건을 골랐다」가 이어 읽힌다. */
+  if ((s.total || 0) > picks.length) h += allEntriesLink(d, s);
   if (picks.length) h += indexHTML(picks);
 
-  // 한컴 관점
-  if ((p.hancomConclusion || []).length)
-    h += '<div class="mt-10">' + labelRow('한컴 관점', '금주 픽에서 도출한 결론',
-      '<div class="space-y-3">' + p.hancomConclusion.map((x) =>
-        '<p class="text-[14px] leading-[1.7]">' + escapeHtml(x) + '</p>').join('') + '</div>') + '</div>';
+  if ((p.hancomConclusion || []).length) h += hancomHTML(p.hancomConclusion);
 
   /* 금주 한눈에 — 키워드 · 신규 편입 기업 · 4주 추이.
      수치 4칸은 목차 앞에 두라는 지시였으므로(그 앞에 다른 것을 끼우지 않는다) 이 셋은
@@ -351,16 +384,9 @@ function renderEdition(d) {
 
   h += picks.map(pickHTML).join('');
 
-  // 고르지 않은 나머지는 이 페이지에 싣지 않고 대시보드로 넘긴다(2026-08-21 사용자 지시).
-  // 발행물은 고른 것만 보여 주고, 전체 목록은 원래 그것을 담당하는 화면이 맡는다.
-  h += '<div class="' + WRAP + ' mt-12">';
-  if ((s.total || 0) > picks.length)
-    h += '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="rule pt-4 flex items-center gap-2 group">' +
-      '<span class="text-[14px] font-semibold group-hover:text-lime-600">금주 동향 ' + (s.total || 0) + '건 전체를 대시보드에서 보기</span>' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>';
-
   // 푸터 — 다음 동선. 대시보드보다 기업·검색을 앞세운다(대시보드는 실제로 잘 읽히지 않는다).
-  h += '<div class="mt-6 rule-thin pt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">' +
+  h += '<div class="' + WRAP + ' mt-12">';
+  h += '<div class="rule-thin pt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">' +
     '<a href="/weekly" class="font-semibold hover:text-lime-600">전체 회차 →</a>' +
     '<a href="/company" class="font-semibold hover:text-lime-600">기업 찾아보기 →</a>' +
     '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a></div>';
