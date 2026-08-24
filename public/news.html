@@ -31,34 +31,10 @@
   h1,h2,h3 { font-family:'Space Grotesk','Pretendard',sans-serif; }
   ::selection { background:#c8f200; color:#111; }
 
-  /* 폭 620 고정(2026-08-24 사용자 확정). 좁은 화면에서는 화면 폭을 그대로 쓴다.
-     높이는 화면에 맞춰 줄어들되 데스크톱에서 지나치게 길어지지 않게 상한을 둔다.
-     56px = 상단 바, 96px = 진행 세그먼트와 하단 조작 줄. */
-  :root { --col: 620px; }
-  .frame { width:min(100vw, var(--col)); height:min(calc(100dvh - 152px), 880px); margin:0 auto; }
-  .bar   { width:min(100vw, var(--col)); margin:0 auto; padding-left:20px; padding-right:20px; }
-
-  /* 넘기는 동작의 실체. 가로 scroll-snap 이라 터치 스와이프와 트랙패드 가로 제스처가
-     별도 구현 없이 동작하고, 키보드는 아래 JS 가 같은 스크롤을 호출한다.
-     드래그 물리를 직접 구현하지 않는다 — 본문 세로 스크롤과 텍스트 선택을 깨뜨린다. */
-  .track {
-    display:flex; height:100%; overflow-x:auto; overflow-y:hidden;
-    scroll-snap-type:x mandatory; overscroll-behavior-x:contain;
-    scrollbar-width:none; -ms-overflow-style:none;
-  }
-  .track::-webkit-scrollbar { display:none; }
-  .slide { flex:0 0 100%; width:100%; height:100%; scroll-snap-align:start; display:flex; flex-direction:column; overflow:hidden; }
-
-  /* 본문이 한 장에 안 들어가면 그 판만 세로로 흐른다. 세로 제스처는 이 안에서 먹고
-     가로 제스처는 트랙으로 올라가므로 두 방향이 싸우지 않는다. */
-  .scroller { overflow-y:auto; overscroll-behavior-y:contain; scrollbar-width:none; -ms-overflow-style:none; }
-  .scroller::-webkit-scrollbar { display:none; }
-
-  .hair { border-top:1px solid rgba(255,255,255,.10); }
-  /* 아래로 더 있다는 신호. 끝에 닿으면 JS 가 없앤다 — 안 없애면 다 읽었는데도 더 있는 것처럼 보인다. */
-  .fade-b::after { content:''; position:absolute; left:0; right:0; bottom:0; height:44px; pointer-events:none;
-                   background:linear-gradient(to top, #161616, rgba(22,22,22,0)); transition:opacity .2s; }
-  .fade-b.at-end::after { opacity:0; }
+  /* 캐러셀 CSS 는 news.js 가 넣는다(같은 조판을 상세 페이지에서도 겹쳐 띄우므로 한 곳에 둔다).
+     이 페이지가 정하는 것은 폭과 높이뿐이다 — 폭 620 고정(2026-08-24 사용자 확정),
+     높이는 상단 바 56px + 진행 세그먼트·하단 조작 줄 96px 을 뺀 값. */
+  :root { --nw-col: 620px; --nw-h: min(calc(100dvh - 152px), 880px); }
 </style>
 </head>
 <body class="min-h-[100dvh] flex flex-col">

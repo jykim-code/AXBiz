@@ -27,31 +27,31 @@
      높이는 화면에 맞춰 줄어들되 데스크톱에서 지나치게 길어지지 않게 상한을 둔다. */
   :root { --col: 620px; --frameH: min(calc(100dvh - 104px), 880px); }
 
-  .frame { width:min(100vw, var(--col)); height:var(--frameH); margin:0 auto; }
+  .nw-frame { width:min(100vw, var(--col)); height:var(--frameH); margin:0 auto; }
 
   /* 넘기는 동작의 실체. 가로 scroll-snap 이라 터치 스와이프·트랙패드 가로 제스처가
      별도 구현 없이 그대로 동작하고, 키보드는 아래 JS 가 같은 스크롤을 호출한다.
      드래그 물리를 직접 구현하지 않는 이유 — 본문 세로 스크롤과 선택(드래그)을 깨뜨린다. */
-  .track {
+  .nw-track {
     display:flex; height:100%; overflow-x:auto; overflow-y:hidden;
     scroll-snap-type:x mandatory; overscroll-behavior-x:contain;
     scrollbar-width:none; -ms-overflow-style:none;
   }
-  .track::-webkit-scrollbar { display:none; }
+  .nw-track::-webkit-scrollbar { display:none; }
 
-  .slide { flex:0 0 100%; width:100%; height:100%; scroll-snap-align:start; display:flex; flex-direction:column; overflow:hidden; }
+  .nw-slide { flex:0 0 100%; width:100%; height:100%; scroll-snap-align:start; display:flex; flex-direction:column; overflow:hidden; }
 
   /* 본문이 한 장에 안 들어가면 그 판만 세로로 흐른다. 세로 제스처는 이 안에서 먹고
      가로 제스처는 위 트랙으로 올라가므로 두 축이 싸우지 않는다.
      overscroll-behavior-y:contain 이 있어야 끝에서 페이지가 튀지 않는다. */
-  .scroller { overflow-y:auto; overscroll-behavior-y:contain; scrollbar-width:none; -ms-overflow-style:none; }
-  .scroller::-webkit-scrollbar { display:none; }
+  .nw-scroll { overflow-y:auto; overscroll-behavior-y:contain; scrollbar-width:none; -ms-overflow-style:none; }
+  .nw-scroll::-webkit-scrollbar { display:none; }
 
-  .hair { border-top:1px solid rgba(255,255,255,.10); }
+  .nw-hair { border-top:1px solid rgba(255,255,255,.10); }
   /* 아래로 더 있다는 신호. 스크롤이 끝에 닿으면 JS 가 없앤다. */
-  .fade-b::after { content:''; position:absolute; left:0; right:0; bottom:0; height:44px; pointer-events:none;
+  .nw-fade::after { content:''; position:absolute; left:0; right:0; bottom:0; height:44px; pointer-events:none;
                    background:linear-gradient(to top, #161616, rgba(22,22,22,0)); transition:opacity .2s; }
-  .fade-b.at-end::after { opacity:0; }
+  .nw-fade.nw-end::after { opacity:0; }
 </style>
 </head>
 <body class="min-h-[100dvh] flex flex-col items-center justify-center py-5">
@@ -67,8 +67,8 @@
 <!-- 진행 세그먼트 — 인스타 스토리처럼 「몇 장 중 몇 번째」를 활자 없이 먼저 보여준다. 눌러서 이동도 된다. -->
 <div id="segs" class="flex gap-1 mb-3" style="width:min(100vw, var(--col)); padding-left:20px; padding-right:20px;"></div>
 
-<div class="frame">
-  <div id="track" class="track" tabindex="0" aria-roledescription="carousel"></div>
+<div class="nw-frame">
+  <div id="track" class="nw-track" tabindex="0" aria-roledescription="carousel"></div>
 </div>
 
 <!-- 하단 조작 줄. 키보드·스와이프를 모르는 사람에게도 넘길 수단을 준다. -->
@@ -238,8 +238,8 @@ function cover() {
    뉴스레터는 「이번 호에 무엇이 들었는가」를 먼저 말한다. 목차 줄은 눌러서 해당 장으로 건너뛴다
    (캐러셀에서 스크롤 끝을 짐작할 수 없다는 문제를 이 목차가 대신 해결한다). */
 function intro() {
-  return '<div class="h-full bg-panel relative fade-b flex flex-col">' +
-    '<div class="scroller flex-1 px-6 sm:px-7 pt-7 pb-12">' +
+  return '<div class="h-full bg-panel relative nw-fade flex flex-col">' +
+    '<div class="nw-scroll flex-1 px-6 sm:px-7 pt-7 pb-12">' +
     '<div class="text-[10px] font-bold uppercase tracking-[.2em] text-lime mb-3">이번 주 흐름</div>' +
     '<p class="font-display font-medium text-[18px] sm:text-[20px] leading-[1.55] text-white/90">' + esc(D.overview) + '</p>' +
 
@@ -313,8 +313,8 @@ function pickSlide(p, i) {
 function textPanel(p, i) {
   const n = pad2(i + 1);
 
-  let h = '<div class="flex-1 min-h-0 bg-panel relative fade-b">' +
-    '<div class="scroller h-full px-6 pt-5 pb-12">' +
+  let h = '<div class="flex-1 min-h-0 bg-panel relative nw-fade">' +
+    '<div class="nw-scroll h-full px-6 pt-5 pb-12">' +
 
     // 순번 배지 + 카테고리 라벨 | 기업  /  우상단 출처
     '<div class="flex items-start justify-between gap-3 mb-4">' +
@@ -338,7 +338,7 @@ function textPanel(p, i) {
 
   /* 하위 3항목 — 위계는 「주목 이유」보다 낮게 두되 읽을 수 있어야 한다(2026-08-24 사용자 지시).
      흰색 60%·12.5px 는 다크 배경에서 너무 흐려 읽히지 않았다. 라벨과 불릿을 함께 올린다. */
-  h += '<div class="hair pt-4 space-y-4">' + BODY.filter((b) => (p[b.k] || []).length).map((b) =>
+  h += '<div class="nw-hair pt-4 space-y-4">' + BODY.filter((b) => (p[b.k] || []).length).map((b) =>
     '<div>' +
     '<div class="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">' + b.label + '</div>' +
     '<ul class="space-y-2 text-[13.5px] leading-[1.75] text-white/85">' +
@@ -366,7 +366,7 @@ function textPanel(p, i) {
    라임 반전이라 더 넘길 것이 없다는 신호가 된다. */
 function closing() {
   return '<div class="h-full bg-lime text-ink flex flex-col">' +
-    '<div class="scroller flex-1 px-6 sm:px-7 pt-7 pb-7">' +
+    '<div class="nw-scroll flex-1 px-6 sm:px-7 pt-7 pb-7">' +
     '<div class="text-[10px] font-bold uppercase tracking-[.2em] text-ink/50 mb-1">Conclusion</div>' +
     '<h2 class="font-display font-bold text-[30px] tracking-tighter leading-none mb-6">한컴 관점</h2>' +
     '<div class="space-y-4">' + D.hancom.map((x, i) =>
@@ -389,7 +389,7 @@ const counter = document.getElementById('counter');
 const btnPrev = document.getElementById('prev');
 const btnNext = document.getElementById('next');
 
-track.innerHTML = PAGES.map((h, i) => '<section class="slide" data-i="' + i + '" aria-label="' + (i + 1) + ' / ' + PAGES.length + '">' + h + '</section>').join('');
+track.innerHTML = PAGES.map((h, i) => '<section class="nw-slide" data-i="' + i + '" aria-label="' + (i + 1) + ' / ' + PAGES.length + '">' + h + '</section>').join('');
 segs.innerHTML = PAGES.map((_, i) => '<button data-seg="' + i + '" class="flex-1 h-[3px] rounded-full bg-white/15 hover:bg-white/30 transition-colors" aria-label="' + (i + 1) + '번째 장"></button>').join('');
 
 let idx = 0;
@@ -449,12 +449,12 @@ addEventListener('keydown', (e) => {
 addEventListener('resize', () => go(idx, false));
 
 /* 「아래로 더 있음」 그림자는 끝에 닿으면 지운다. 안 지우면 다 읽었는데도 더 있는 것처럼 보인다. */
-track.querySelectorAll('.fade-b').forEach((box) => {
-  const sc = box.querySelector('.scroller');
+track.querySelectorAll('.nw-fade').forEach((box) => {
+  const sc = box.querySelector('.nw-scroll');
   if (!sc) return;
   const check = () => {
     const more = sc.scrollHeight - sc.clientHeight - sc.scrollTop > 8;
-    box.classList.toggle('at-end', !more);
+    box.classList.toggle('nw-end', !more);
   };
   sc.addEventListener('scroll', check, { passive: true });
   addEventListener('resize', check);

@@ -18,7 +18,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
 <script>
   tailwind.config = { theme: { extend: {
-    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+    // panel 은 겹쳐 띄우는 뉴스레터 캐러셀의 다크 판 색이다(news.js). 없으면 그 판이 투명해진다.
+    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500', panel: '#161616' },
     fontFamily: { sans: ['Inter','Pretendard','ui-sans-serif','system-ui','sans-serif'], display: ['"Space Grotesk"','Pretendard','ui-sans-serif','system-ui','sans-serif'] },
   }}};
 </script>
@@ -53,6 +54,9 @@
 <script src="/assets/js/util.js"></script>
 <script src="/assets/js/entry.js"></script>
 <script src="/assets/js/api.js"></script>
+<!-- 뉴스레터 조판. 이 페이지에서는 표지 썸네일과 겹쳐 띄우기(window.AXNews)만 쓴다 —
+     #nwRoot 가 없으므로 news.js 자체 초기화는 그냥 지나간다. -->
+<script src="/assets/js/news.js"></script>
 <script src="/assets/js/weekly.js"></script>
 <script src="/assets/js/ask-fab.js"></script>
 <script src="/assets/js/sidebar.js"></script>

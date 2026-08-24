@@ -10,6 +10,37 @@
 (function () {
   'use strict';
 
+  /* 캐러셀 CSS 를 여기서 넣는다. 이 조판은 /news 와 상세 페이지의 겹쳐 띄우기 두 곳에서 쓰이므로
+     스타일을 페이지마다 적어 두면 갈라진다. 클래스에 nw- 를 붙이는 것은 상세 페이지의
+     .rule 같은 이름과 섞이지 않게 하려는 것이다.
+     높이·폭은 쓰는 쪽이 --nw-h / --nw-col 로 정한다(전면 페이지와 겹쳐 띄우기의 여백이 다르다). */
+  function ensureStyles() {
+    if (document.getElementById('nw-style')) return;
+    const el = document.createElement('style');
+    el.id = 'nw-style';
+    el.textContent = [
+      '.nw-frame{width:min(100vw,var(--nw-col,620px));height:var(--nw-h,min(calc(100dvh - 152px),880px));margin:0 auto}',
+      '.nw-bar{width:min(100vw,var(--nw-col,620px));margin:0 auto;padding-left:20px;padding-right:20px}',
+      /* 넘기는 동작의 실체 — 가로 scroll-snap. 터치 스와이프와 트랙패드 가로 제스처가 별도 구현
+         없이 동작하고, 키보드는 같은 스크롤을 호출한다. 드래그 물리를 직접 만들면 본문 세로
+         스크롤과 텍스트 선택이 깨진다. */
+      '.nw-track{display:flex;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;' +
+        'overscroll-behavior-x:contain;scrollbar-width:none;-ms-overflow-style:none}',
+      '.nw-track::-webkit-scrollbar{display:none}',
+      '.nw-slide{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:start;display:flex;flex-direction:column;overflow:hidden}',
+      /* 본문이 한 장에 안 들어가면 그 판만 세로로 흐른다. 세로 제스처는 이 안에서 먹고
+         가로 제스처는 트랙으로 올라가므로 두 방향이 싸우지 않는다. */
+      '.nw-scroll{overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:none;-ms-overflow-style:none}',
+      '.nw-scroll::-webkit-scrollbar{display:none}',
+      '.nw-hair{border-top:1px solid rgba(255,255,255,.10)}',
+      // 아래로 더 있다는 신호. 끝에 닿으면 JS 가 nw-end 를 붙여 없앤다.
+      '.nw-fade::after{content:"";position:absolute;left:0;right:0;bottom:0;height:44px;pointer-events:none;' +
+        'background:linear-gradient(to top,#161616,rgba(22,22,22,0));transition:opacity .2s}',
+      '.nw-fade.nw-end::after{opacity:0}',
+    ].join('');
+    document.head.appendChild(el);
+  }
+
   const no2 = (n) => String(n).padStart(2, '0');
   const weekTitle = (label) => { const s = String(label || '').replace(/^\d{4}년\s*/, ''); return s ? s + '차' : ''; };
   const mdSlash = (d) => (d && d.length >= 10 ? +d.slice(5, 7) + '/' + +d.slice(8, 10) : '');
@@ -131,8 +162,8 @@
      — 캐러셀에서는 스크롤 끝을 짐작할 수 없어 이 목차가 그 역할을 대신한다. */
   function intro(d, s, picks) {
     const tags = (s.topTags || []).slice(0, 4).map((t) => '#' + escapeHtml(t.tag) + (t.isNew ? '(NEW)' : '')).join(' ');
-    return '<div class="h-full bg-panel relative fade-b flex flex-col">' +
-      '<div class="scroller flex-1 px-6 sm:px-7 pt-7 pb-12">' +
+    return '<div class="h-full bg-panel relative nw-fade flex flex-col">' +
+      '<div class="nw-scroll flex-1 px-6 sm:px-7 pt-7 pb-12">' +
       '<div class="text-[10px] font-bold uppercase tracking-[.2em] text-lime mb-3">이번 주 흐름</div>' +
       (d.payload.overview
         ? '<p class="font-display font-medium text-[18px] sm:text-[20px] leading-[1.55] text-white/90">' + escapeHtml(d.payload.overview) + '</p>'
@@ -208,8 +239,8 @@
     const linkCls = 'font-semibold text-white/70 hover:text-lime underline underline-offset-2 decoration-white/20';
 
     // 상단 출처 표기는 두지 않는다(2026-08-24 사용자 지시) — 아래에 출처 기사 링크가 있어 겹친다.
-    let h = '<div class="flex-1 min-h-0 bg-panel relative fade-b">' +
-      '<div class="scroller h-full px-6 pt-5 pb-12">' +
+    let h = '<div class="flex-1 min-h-0 bg-panel relative nw-fade">' +
+      '<div class="nw-scroll h-full px-6 pt-5 pb-12">' +
 
       '<div class="flex items-center gap-2.5 min-w-0 mb-4">' +
       '<span class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-display font-bold text-[14px] text-white/70 flex-none">' + n + '</span>' +
@@ -233,7 +264,7 @@
        흰색 60%·12.5px 는 다크 배경에서 너무 흐려 읽히지 않았다. 라벨과 불릿을 함께 올린다. */
     const cols = BODY.filter(function (b) { return (p[b.k] || []).length; });
     if (cols.length)
-      h += '<div class="hair pt-4 space-y-4">' + cols.map(function (b) {
+      h += '<div class="nw-hair pt-4 space-y-4">' + cols.map(function (b) {
         return '<div><div class="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-2">' + b.label + '</div>' +
           '<ul class="space-y-2 text-[13.5px] leading-[1.75] text-white/85">' +
           p[b.k].map(function (x) {
@@ -271,7 +302,7 @@
     const items = (d.payload.hancomConclusion || []);
     const week = encodeURIComponent(d.week || '');
     return '<div class="h-full bg-lime text-ink flex flex-col">' +
-      '<div class="scroller flex-1 px-6 sm:px-7 pt-7 pb-7">' +
+      '<div class="nw-scroll flex-1 px-6 sm:px-7 pt-7 pb-7">' +
       '<div class="text-[10px] font-bold uppercase tracking-[.2em] text-ink/50 mb-1">Conclusion</div>' +
       '<h2 class="font-display font-bold text-[30px] tracking-tighter leading-none mb-6">한컴 관점</h2>' +
       (items.length
@@ -290,6 +321,7 @@
 
   /* ===== 조립 + 넘기기 ===== */
   function mount(root, d) {
+    ensureStyles();
     const s = d.stats || {};
     const picks = (d.payload && d.payload.picks) || [];
     const pages = [cover(d, s), intro(d, s, picks)]
@@ -298,27 +330,33 @@
 
     root.innerHTML =
       (d.isPreview
-        ? '<div class="bar mb-3"><div class="bg-white text-ink text-[12px] font-bold px-3 py-2">발행 전 미리보기입니다. 이 화면은 아직 공개되지 않았습니다</div></div>'
+        ? '<div class="nw-bar mb-3"><div class="bg-white text-ink text-[12px] font-bold px-3 py-2">발행 전 미리보기입니다. 이 화면은 아직 공개되지 않았습니다</div></div>'
         : '') +
       // 진행 세그먼트 — 스토리처럼 「몇 장 중 몇 번째」를 활자 없이 먼저 보여준다. 눌러서 이동도 된다.
-      '<div id="nwSegs" class="bar flex gap-1 mb-3"></div>' +
-      '<div class="frame"><div id="nwTrack" class="track" tabindex="0" aria-roledescription="carousel"></div></div>' +
+      '<div id="nwSegs" class="nw-bar flex gap-1 mb-3"></div>' +
+      '<div class="nw-frame"><div id="nwTrack" class="nw-track" tabindex="0" aria-roledescription="carousel"></div></div>' +
       // 하단 조작 줄 — 키보드·스와이프를 모르는 사람에게도 넘길 수단을 준다.
-      '<div class="bar mt-3 flex items-center gap-3">' +
+      '<div class="nw-bar mt-3 flex items-center gap-3">' +
       '<button type="button" id="nwPrev" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-25 flex items-center justify-center text-[15px]" aria-label="이전">&#8592;</button>' +
       '<button type="button" id="nwNext" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-25 flex items-center justify-center text-[15px]" aria-label="다음">&#8594;</button>' +
       '<div id="nwCounter" class="font-display font-bold text-[12px] tracking-widest text-white/50"></div>' +
       '<div class="ml-auto text-[10.5px] text-white/25 tracking-wide hidden sm:block">스와이프 · &#8592; &#8594; · space</div>' +
       '</div>';
 
-    const track = document.getElementById('nwTrack');
-    const segs = document.getElementById('nwSegs');
-    const counter = document.getElementById('nwCounter');
-    const prev = document.getElementById('nwPrev');
-    const next = document.getElementById('nwNext');
+    // root 안에서만 찾는다 — 상세 페이지의 겹쳐 띄우기에서도 쓰이므로 id 전역 조회를 하지 않는다.
+    const track = root.querySelector('#nwTrack');
+    const segs = root.querySelector('#nwSegs');
+    const counter = root.querySelector('#nwCounter');
+    const prev = root.querySelector('#nwPrev');
+    const next = root.querySelector('#nwNext');
+
+    /* 이 캐러셀이 사라질 때 붙인 것들을 같이 떼야 한다. 겹쳐 띄운 것을 닫은 뒤에도
+       keydown 이 남아 있으면 상세 페이지에서 방향키가 가로채인다. */
+    const ac = new AbortController();
+    const sig = { signal: ac.signal };
 
     track.innerHTML = pages.map(function (h, i) {
-      return '<section class="slide" aria-label="' + (i + 1) + ' / ' + pages.length + '">' + h + '</section>';
+      return '<section class="nw-slide" aria-label="' + (i + 1) + ' / ' + pages.length + '">' + h + '</section>';
     }).join('');
     segs.innerHTML = pages.map(function (_, i) {
       return '<button type="button" data-seg="' + i + '" class="flex-1 h-[3px] rounded-full bg-white/15 hover:bg-white/30 transition-colors" aria-label="' + (i + 1) + '번째 장"></button>';
@@ -350,18 +388,18 @@
         const i = Math.round(track.scrollLeft / track.clientWidth);
         if (i !== idx) { idx = i; paint(); }
       });
-    }, { passive: true });
+    }, Object.assign({ passive: true }, sig));
 
-    prev.addEventListener('click', function () { go(idx - 1); });
-    next.addEventListener('click', function () { go(idx + 1); });
+    prev.addEventListener('click', function () { go(idx - 1); }, sig);
+    next.addEventListener('click', function () { go(idx + 1); }, sig);
     segs.addEventListener('click', function (e) {
       const b = e.target.closest('[data-seg]');
       if (b) go(Number(b.dataset.seg));
-    });
+    }, sig);
     track.addEventListener('click', function (e) {          // 목차 줄 → 해당 장
       const b = e.target.closest('[data-go]');
       if (b) go(Number(b.dataset.go));
-    });
+    }, sig);
 
     /* 키보드. 세로(↑↓)는 넘기지 않고 본문 판 안에서 읽는 데 쓴다 — 가로와 세로의 역할을 섞지 않는다.
        preventDefault 를 하지 않으면 트랙이 브라우저 기본 스크롤로 한 번 더 움직여 두 장 넘어간다. */
@@ -373,28 +411,29 @@
       else if (e.code === 'Space' || k === ' ') { e.preventDefault(); go(idx + (e.shiftKey ? -1 : 1)); }
       else if (k === 'Home') { e.preventDefault(); go(0); }
       else if (k === 'End') { e.preventDefault(); go(pages.length - 1); }
-    });
+    }, sig);
 
     // 창 크기가 바뀌면 칸 폭도 바뀐다. 현재 장을 다시 정렬하지 않으면 두 장이 반쯤 걸쳐 보인다.
-    window.addEventListener('resize', function () { go(idx, false); });
+    window.addEventListener('resize', function () { go(idx, false); }, sig);
 
     // 「아래로 더 있음」 그림자는 끝에 닿으면 지운다.
-    const boxes = track.querySelectorAll('.fade-b');
+    const boxes = track.querySelectorAll('.nw-fade');
     for (let i = 0; i < boxes.length; i++) {
       (function (box) {
-        const sc = box.querySelector('.scroller');
+        const sc = box.querySelector('.nw-scroll');
         if (!sc) return;
         const check = function () {
-          box.classList.toggle('at-end', !(sc.scrollHeight - sc.clientHeight - sc.scrollTop > 8));
+          box.classList.toggle('nw-end', !(sc.scrollHeight - sc.clientHeight - sc.scrollTop > 8));
         };
-        sc.addEventListener('scroll', check, { passive: true });
-        window.addEventListener('resize', check);
+        sc.addEventListener('scroll', check, Object.assign({ passive: true }, sig));
+        window.addEventListener('resize', check, sig);
         setTimeout(check, 50);    // 웹폰트가 붙으면서 높이가 바뀐 뒤 다시 잰다
         setTimeout(check, 600);
       })(boxes[i]);
     }
 
     paint();
+    return { destroy: function () { ac.abort(); } };
   }
 
   /* 초안 미리보기 응답을 발행본과 같은 모양으로 맞춘다(상세 페이지와 같은 처리). */
@@ -412,7 +451,7 @@
     };
   }
 
-  const notice = (html) => '<div class="bar text-center text-sm text-white/60 py-16">' + html + '</div>';
+  const notice = (html) => '<div class="nw-bar text-center text-sm text-white/60 py-16">' + html + '</div>';
 
   async function init() {
     const root = document.getElementById('nwRoot');
@@ -444,6 +483,48 @@
     const toDetail = document.getElementById('nwToDetail');
     if (toDetail && d.week) toDetail.href = '/weekly?w=' + encodeURIComponent(d.week) + (d.isPreview ? '&draft=1' : '');
   }
+
+  /* ===== 상세 페이지에 붙이는 표지 썸네일 =====
+     상세 페이지(/weekly?w=)에서 이것을 눌러 캐러셀을 겹쳐 띄운다(2026-08-24 사용자 지시).
+     첫 장(표지)을 줄인 것이며, 실제 표지를 transform 으로 축소하지 않고 같은 어휘의 압축 조판을
+     따로 쓴다 — 620px 조판을 그대로 줄이면 이 폭에서 활자가 뭉개지고 여백만 남는다.
+     이 마크업이 여기 있는 이유: 뉴스레터의 모습은 이 파일 한 곳에서만 정한다. */
+  function coverThumbHTML(d, s) {
+    const tags = (s.topTags || []).slice(0, 3).map((t) => '#' + escapeHtml(t.tag)).join(' ');
+    return '<button type="button" data-nw-open class="group block w-[150px] sm:w-[190px] flex-none text-left ' +
+      'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink" ' +
+      'aria-label="뉴스레터 슬라이드로 크게 보기">' +
+      '<div class="relative aspect-[4/5] overflow-hidden bg-lime text-ink shadow-lg shadow-ink/10 ' +
+      'transition-transform group-hover:-translate-y-0.5">' +
+      (d.issueNo ? '<span aria-hidden="true" class="pointer-events-none absolute -right-2 -bottom-5 font-display font-bold leading-none tracking-tighter text-[72px] text-ink/[.08]">' + no2(d.issueNo) + '</span>' : '') +
+      '<div class="relative h-full flex flex-col p-3 sm:p-3.5">' +
+
+      '<div class="flex items-center gap-1">' +
+      '<img src="/assets/HANCOM.png" alt="" class="h-2 w-auto" />' +
+      '<span class="w-px h-1.5 bg-ink/25"></span>' +
+      '<span class="font-display font-bold text-[5.5px] sm:text-[6.5px] uppercase tracking-[.16em]">AX Biz Radar News</span>' +
+      (d.issueNo ? '<span class="ml-auto font-display font-bold text-[5.5px] sm:text-[6.5px] tracking-widest">No.' + no2(d.issueNo) + '</span>' : '') +
+      '</div>' +
+
+      '<div class="relative mt-auto">' +
+      '<div class="font-display font-bold text-[17px] sm:text-[21px] leading-[.95] tracking-tighter">' + escapeHtml(weekTitle(d.label)) + '</div>' +
+      '<div class="mt-1 text-[6px] sm:text-[7px] font-semibold text-ink/55">' + escapeHtml(mdSlash(d.start) + ' ~ ' + mdSlash(d.end)) +
+      (d.publishedAt ? ' · 발행 ' + escapeHtml(String(d.publishedAt).slice(0, 10)) : '') + '</div>' +
+      '<div class="mt-2 pt-1.5 border-t border-ink/20 flex flex-wrap gap-x-1.5 text-[6px] sm:text-[7px] font-semibold text-ink/65">' +
+      '<span>동향 ' + (s.total || 0) + '</span><span>기업 ' + (s.companies || 0) + '</span>' +
+      '<span class="text-ink">주목 ' + (s.picks || 0) + '</span></div>' +
+      (tags ? '<div class="mt-1.5 text-[6px] sm:text-[6.5px] font-semibold text-ink/40 truncate">' + tags + '</div>' : '') +
+      '</div></div></div>' +
+      // 눌러서 커진다는 것을 알려 주는 줄. 썸네일만 두면 그림으로 읽히고 아무도 누르지 않는다.
+      '<div class="mt-2 flex items-center gap-1 text-[11px] font-semibold text-lime-600 group-hover:text-ink">' +
+      '<span>슬라이드로 크게 보기</span>' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 flex-none">' +
+      '<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg></div>' +
+      '</button>';
+  }
+
+  /* 상세 페이지가 쓰는 창구. 뉴스레터 조판을 그 페이지로 가져가는 유일한 경로다. */
+  window.AXNews = { mount: mount, coverThumbHTML: coverThumbHTML, ensureStyles: ensureStyles };
 
   document.addEventListener('DOMContentLoaded', init);
 })();

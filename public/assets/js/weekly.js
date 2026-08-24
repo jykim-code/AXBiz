@@ -367,10 +367,20 @@ function renderEdition(d) {
   const picks = p.picks || [];
   let h = headerHTML(d, s);
 
-  // 금주 한 줄 요약 — 이 페이지에서 가장 큰 본문 활자
   h += '<div class="' + WRAP + '">';
-  if (p.overview)
-    h += '<p class="text-[19px] sm:text-[22px] font-display font-medium leading-[1.55] max-w-[40ch] mb-10">' + escapeHtml(p.overview) + '</p>';
+
+  /* 금주 한 줄 요약(이 페이지에서 가장 큰 본문 활자) 옆에 뉴스레터 표지 썸네일을 둔다
+     (2026-08-24 사용자 지시). 누르면 페이지를 옮기지 않고 이 화면 위에 캐러셀을 겹쳐 띄운다 —
+     상세를 읽던 자리를 잃지 않게 하려는 것이다. 조판은 news.js 에서 가져온다.
+     좁은 화면에서는 순서를 뒤집어 썸네일이 요약 위에 오게 한다(위쪽에 두라는 지시를 지킨다). */
+  const thumb = (window.AXNews && picks.length) ? window.AXNews.coverThumbHTML(d, s) : '';
+  if (p.overview || thumb)
+    h += '<div class="flex flex-col-reverse sm:flex-row sm:items-start gap-7 sm:gap-10 mb-10">' +
+      (p.overview
+        ? '<p class="text-[19px] sm:text-[22px] font-display font-medium leading-[1.55] max-w-[40ch] flex-1">' + escapeHtml(p.overview) + '</p>'
+        : '<div class="flex-1"></div>') +
+      (thumb ? '<div class="flex-none">' + thumb + '</div>' : '') +
+      '</div>';
 
   h += statsHTML(s);
 
@@ -415,10 +425,8 @@ function renderEdition(d) {
 
   // 푸터 — 다음 동선. 대시보드보다 기업·검색을 앞세운다(대시보드는 실제로 잘 읽히지 않는다).
   h += '<div class="' + WRAP + ' mt-12">';
+  // 슬라이드로 가는 길은 상단 표지 썸네일이 맡는다(2026-08-24 사용자 지시) — 여기 링크는 두지 않는다.
   h += '<div class="rule-thin pt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">' +
-    // 같은 회차를 슬라이드로 넘겨 보는 별개 페이지(2026-08-24 사용자 지시). 조판만 다르고 데이터는 같다.
-    '<a href="/news?w=' + encodeURIComponent(d.week || '') + (d.isPreview ? '&draft=1' : '') +
-    '" class="font-semibold text-lime-600 hover:text-ink">슬라이드로 넘겨 보기 →</a>' +
     '<a href="/weekly" class="font-semibold hover:text-lime-600">전체 회차 →</a>' +
     '<a href="/company" class="font-semibold hover:text-lime-600">기업 찾아보기 →</a>' +
     '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a></div>';
@@ -469,6 +477,48 @@ const previewBanner = () =>
   '<div class="bg-ink text-lime"><div class="' + WRAP + ' py-3 text-sm font-semibold">' +
   '발행 전 미리보기입니다. 이 화면은 아직 공개되지 않았습니다</div></div>';
 
+/* ===== 뉴스레터 겹쳐 띄우기 =====
+   표지 썸네일을 누르면 페이지를 옮기지 않고 이 화면 위에 캐러셀을 띄운다(2026-08-24 사용자 지시).
+   뒤 배경을 반투명으로 두어 어디를 읽고 있었는지 보이게 한다.
+   조판은 news.js 한 곳에서 오고 이 함수는 껍데기와 여닫기만 맡는다. */
+function openNewsOverlay(d) {
+  if (!window.AXNews || document.getElementById('nwOverlay')) return;
+
+  const prevOverflow = document.body.style.overflow;
+  document.body.style.overflow = 'hidden';   // 뒤 페이지가 같이 스크롤되면 어지럽다
+
+  const wrap = document.createElement('div');
+  wrap.id = 'nwOverlay';
+  wrap.className = 'fixed inset-0 z-50 flex flex-col items-center justify-center px-3 py-4';
+  // 상단 줄·진행 세그먼트·하단 조작 줄을 뺀 높이. 전면 페이지(/news)와 여백이 다르므로 여기서 정한다.
+  wrap.style.setProperty('--nw-h', 'min(calc(100dvh - 200px), 840px)');
+  wrap.innerHTML =
+    '<div data-nw-scrim class="absolute inset-0 bg-ink/75 backdrop-blur-sm"></div>' +
+    '<div class="relative w-full flex flex-col items-center">' +
+    '<div class="nw-bar mb-2.5 flex items-center gap-3">' +
+    '<span class="font-display font-bold text-[11px] uppercase tracking-[.2em] text-lime">AX Biz Radar News</span>' +
+    '<a href="/news?w=' + encodeURIComponent(d.week || '') + (d.isPreview ? '&draft=1' : '') +
+    '" class="text-[11px] font-semibold text-white/50 hover:text-white">전체 화면 ↗</a>' +
+    '<button type="button" data-nw-close class="ml-auto text-[12px] font-semibold text-white/60 hover:text-lime" aria-label="닫기">닫기 ✕</button>' +
+    '</div>' +
+    '<div data-nw-body class="w-full"></div>' +
+    '</div>';
+  document.body.appendChild(wrap);
+
+  const inst = window.AXNews.mount(wrap.querySelector('[data-nw-body]'), d);
+  // Esc·닫기·배경 클릭. 캐러셀이 붙인 것들은 inst.destroy() 가 떼고, 이 셋은 여기서 뗀다.
+  const ac = new AbortController();
+  const close = () => {
+    ac.abort();
+    if (inst && inst.destroy) inst.destroy();
+    wrap.remove();
+    document.body.style.overflow = prevOverflow;
+  };
+  wrap.querySelector('[data-nw-scrim]').addEventListener('click', close, { signal: ac.signal });
+  wrap.querySelector('[data-nw-close]').addEventListener('click', close, { signal: ac.signal });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); }, { signal: ac.signal });
+}
+
 /* ===== 초기화 ===== */
 async function initWeekly() {
   const root = document.getElementById('wkRoot');
@@ -513,6 +563,10 @@ async function initWeekly() {
   root.innerHTML = (data.isPreview ? previewBanner() : '') + renderEdition(data);
   // 브라우저 탭·링크 미리보기에 회차가 드러나게(정적 OG 는 Phase 2 에서 회차별로 주입)
   document.title = '위클리 픽' + (data.issueNo ? ' ' + data.issueNo + '호' : '') + ' · ' + shortLabel(data.label) + ' — AX Biz Radar';
+
+  // 표지 썸네일 → 캐러셀 겹쳐 띄우기
+  const thumbBtn = root.querySelector('[data-nw-open]');
+  if (thumbBtn) thumbBtn.addEventListener('click', () => openNewsOverlay(data));
 
   // 신규 기업 초과분 펼치기
   const ncBtn = document.getElementById('wkNcToggle');
