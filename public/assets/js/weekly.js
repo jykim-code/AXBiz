@@ -141,20 +141,23 @@ const EXT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 /* 이미지는 관리자가 올린 것만 실린다(2026-08-24 사용자 지시) — 기사 사진을 자동으로
    가져오지 않는다. 없으면 이 밴드를 그리지 않는다. 그것이 지금 조판의 기본 상태이고,
    큰 순번 숫자가 이미 시각 요소 역할을 한다.
-   잘리는 기준은 서버에서 top·center·bottom 으로 좁혀 두었지만 화면에서도 흰 목록으로 받는다. */
-const PICK_IMG_POS = { top: 'top', center: 'center', bottom: 'bottom' };
 
-function pickImageHTML(p, dark) {
+   사진은 원본 비율·크기 그대로 싣는다(2026-08-24 사용자 지시).
+   12:5 로 판을 고정해 두었더니 원본이 1.33~2.55 로 제각각이라 위아래가 잘렸다. 잘라 맞추는
+   대신 이미지가 자기 크기를 갖게 두고, 두 가지만 상한으로 건다 —
+     · max-w-full : 본문 폭을 넘지 않게 (넘으면 좌우로 삐져나온다)
+     · max-h      : 세로로 긴 사진이 한 화면을 다 먹지 않게
+   폭을 강제하지 않으므로 작은 사진은 늘리지 않는다(늘리면 뭉개진다).
+   잘리지 않으니 잘리는 기준(im.pos)은 여기서 쓰지 않는다 — 뉴스레터 슬라이드는 판 높이가
+   고정이라 거기서는 그대로 쓴다.
+   이미지 출처는 화면에 표기하지 않는다(2026-08-24 사용자 지시). 관리자 입력에는 여전히
+   필수라 기록은 회차 데이터에 남는다. */
+function pickImageHTML(p) {
   const im = p.image;
   if (!im || !im.key) return '';
   return '<div class="mb-5">' +
-    '<div class="w-full overflow-hidden ' + (dark ? 'bg-white/5' : 'bg-beige') + '" style="aspect-ratio:12/5">' +
     '<img src="/api/pick-image?k=' + encodeURIComponent(im.key) + '" alt="" loading="lazy" decoding="async" ' +
-    'class="w-full h-full object-cover" style="object-position:' + (PICK_IMG_POS[im.pos] || 'center') + '" /></div>' +
-    (im.credit
-      ? '<div class="text-[10.5px] ' + (dark ? 'text-white/35' : 'text-ink/35') + ' mt-1.5">이미지 ' + escapeHtml(im.credit) + '</div>'
-      : '') +
-    '</div>';
+    'class="block max-w-full h-auto" style="max-height:560px" /></div>';
 }
 
 function pickHTML(p, i) {
@@ -167,7 +170,7 @@ function pickHTML(p, i) {
     '<div class="font-display font-bold text-[72px] leading-none ' + (dark ? 'text-lime/30' : 'num-out') + '">' + no2(i + 1) + '</div>' +
     '<div>';
 
-  h += pickImageHTML(p, dark);
+  h += pickImageHTML(p);
 
   h += '<div class="flex items-baseline gap-3 mb-2">' +
     '<a href="/company?name=' + encodeURIComponent(p.company) + '" class="text-[28px] sm:text-[34px] font-display font-bold tracking-tight leading-none hover:text-lime-600">' +
@@ -292,8 +295,9 @@ function renderList(editions) {
   let h = '<div class="' + WRAP + ' pt-12">' +
     '<div class="text-[11px] font-bold uppercase tracking-[.2em] text-lime-600 mb-2">Weekly Picks</div>' +
     '<h1 class="text-[40px] sm:text-[52px] font-bold tracking-tighter leading-none mb-3">위클리 픽</h1>' +
+    // 서비스 설명 한 줄(2026-08-24 사용자 확정). weekly.html 의 meta·og description 과 같은 문구를 쓴다.
     '<p class="text-[14px] text-ink/55 leading-relaxed max-w-[46ch]">' +
-    '한 주의 AX 시장 동향에서 주목할 것만 골라 이유를 붙인 발행물</p>';
+    '한 주의 AX 동향 중 주요 이슈를 Pick해 공유하는 Weekly Pick</p>';
 
   if (latest) {
     /* 최신 회차 직행. 요약(금주 한 줄 요약)은 싣지 않는다(2026-08-24 사용자 지시) —
