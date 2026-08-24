@@ -147,22 +147,23 @@ const EXT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
    가져오지 않는다. 없으면 이 밴드를 그리지 않는다. 그것이 지금 조판의 기본 상태이고,
    큰 순번 숫자가 이미 시각 요소 역할을 한다.
 
-   사진은 원본 비율·크기 그대로 싣는다(2026-08-24 사용자 지시).
-   12:5 로 판을 고정해 두었더니 원본이 1.33~2.55 로 제각각이라 위아래가 잘렸다. 잘라 맞추는
-   대신 이미지가 자기 크기를 갖게 두고, 두 가지만 상한으로 건다 —
-     · max-w-full : 본문 폭을 넘지 않게 (넘으면 좌우로 삐져나온다)
-     · max-h      : 세로로 긴 사진이 한 화면을 다 먹지 않게
-   폭을 강제하지 않으므로 작은 사진은 늘리지 않는다(늘리면 뭉개진다).
-   잘리지 않으니 잘리는 기준(im.pos)은 여기서 쓰지 않는다 — 뉴스레터 슬라이드는 판 높이가
-   고정이라 거기서는 그대로 쓴다.
+   사진은 12:5 판에 맞춰 싣는다(2026-08-24 사용자 지시로 원상복구).
+   원본 비율·크기 그대로 두었더니 사진마다 크기와 세로 길이가 제각각이라 픽이 이어지는 조판이
+   흐트러졌다. 판을 고정하면 순번·기업명·본문 3열이 매 픽에서 같은 자리에 온다.
+   잘리는 기준은 서버에서 top·center·bottom 으로 좁혀 두었지만 화면에서도 흰 목록으로 받는다.
+   판보다 작은 사진은 레터박스(옅은 베이지/흰색)로 메운다.
    이미지 출처는 화면에 표기하지 않는다(2026-08-24 사용자 지시). 관리자 입력에는 여전히
    필수라 기록은 회차 데이터에 남는다. */
-function pickImageHTML(p) {
+const PICK_IMG_POS = { top: 'top', center: 'center', bottom: 'bottom' };
+
+function pickImageHTML(p, dark) {
   const im = p.image;
   if (!im || !im.key) return '';
   return '<div class="mb-5">' +
+    '<div class="w-full overflow-hidden ' + (dark ? 'bg-white/5' : 'bg-beige') + '" style="aspect-ratio:12/5">' +
     '<img src="/api/pick-image?k=' + encodeURIComponent(im.key) + '" alt="" loading="lazy" decoding="async" ' +
-    'class="block max-w-full h-auto" style="max-height:560px" /></div>';
+    'class="w-full h-full object-cover" style="object-position:' + (PICK_IMG_POS[im.pos] || 'center') + '" /></div>' +
+    '</div>';
 }
 
 function pickHTML(p, i) {
@@ -175,7 +176,7 @@ function pickHTML(p, i) {
     '<div class="font-display font-bold text-[72px] leading-none ' + (dark ? 'text-lime/30' : 'num-out') + '">' + no2(i + 1) + '</div>' +
     '<div>';
 
-  h += pickImageHTML(p);
+  h += pickImageHTML(p, dark);
 
   h += '<div class="flex items-baseline gap-3 mb-2">' +
     '<a href="/company?name=' + encodeURIComponent(p.company) + '" class="text-[28px] sm:text-[34px] font-display font-bold tracking-tight leading-none hover:text-lime-600">' +
