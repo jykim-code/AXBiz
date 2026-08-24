@@ -453,7 +453,8 @@ addEventListener('keydown', (e) => {
 /* 폭·창 크기가 바뀌면 칸 폭도 바뀐다. 현재 장을 다시 정렬하지 않으면 두 장이 반쯤 걸쳐 보인다. */
 addEventListener('resize', () => go(idx, false));
 
-/* 「아래로 더 있음」 그림자는 끝에 닿으면 지운다. 안 지우면 다 읽었는데도 더 있는 것처럼 보인다. */
+/* 그림자는 끝에 닿으면 지운다. 안 지우면 다 읽었는데도 더 있는 것처럼 보인다.
+   (현행 페이지는 여기에 「스크롤 ↓」 표시까지 띄운다 — news.js 참고) */
 track.querySelectorAll('.nw-fade').forEach((box) => {
   const sc = box.querySelector('.nw-scroll');
   if (!sc) return;

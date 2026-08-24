@@ -491,7 +491,7 @@
     // 창 크기가 바뀌면 칸 폭도 바뀐다. 현재 장을 다시 정렬하지 않으면 두 장이 반쯤 걸쳐 보인다.
     window.addEventListener('resize', function () { go(idx, false); }, sig);
 
-    // 「아래로 더 있음」 그림자는 끝에 닿으면 지운다.
+    // 「스크롤」 표시와 그림자는 끝에 닿으면 지운다(nw-end).
     const boxes = track.querySelectorAll('.nw-fade');
     for (let i = 0; i < boxes.length; i++) {
       (function (box) {
