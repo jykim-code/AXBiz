@@ -359,7 +359,7 @@
          상단 「상세로 →」와도 겹쳤다. 「전체 회차」는 목록 화면 이름을 그대로 쓴다. */
       '<div class="mt-8 pt-5 border-t border-ink/25 flex flex-col gap-2.5 text-[13px]">' +
       '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="font-bold hover:underline">금주 동향 전체 보기 →</a>' +
-      '<a href="/weekly" class="font-semibold text-ink/55 hover:underline">Weekly Pick Board →</a></div>' +
+      '<a href="/weekly" class="font-semibold text-ink/55 hover:underline">Weekly Picks Board →</a></div>' +
       '</div>' +
       '<div class="nw-more">스크롤 <span aria-hidden="true">&#8595;</span></div>' +
       '</div>';
