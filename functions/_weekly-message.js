@@ -22,10 +22,10 @@ const BULLET = '• ';
 
 const MAX_PICKS_IN_MSG = 7;   // 픽 수량 제한은 폐기됐다 — 메시지에서만 접는다
 const MAX_NEW_CO = 5;
-const TITLE_MAX = 32;         // 모바일 한 줄(약 26자)을 크게 넘지 않게
+/* 픽 제목은 자르지 않는다(2026-08-24 사용자 지시). 모바일 한 줄에 맞춰 32자로 줄이고
+   `…` 을 붙였더니 제목이 무슨 말인지 끊겨 읽혔다. 두 줄로 넘어가도 전문을 싣는다. */
 
 const oneLine = (v) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
-const cut = (v, n) => (v.length > n ? v.slice(0, n - 1).trim() + '…' : v);
 // '2026년 8월 3주' → '8월 3주차'
 const weekLabel = (label) => {
   const s = oneLine(label).replace(/^\d{4}년\s*/, '');
@@ -67,7 +67,7 @@ export function buildWeeklyMessage(ed, origin) {
     lines.push('');
     lines.push('🔍 *주요 동향*');
     picks.slice(0, MAX_PICKS_IN_MSG).forEach((x) => {
-      const title = cut(oneLine(x.title), TITLE_MAX);
+      const title = oneLine(x.title);
       // 기업명을 굵게 — 목록에서 눈이 먼저 걸리는 곳이고, 「내가 아는 회사가 있나」로 클릭이 결정된다.
       lines.push(BULLET + '*' + oneLine(x.company) + '*' + (title ? ' : ' + title : ''));
     });
@@ -81,7 +81,7 @@ export function buildWeeklyMessage(ed, origin) {
      닫는 괄호까지 주소로 먹어 깨진다 — 그래서 이 형태를 쓴다.
      맺음말이 「상단 링크」가 아니라 「위 링크」인 이유: 링크가 바로 위 줄에 있다. */
   lines.push('');
-  lines.push('👉 <' + url + '|' + label + ' Weekly Pick 링크>');
+  lines.push('👉 <' + url + '|' + label + ' Weekly Picks 링크>');
   lines.push('자세한 내용은 위 링크를 참고해 주세요. 감사합니다 🙌');
 
   return lines.join('\n');
