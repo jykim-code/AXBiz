@@ -203,7 +203,7 @@
       '</div>' +
       (tags ? '<div class="mt-4 text-[11px] text-white/35">' + tags + '</div>' : '') +
 
-      '<div class="mt-7 text-[10px] font-bold uppercase tracking-[.2em] text-white/30 mb-1">이번 호 주목 동향</div>' +
+      '<div class="mt-7 text-[10px] font-bold uppercase tracking-[.2em] text-white/30 mb-1">이번 호 주요 동향</div>' +
       '<div>' + picks.map(function (p, i) {
         return '<button type="button" data-go="' + (i + 2) + '" class="w-full text-left flex items-baseline gap-3 py-2.5 border-b border-white/[.07] hover:bg-white/[.04] transition-colors">' +
           '<span class="font-display font-bold text-[11px] text-lime w-5 flex-none">' + no2(i + 1) + '</span>' +
