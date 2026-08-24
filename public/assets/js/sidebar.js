@@ -4,7 +4,8 @@
   const NAV = [
     { href: '/', label: '대시보드' },
     { href: '/weekly', label: '위클리 픽' },
-    { href: '/news', label: '뉴스레터' },
+    // 뉴스레터(/news)는 사이드바에 노출하지 않는다(2026-08-24 사용자 지시).
+    // 페이지 자체는 남아 있고 URL 로는 접근된다 — 진입점만 뺀 것이다.
     { href: '/explore', label: '검색' },
     { href: '/company', label: '기업' },
     { href: '/feedback', label: '의견 보내기' },
