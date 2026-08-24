@@ -322,7 +322,6 @@
      여기서 상세 페이지·목록으로 나가는 길을 준다. */
   function closing(d, s) {
     const items = (d.payload.hancomConclusion || []);
-    const week = encodeURIComponent(d.week || '');
     /* 표지와 짝이 되게 짠다(2026-08-24 사용자 지시 「마지막 페이지 디자인」).
        라임 전면 + 관계망 도형 + 제호 줄까지 표지와 같은 어휘를 쓰고, 표지가 「무엇을 넘기게
        되는가」를 말한 자리에 이 장은 결론을 놓는다. 도형 씨앗은 주차라 회차마다 다르고
@@ -355,10 +354,12 @@
         }).join('') + '</div>'
         : '<p class="mt-6 text-[14px] text-ink/50">한컴 관점이 비어 있습니다</p>') +
 
+      /* 나가는 길 둘. 「해당 회차 상세보기」는 지웠다(2026-08-24 사용자 지시) — 상세에서
+         썸네일을 눌러 이 캐러셀을 띄우는 것이 기본 동선이라 돌아가는 길이 이미 있고,
+         상단 「상세로 →」와도 겹쳤다. 「전체 회차」는 목록 화면 이름을 그대로 쓴다. */
       '<div class="mt-8 pt-5 border-t border-ink/25 flex flex-col gap-2.5 text-[13px]">' +
-      '<a href="/weekly?w=' + week + '" class="font-bold hover:underline">해당 회차 상세보기 →</a>' +
       '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="font-bold hover:underline">금주 동향 전체 보기 →</a>' +
-      '<a href="/weekly" class="font-semibold text-ink/55 hover:underline">전체 회차 →</a></div>' +
+      '<a href="/weekly" class="font-semibold text-ink/55 hover:underline">Weekly Pick Board →</a></div>' +
       '</div>' +
       '<div class="nw-more">스크롤 <span aria-hidden="true">&#8595;</span></div>' +
       '</div>';
