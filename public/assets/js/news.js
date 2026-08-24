@@ -167,19 +167,26 @@
      위 비주얼 판(밝음 또는 사진) + 아래 다크 텍스트 판. 비주얼 판이 두 갈래다.
      · 관리자가 이미지를 올린 항목 → 사진이 판을 채우고 활자를 얹는다
      · 안 올린 항목 → 배색 판 + 제목 큰 활자. 이것이 기본 상태이며 사진은 선택이다 */
-  /* 사진 판 — 사진 위에 활자를 얹지 않는다. 기업명·제목·순번이 모두 바로 아래 텍스트 판에
-     있어 두 번 읽히면 안 된다. 얹는 것은 출처 표기뿐이며 그것은 필수 표기다.
-     그늘도 그 한 줄이 읽힐 만큼만 아래쪽에 넣는다. */
+  /* 사진 판 — 기업명·분류는 사진 위에 얹는다. 사진이 무엇을 보여주는지 그 자리에서
+     알아야 하고, 한 장만 캡처해 공유해도 무엇인지 남아야 한다.
+     큰 제목은 얹지 않는다 — 바로 아래 헤드라인과 같은 문장이라 두 번 읽힌다(2026-08-24 사용자 지시).
+     그늘은 위(기업명)와 아래(출처) 두 곳에만 넣어 사진 가운데를 가리지 않는다. */
   function photoPanel(p) {
-    return '<div class="flex-none relative overflow-hidden bg-ink" style="height:clamp(210px, 34%, 300px)">' +
+    return '<div class="flex-none relative overflow-hidden bg-ink text-white" style="height:clamp(210px, 34%, 300px)">' +
       '<img src="/api/pick-image?k=' + encodeURIComponent(p.image.key) + '" alt="" loading="lazy" decoding="async" ' +
       'class="absolute inset-0 w-full h-full object-cover" style="object-position:' + (POS[p.image.pos] || 'center') + '" />' +
+      '<div class="absolute inset-0" aria-hidden="true" style="background:linear-gradient(to bottom, rgba(0,0,0,.58), rgba(0,0,0,.08) 38%, rgba(0,0,0,.08) 60%, rgba(0,0,0,.62))"></div>' +
+      '<div class="relative h-full flex flex-col p-6">' +
+      '<div class="flex items-start justify-between gap-3">' +
+      '<div class="min-w-0">' +
+      '<div class="font-display font-bold text-[21px] sm:text-[24px] tracking-tight leading-none truncate">' + escapeHtml(p.company) + '</div>' +
+      '<div class="text-[10px] font-bold uppercase tracking-widest text-white/70 mt-1.5">' +
+      escapeHtml([p.category, p.date].filter(Boolean).join(' · ')) + '</div></div>' +
+      '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-3.5 w-auto flex-none opacity-80" /></div>' +
       (p.image.credit
-        ? '<div class="absolute inset-x-0 bottom-0 pt-8 pb-2.5 px-6 text-right" ' +
-          'style="background:linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,0))">' +
-          '<span class="text-[9.5px] text-white/60">이미지 ' + escapeHtml(p.image.credit) + '</span></div>'
+        ? '<div class="mt-auto text-right"><span class="text-[9.5px] text-white/60">이미지 ' + escapeHtml(p.image.credit) + '</span></div>'
         : '') +
-      '</div>';
+      '</div></div>';
   }
 
   /* 사진이 없는 판 — 배색 + 관계망 도형만. 활자를 넣지 않는다(2026-08-24 사용자 지시).
