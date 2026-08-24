@@ -658,12 +658,16 @@ export async function onRequestPost({ request, env }) {
       const reh = log.rehearsal || null;
       // 1차를 보낸 뒤 데이터를 고쳤으면 「1차에서 본 것 = 2차에 나갈 것」이 깨진다.
       const staleRehearsal = !!(reh && reh.hash && reh.hash !== hash);
+      /* 어긋난 이유를 가른다. D1 을 stg 와 운영이 공유하므로 stg 에서 한 1차가 운영에 그대로 보인다.
+         그 1차는 링크 주소가 달라(SITE_ORIGIN 이 환경별) 운영 발송의 검증이 되지 못한다 —
+         막는 것은 같지만 「내용이 바뀌었다」고 말하면 거짓이라 이유를 따로 알려 준다. */
+      const otherEnv = !!(reh && reh.origin && reh.origin !== origin);
 
       if (body.dryRun) {
         return Response.json({
-          ok: true, text, hash, stage: isFinal ? 'final' : 'rehearsal', target,
+          ok: true, text, hash, stage: isFinal ? 'final' : 'rehearsal', target, origin,
           configured: !!hookUrl,
-          rehearsal: reh, final: log.final || null, staleRehearsal,
+          rehearsal: reh, final: log.final || null, staleRehearsal, otherEnv,
           // 2차를 열어 줄지는 서버가 정한다 — 화면 상태만 믿으면 새로고침으로 우회된다
           canFinal: !!(reh && !staleRehearsal),
         });
@@ -671,7 +675,9 @@ export async function onRequestPost({ request, env }) {
       if (!hookUrl) return Response.json({ error: isFinal ? 'NO_WEBHOOK' : 'NO_TEST_WEBHOOK' }, { status: 500 });
       // 2차는 1차를 통과해야 열린다. 화면에서 막는 것과 별개로 서버에서 한 번 더 막는다.
       if (isFinal && !reh) return Response.json({ error: 'REHEARSAL_REQUIRED' }, { status: 409 });
-      if (isFinal && staleRehearsal) return Response.json({ error: 'TEXT_CHANGED' }, { status: 409 });
+      if (isFinal && staleRehearsal) {
+        return Response.json({ error: otherEnv ? 'REHEARSAL_OTHER_ENV' : 'TEXT_CHANGED' }, { status: 409 });
+      }
 
       let res;
       try {
@@ -691,7 +697,8 @@ export async function onRequestPost({ request, env }) {
       /* 보낸 기록은 payload 에 적는다. 컬럼을 새로 만들면 기존 테이블에 수동 ALTER 가 필요하고
          (schema.sql 은 IF NOT EXISTS 라 반영되지 않는다) 그 대가를 치를 만한 정보가 아니다. */
       const at = new Date().toISOString();
-      log[isFinal ? 'final' : 'rehearsal'] = { at, hash, target: target || null };
+      // origin 을 같이 적는다 — 어느 환경에서 한 리허설인지 알아야 위 otherEnv 판정이 된다
+      log[isFinal ? 'final' : 'rehearsal'] = { at, hash, target: target || null, origin };
       payload.notifyLog = log;
       if (isFinal) payload.notifiedAt = at;   // 옛 이름도 남긴다(다른 화면이 읽을 수 있다)
       await env.DB.prepare("UPDATE weekly_edition SET payload = ?, updated_at = datetime('now') WHERE week = ?")

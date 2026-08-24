@@ -1231,7 +1231,11 @@ function wkBind() {
         // 1차를 건너뛰거나 1차 뒤에 내용이 바뀌었으면 여기서 끝낸다. 서버도 같은 조건으로 막는다.
         if (!dry.rehearsal) { toast('1차 리허설 발송을 먼저 해 주세요', false); return; }
         if (dry.staleRehearsal) {
-          toast('1차 이후 내용이 바뀌었습니다. 1차 리허설을 다시 보내 확인해 주세요', false);
+          /* 막는 것은 같지만 이유가 다르다. stg 와 운영이 D1 을 공유하므로 stg 에서 한 1차가
+             여기에도 보이는데, 그 1차는 링크 주소가 달라 이 발송의 검증이 되지 못한다. */
+          toast(dry.otherEnv
+            ? '1차 리허설을 다른 환경(' + dry.rehearsal.origin + ')에서 했습니다. 링크 주소가 달라 검증이 되지 않습니다 — 이 화면에서 1차부터 다시 해 주세요'
+            : '1차 이후 내용이 바뀌었습니다. 1차 리허설을 다시 보내 확인해 주세요', false);
           return;
         }
         head.push('✅ 1차 리허설 ' + when(dry.rehearsal.at) +
@@ -1240,7 +1244,8 @@ function wkBind() {
         if (dry.final) head.push('⚠ 이미 전사로 보낸 회차입니다 (' + when(dry.final.at) + ')');
       } else if (dry.rehearsal) {
         head.push('· 지난 1차 리허설: ' + when(dry.rehearsal.at) +
-          (dry.staleRehearsal ? ' (그 뒤 내용이 바뀌었습니다)' : ''));
+          (dry.otherEnv ? ' (다른 환경에서 한 것입니다)'
+            : dry.staleRehearsal ? ' (그 뒤 내용이 바뀌었습니다)' : ''));
       }
 
       /* 목적지를 먼저 말한다. stg 와 운영의 관리자 화면이 똑같이 생겼는데 방이 다르고,
@@ -1265,6 +1270,7 @@ function wkBind() {
         NO_TEST_WEBHOOK: '테스트 웹훅 주소가 설정되지 않았습니다 (WEEKLY_WEBHOOK_TEST_URL)',
         REHEARSAL_REQUIRED: '1차 리허설 발송을 먼저 해 주세요',
         TEXT_CHANGED: '1차 이후 내용이 바뀌었습니다. 1차 리허설을 다시 보내 주세요',
+        REHEARSAL_OTHER_ENV: '1차 리허설을 다른 환경에서 했습니다. 이 화면에서 1차부터 다시 해 주세요',
         WEBHOOK_UNREACHABLE: '웹훅 주소에 연결하지 못했습니다',
         WEBHOOK_FAILED: '메신저가 거절했습니다' + (e.data && e.data.status ? ' (' + e.data.status + ')' : ''),
       }[e.message];

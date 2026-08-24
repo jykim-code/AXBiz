@@ -369,7 +369,7 @@ function renderList(editions, upcoming) {
     '<div class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">' +
     upcomingCoverHTML(upcoming) + editions.map(coverHTML).join('') + '</div>' +
     '<div class="mt-10 rule-thin pt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">' +
-    '<a href="/company" class="font-semibold hover:text-lime-600">기업 찾아보기 →</a>' +
+    '<a href="/company" class="font-semibold hover:text-lime-600">기업 탐색 →</a>' +
     '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a>' +
     '<a href="/" class="text-ink/45 hover:text-lime-600">대시보드 →</a></div>' +
     '</div>';
@@ -470,7 +470,7 @@ function renderEdition(d) {
   // 슬라이드로 가는 길은 상단 표지 썸네일이 맡는다(2026-08-24 사용자 지시) — 여기 링크는 두지 않는다.
   h += '<div class="rule-thin pt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">' +
     '<a href="/weekly" class="font-semibold hover:text-lime-600">전체 회차 →</a>' +
-    '<a href="/company" class="font-semibold hover:text-lime-600">기업 찾아보기 →</a>' +
+    '<a href="/company" class="font-semibold hover:text-lime-600">기업 탐색 →</a>' +
     '<a href="/explore" class="font-semibold hover:text-lime-600">자료 검색 →</a></div>';
   h += '</div>';
 
