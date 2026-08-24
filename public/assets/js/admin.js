@@ -1218,7 +1218,10 @@ function wkBind() {
         : '';
       /* 목적지를 먼저 말한다. stg 와 운영의 관리자 화면이 똑같이 생겼는데 방이 다르고,
          전사 라운지로 잘못 나가면 되돌릴 수 없다(2026-08-24 사용자 지시로 웹훅이 둘이 됐다). */
-      const where = dry.target ? '보낼 곳: ' + dry.target + '\n\n' : '';
+      /* 이름이 비면 줄을 빼는 대신 「모릅니다」를 적는다 — 줄이 조용히 사라지면 목적지를
+         확인했다고 착각한 채 누르게 되고, 그것이 가장 위험한 경우다. */
+      const where = (dry.target ? '보낼 곳: ' + dry.target
+        : '⚠ 보낼 곳을 확인할 수 없습니다 (WEEKLY_WEBHOOK_LABEL 미설정) — 전사 라운지일 수 있습니다') + '\n\n';
       if (!confirm(sent + where + '아래 내용으로 보냅니다.\n\n' + dry.text)) return;
       await API.weeklyAction({ action: 'notify', week: WK.week }, adminPin);
       toast('메시지를 보냈습니다', true);

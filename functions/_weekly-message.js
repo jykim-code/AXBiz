@@ -81,7 +81,9 @@ export function buildWeeklyMessage(ed, origin) {
      닫는 괄호까지 주소로 먹어 깨진다 — 그래서 이 형태를 쓴다.
      맺음말이 「상단 링크」가 아니라 「위 링크」인 이유: 링크가 바로 위 줄에 있다. */
   lines.push('');
-  lines.push('👉 <' + url + '|' + label + ' Weekly Picks 링크>');
+  // 라벨을 굵게 — 맺음말 「위 링크」가 가리키는 곳이라 눈에 걸려야 한다.
+  // 별표는 `<주소|라벨>` 안쪽에 둔다(바깥에 두면 `<` 가 굵게 구간을 끊는다).
+  lines.push('👉 <' + url + '|*' + label + ' Weekly Picks 링크*>');
   lines.push('자세한 내용은 위 링크를 참고해 주세요. 감사합니다 🙌');
 
   return lines.join('\n');

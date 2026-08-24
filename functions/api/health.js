@@ -9,8 +9,10 @@ import { pinOk } from '../_auth.js';
 // WEEKLY_WEBHOOK_URL·SITE_ORIGIN 은 회차를 메신저로 보낼 때 쓴다(2026-08-24).
 // 환경변수는 배포 시점에 묶이므로 「대시보드에 넣었는데 왜 안 되나」를 여기서 가른다 —
 // 값을 넣은 뒤 재배포하지 않았으면 등록돼 있어도 false 로 보인다.
+// WEEKLY_WEBHOOK_LABEL 도 같이 본다 — 이 값이 비면 발송 확인창에 「보낼 곳」 줄이 사라져
+// 전사 라운지로 나가는지 테스트 방으로 나가는지 모르는 채 확인을 누르게 된다.
 const SECRET_KEYS = ['ADMIN_PIN', 'CONFLUENCE_EMAIL', 'CONFLUENCE_API_TOKEN', 'OPENROUTER_API_KEY', 'OPENROUTER_MODEL', 'DART_API_KEY',
-  'WEEKLY_WEBHOOK_URL', 'SITE_ORIGIN'];
+  'WEEKLY_WEBHOOK_URL', 'WEEKLY_WEBHOOK_LABEL', 'SITE_ORIGIN'];
 
 export function onRequestGet({ env, request }) {
   const base = { ok: true, db: !!env.DB };
