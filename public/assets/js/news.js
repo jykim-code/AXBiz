@@ -205,7 +205,7 @@
           '<span class="font-display font-bold text-[14.5px] tracking-tight flex-none">' + escapeHtml(p.company) + '</span>' +
           '<span class="text-[11.5px] text-white/40 truncate flex-1">' + escapeHtml(p.title || '') + '</span></button>';
       }).join('') +
-      '</div></div>' + '<div class="nw-more">아래로 더 있음 <span aria-hidden="true">&#8595;</span></div>' + '</div>';
+      '</div></div>' + '<div class="nw-more">스크롤 <span aria-hidden="true">&#8595;</span></div>' + '</div>';
   }
 
   /* ===== 픽 한 장 =====
@@ -304,7 +304,7 @@
       (issueNo ? ' · No.' + no2(issueNo) : '') + '</span>' +
       '</div>';
 
-    return h + '</div>' + '<div class="nw-more">아래로 더 있음 <span aria-hidden="true">&#8595;</span></div>' + '</div>';
+    return h + '</div>' + '<div class="nw-more">스크롤 <span aria-hidden="true">&#8595;</span></div>' + '</div>';
   }
 
   function pickSlide(p, i, issueNo) {
@@ -355,7 +355,7 @@
       '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="font-bold hover:underline">금주 동향 전체 보기 →</a>' +
       '<a href="/weekly" class="font-semibold text-ink/55 hover:underline">전체 회차 →</a></div>' +
       '</div>' +
-      '<div class="nw-more">아래로 더 있음 <span aria-hidden="true">&#8595;</span></div>' +
+      '<div class="nw-more">스크롤 <span aria-hidden="true">&#8595;</span></div>' +
       '</div>';
   }
 
@@ -461,6 +461,32 @@
       else if (k === 'Home') { e.preventDefault(); go(0); }
       else if (k === 'End') { e.preventDefault(); go(pages.length - 1); }
     }, sig);
+
+    /* 스와이프 보강(2026-08-24 사용자 지적 「스와이프가 안 된다」).
+       scroll-snap-type: x mandatory 에서는 짧거나 느린 스와이프가 스냅 임계값을 넘지 못해
+       제자리로 되돌아온다 — 손은 움직였는데 화면은 그대로여서 안 되는 것으로 보인다.
+       그래서 손을 뗀 뒤 스냅이 가라앉을 때까지 기다렸다가, 가로로 충분히 움직였는데도 칸이
+       그대로면 우리가 넘긴다. 브라우저가 이미 넘겼으면 칸이 달라져 있어 두 번 넘어가지 않고,
+       탭이 클릭으로 처리돼 이미 넘어간 경우도 같은 검사로 걸러진다. */
+    let swX = 0, swY = 0, swIdx = 0, swOn = false;
+    track.addEventListener('touchstart', function (e) {
+      if (!e.touches || e.touches.length !== 1) { swOn = false; return; }
+      swX = e.touches[0].clientX; swY = e.touches[0].clientY; swIdx = idx; swOn = true;
+    }, Object.assign({ passive: true }, sig));
+    track.addEventListener('touchend', function (e) {
+      if (!swOn) return;
+      swOn = false;
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - swX, dy = t.clientY - swY;
+      // 가로 제스처로 볼 수 있는 최소치. 세로로 더 많이 움직였으면 본문을 읽으려던 것이다.
+      if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      const from = swIdx;
+      setTimeout(function () {
+        if (Math.round(track.scrollLeft / track.clientWidth) !== from) return;   // 이미 넘어갔다
+        go(from + (dx < 0 ? 1 : -1));
+      }, 140);
+    }, Object.assign({ passive: true }, sig));
 
     // 창 크기가 바뀌면 칸 폭도 바뀐다. 현재 장을 다시 정렬하지 않으면 두 장이 반쯤 걸쳐 보인다.
     window.addEventListener('resize', function () { go(idx, false); }, sig);
