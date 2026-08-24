@@ -1028,7 +1028,10 @@ function renderWeekly() {
     '<button type="button" id="wkPreviewNews" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">뉴스레터 미리보기 ↗</button>' +
     '<button type="button" id="wkPublish" class="btn bg-lime text-ink px-6 py-2.5 hover:bg-ink hover:text-lime">' + (pub ? '다시 발행' : '발행') + '</button>' +
     // 공유 텍스트 복사는 없앴다(2026-08-24 사용자 지시) — 공유는 웹훅 메시지 하나로 한다.
-    (pub ? '<button type="button" id="wkNotify" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">메시지 보내기</button>' +
+    /* 발송은 2단계다(2026-08-24 사용자 지시) — 1차 테스트 방, 2차 전사 라운지.
+       2차만 빨간 테두리로 둔다. 두 버튼이 같이 생겼으면 손이 미끄러지는 것을 막을 것이 없다. */
+    (pub ? '<button type="button" id="wkNotify" class="btn border border-ink/15 px-5 py-2.5 hover:bg-ink hover:text-white">1차 리허설 발송</button>' +
+           '<button type="button" id="wkNotifyFinal" class="btn border border-red-300 text-red-600 px-5 py-2.5 hover:bg-red-500 hover:text-white hover:border-red-500">2차 전사 발송</button>' +
            '<button type="button" id="wkUnpublish" class="btn border border-red-300 text-red-600 px-4 py-2.5 hover:bg-red-500 hover:text-white hover:border-red-500">발행 회수</button>' : '') +
     '<span id="wkStatus" class="text-sm"></span></div>';
 
@@ -1205,34 +1208,79 @@ function wkBind() {
     catch (e) { toast('회수 실패: ' + (e.status || e.message), false); }
   });
   /* 메시지 보내기 — 나갈 문구를 먼저 받아 그대로 보여 주고 확인받는다.
-     문구는 서버가 만든다(보낸 것과 본 것이 갈라지지 않게). 이미 보낸 회차면 그 시각을 알려
-     한 번 더 묻는다 — 같은 방에 두 번 나가는 사고가 이 화면에서 가장 흔할 일이다. */
-  const nf = document.getElementById('wkNotify');
-  if (nf) nf.addEventListener('click', async () => {
-    nf.disabled = true;
+     문구는 서버가 만든다(보낸 것과 본 것이 갈라지지 않게).
+
+     2단계다(2026-08-24 사용자 지시). 1차는 테스트 방으로 보내 눈으로 확인하고,
+     2차가 전사 라운지다. 두 발송이 같은 환경에서 같은 함수를 쓰므로 문구가 글자 단위로
+     같고, 그 「같음」을 서버가 해시로 확인한다 — 1차 뒤에 데이터를 고치면 2차가 막힌다.
+     회수가 안 되는 발송이라 화면과 서버 양쪽에서 막는다. */
+  const notify = async (btn, stage) => {
+    btn.disabled = true;
+    const isFinal = stage === 'final';
     try {
-      const dry = await API.weeklyAction({ action: 'notify', week: WK.week, dryRun: true }, adminPin);
-      if (!dry.configured) { toast('웹훅 주소가 설정되지 않았습니다 (Pages 환경변수 WEEKLY_WEBHOOK_URL)', false); return; }
-      const sent = dry.notifiedAt
-        ? '⚠ 이미 보낸 회차입니다 (' + String(dry.notifiedAt).slice(0, 16).replace('T', ' ') + ')\n\n'
-        : '';
+      const dry = await API.weeklyAction({ action: 'notify', week: WK.week, stage, dryRun: true }, adminPin);
+      if (!dry.configured) {
+        toast('웹훅 주소가 설정되지 않았습니다 (Pages 환경변수 ' +
+          (isFinal ? 'WEEKLY_WEBHOOK_URL' : 'WEEKLY_WEBHOOK_TEST_URL') + ')', false);
+        return;
+      }
+      const when = (v) => String(v).slice(0, 16).replace('T', ' ');
+      const head = [];
+
+      if (isFinal) {
+        // 1차를 건너뛰거나 1차 뒤에 내용이 바뀌었으면 여기서 끝낸다. 서버도 같은 조건으로 막는다.
+        if (!dry.rehearsal) { toast('1차 리허설 발송을 먼저 해 주세요', false); return; }
+        if (dry.staleRehearsal) {
+          /* 막는 것은 같지만 이유가 다르다. stg 와 운영이 D1 을 공유하므로 stg 에서 한 1차가
+             여기에도 보이는데, 그 1차는 링크 주소가 달라 이 발송의 검증이 되지 못한다. */
+          toast(dry.otherEnv
+            ? '1차 리허설을 다른 환경(' + dry.rehearsal.origin + ')에서 했습니다. 링크 주소가 달라 검증이 되지 않습니다 — 이 화면에서 1차부터 다시 해 주세요'
+            : '1차 이후 내용이 바뀌었습니다. 1차 리허설을 다시 보내 확인해 주세요', false);
+          return;
+        }
+        head.push('✅ 1차 리허설 ' + when(dry.rehearsal.at) +
+          (dry.rehearsal.target ? ' → ' + dry.rehearsal.target : '') +
+          '\n   그때 보신 문구와 지금 문구가 같습니다 (지문 ' + dry.hash + ')');
+        if (dry.final) head.push('⚠ 이미 전사로 보낸 회차입니다 (' + when(dry.final.at) + ')');
+      } else if (dry.rehearsal) {
+        head.push('· 지난 1차 리허설: ' + when(dry.rehearsal.at) +
+          (dry.otherEnv ? ' (다른 환경에서 한 것입니다)'
+            : dry.staleRehearsal ? ' (그 뒤 내용이 바뀌었습니다)' : ''));
+      }
+
       /* 목적지를 먼저 말한다. stg 와 운영의 관리자 화면이 똑같이 생겼는데 방이 다르고,
-         전사 라운지로 잘못 나가면 되돌릴 수 없다(2026-08-24 사용자 지시로 웹훅이 둘이 됐다). */
-      const where = dry.target ? '보낼 곳: ' + dry.target + '\n\n' : '';
-      if (!confirm(sent + where + '아래 내용으로 보냅니다.\n\n' + dry.text)) return;
-      await API.weeklyAction({ action: 'notify', week: WK.week }, adminPin);
-      toast('메시지를 보냈습니다', true);
+         전사 라운지로 잘못 나가면 되돌릴 수 없다.
+         이름이 비면 줄을 빼는 대신 「모릅니다」를 적는다 — 줄이 조용히 사라지면 목적지를
+         확인했다고 착각한 채 누르게 되고, 그것이 가장 위험한 경우다. */
+      head.push(dry.target ? '보낼 곳: ' + dry.target
+        : '⚠ 보낼 곳을 확인할 수 없습니다 (' +
+          (isFinal ? 'WEEKLY_WEBHOOK_LABEL' : 'WEEKLY_WEBHOOK_TEST_LABEL') + ' 미설정)' +
+          (isFinal ? ' — 전사 라운지일 수 있습니다' : ''));
+
+      const ask = isFinal ? '아래 내용으로 전사에 보냅니다. 되돌릴 수 없습니다.' : '아래 내용으로 보냅니다.';
+      if (!confirm(head.join('\n') + '\n\n' + ask + '\n\n' + dry.text)) return;
+      const r = await API.weeklyAction({ action: 'notify', week: WK.week, stage }, adminPin);
+      toast((isFinal ? '전사로 보냈습니다' : '1차 리허설을 보냈습니다') +
+        (r.target ? ' (' + r.target + ')' : ''), true);
       loadWeekly();
     } catch (e) {
       const m = {
         NOT_PUBLISHED: '발행된 회차가 아닙니다',
-        NO_WEBHOOK: '웹훅 주소가 설정되지 않았습니다 (Pages 환경변수 WEEKLY_WEBHOOK_URL)',
+        NO_WEBHOOK: '전사 웹훅 주소가 설정되지 않았습니다 (WEEKLY_WEBHOOK_URL)',
+        NO_TEST_WEBHOOK: '테스트 웹훅 주소가 설정되지 않았습니다 (WEEKLY_WEBHOOK_TEST_URL)',
+        REHEARSAL_REQUIRED: '1차 리허설 발송을 먼저 해 주세요',
+        TEXT_CHANGED: '1차 이후 내용이 바뀌었습니다. 1차 리허설을 다시 보내 주세요',
+        REHEARSAL_OTHER_ENV: '1차 리허설을 다른 환경에서 했습니다. 이 화면에서 1차부터 다시 해 주세요',
         WEBHOOK_UNREACHABLE: '웹훅 주소에 연결하지 못했습니다',
         WEBHOOK_FAILED: '메신저가 거절했습니다' + (e.data && e.data.status ? ' (' + e.data.status + ')' : ''),
       }[e.message];
       toast(m || ('발송 실패: ' + (e.status || e.message)), false);
-    } finally { nf.disabled = false; }
-  });
+    } finally { btn.disabled = false; }
+  };
+  const nf = document.getElementById('wkNotify');
+  if (nf) nf.addEventListener('click', () => notify(nf, 'rehearsal'));
+  const nfF = document.getElementById('wkNotifyFinal');
+  if (nfF) nfF.addEventListener('click', () => notify(nfF, 'final'));
 }
 
 async function wkSaveDraft(notify) {
