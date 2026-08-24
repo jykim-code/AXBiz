@@ -51,13 +51,15 @@ function headerHTML(d, s) {
       ? '<span class="w-px h-3 bg-ink/15 mx-1 flex-none"></span>' +
         metaLabel('발행') + metaValue(ymdDot(String(d.publishedAt).slice(0, 10)))
       : '') +
-    /* 금주 동향 전체 보기 — 집계·발행과 같은 행에 둔다(2026-08-24 사용자 지시).
-       메타가 아니라 동작이므로 넓은 화면에서는 ml-auto 로 행 오른쪽 끝으로 밀어 구분한다.
+    /* 금주 동향 전체보기 — 발행 바로 오른쪽에 붙인다(2026-08-24 사용자 지시).
+       ml-auto 로 행 끝까지 밀어 두었더니 바로 아래 표지 썸네일과 겹쳐 보였다.
+       집계·발행과 같은 글씨 크기(행의 12.5px)를 그대로 쓰고 구분선만 같은 것으로 붙인다.
        발행물은 고른 것만 싣고 전체 목록은 그것을 담당하는 화면(대시보드)이 맡는다. */
     (total > picks
-      ? '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="group flex items-center gap-1.5 sm:ml-auto flex-none">' +
-        '<span class="font-semibold group-hover:text-lime-600">금주 동향 ' + total + '건 전체 보러가기</span>' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>'
+      ? '<span class="w-px h-3 bg-ink/15 mx-1 flex-none"></span>' +
+        '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="group inline-flex items-center gap-1 flex-none">' +
+        '<span class="font-semibold group-hover:text-lime-600">금주 동향 전체보기</span>' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>'
       : '') +
     // 마지막 </div> 로 WRAP 을 닫는다. 닫지 않으면 뒤따르는 모든 블록이 이 max-width 안에 들어가
     // 픽 섹션의 전체폭 다크 반전이 1000px 로 잘리고 좌우 패딩이 이중으로 걸린다.

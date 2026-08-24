@@ -304,20 +304,41 @@
   function closing(d, s) {
     const items = (d.payload.hancomConclusion || []);
     const week = encodeURIComponent(d.week || '');
-    return '<div class="h-full bg-lime text-ink flex flex-col">' +
-      '<div class="nw-scroll flex-1 px-6 sm:px-7 pt-7 pb-7">' +
+    /* 표지와 짝이 되게 짠다(2026-08-24 사용자 지시 「마지막 페이지 디자인」).
+       라임 전면 + 관계망 도형 + 제호 줄까지 표지와 같은 어휘를 쓰고, 표지가 「무엇을 넘기게
+       되는가」를 말한 자리에 이 장은 결론을 놓는다. 도형 씨앗은 주차라 회차마다 다르고
+       같은 회차는 늘 같은 모양이다. 도형 위에 글이 얹히므로 결론 묶음에는 라임 바탕을 깔아
+       읽히게 한다 — 활자만 얹으면 선과 점이 글자 사이로 지나간다. */
+    const sk = { line: 'rgba(17,17,17,.16)', dot: 'rgba(17,17,17,.30)', hub: '#111' };
+    return '<div class="h-full bg-lime text-ink relative overflow-hidden flex flex-col">' +
+      graphArt('closing|' + (d.week || ''), sk) +
+
+      '<div class="nw-scroll relative flex-1 px-6 sm:px-7 pt-7 pb-8">' +
+      // 제호 줄 — 표지와 같은 구성이라 여기가 끝이라는 것이 한눈에 읽힌다
+      '<div class="flex items-center gap-2 mb-7">' +
+      '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-4 w-auto" />' +
+      '<span class="w-px h-3.5 bg-ink/25"></span>' +
+      '<span class="font-display font-bold text-[11px] uppercase tracking-[.2em]">AX Biz Radar News</span>' +
+      (d.issueNo ? '<span class="ml-auto font-display font-bold text-[11px] tracking-widest">No.' + no2(d.issueNo) + '</span>' : '') +
+      '</div>' +
+
       '<div class="text-[10px] font-bold uppercase tracking-[.2em] text-ink/50 mb-1">Conclusion</div>' +
-      '<h2 class="font-display font-bold text-[30px] tracking-tighter leading-none mb-6">한컴 관점</h2>' +
+      '<h2 class="font-display font-bold text-[34px] sm:text-[38px] tracking-tighter leading-none">한컴 관점</h2>' +
+      '<div class="mt-2 text-[12px] font-semibold text-ink/50">금주 픽에서 도출한 결론</div>' +
+
       (items.length
-        ? '<div class="space-y-4">' + items.map(function (x, i) {
-          return '<div class="flex gap-3">' +
-            '<span class="font-display font-bold text-[13px] text-ink/40 flex-none pt-1">' + no2(i + 1) + '</span>' +
+        // 결론 한 줄 = 라임 바탕 위 흰 카드 대신, 좌측 굵은 바 + 반투명 흰 바탕. 상세 페이지의
+        // 「라임 좌측 바 = 사람이 판단해 쓴 문장」 규칙을 여기서도 지킨다(색만 반전).
+        ? '<div class="mt-6 space-y-2.5">' + items.map(function (x, i) {
+          return '<div class="flex gap-3 bg-white/55 border-l-[3px] border-ink px-4 py-3">' +
+            '<span class="font-display font-bold text-[12px] text-ink/40 flex-none pt-0.5">' + no2(i + 1) + '</span>' +
             '<p class="text-[14px] leading-[1.7]">' + escapeHtml(x) + '</p></div>';
         }).join('') + '</div>'
-        : '<p class="text-[14px] text-ink/50">한컴 관점이 비어 있습니다</p>') +
-      '<div class="mt-7 pt-5 border-t border-ink/20 flex flex-col gap-2 text-[13px]">' +
-      '<a href="/weekly?w=' + week + '" class="font-bold hover:underline">이 회차 상세로 보기 →</a>' +
-      '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="font-bold hover:underline">금주 동향 ' + (s.total || 0) + '건 전체 →</a>' +
+        : '<p class="mt-6 text-[14px] text-ink/50">한컴 관점이 비어 있습니다</p>') +
+
+      '<div class="mt-8 pt-5 border-t border-ink/25 flex flex-col gap-2.5 text-[13px]">' +
+      '<a href="/weekly?w=' + week + '" class="font-bold hover:underline">해당 회차 상세보기 →</a>' +
+      '<a href="/?date=' + encodeURIComponent(d.start || '') + '" class="font-bold hover:underline">금주 동향 전체 보기 →</a>' +
       '<a href="/weekly" class="font-semibold text-ink/55 hover:underline">전체 회차 →</a></div>' +
       '</div></div>';
   }
@@ -494,10 +515,13 @@
      이 마크업이 여기 있는 이유: 뉴스레터의 모습은 이 파일 한 곳에서만 정한다. */
   function coverThumbHTML(d, s) {
     const tags = (s.topTags || []).slice(0, 3).map((t) => '#' + escapeHtml(t.tag)).join(' ');
-    return '<button type="button" data-nw-open class="group block w-[150px] sm:w-[190px] flex-none text-left ' +
+    /* 크기를 aspect-ratio 로 잡지 않고 폭·높이를 직접 박는다.
+       비율만 주면 부모 레이아웃(flex 정렬·줄바꿈)에 따라 높이가 눌려 가로로 길게 나온다.
+       4:5 는 /weekly 목록의 회차 커버와 같은 비율이다 — 같은 것을 줄인 것으로 읽히게 맞춘다. */
+    return '<button type="button" data-nw-open class="group block flex-none text-left ' +
       'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink" ' +
       'aria-label="뉴스레터 슬라이드로 크게 보기">' +
-      '<div class="relative aspect-[4/5] overflow-hidden bg-lime text-ink shadow-lg shadow-ink/10 ' +
+      '<div class="relative w-[150px] h-[188px] sm:w-[190px] sm:h-[238px] overflow-hidden bg-lime text-ink shadow-lg shadow-ink/10 ' +
       'transition-transform group-hover:-translate-y-0.5">' +
       (d.issueNo ? '<span aria-hidden="true" class="pointer-events-none absolute -right-2 -bottom-5 font-display font-bold leading-none tracking-tighter text-[72px] text-ink/[.08]">' + no2(d.issueNo) + '</span>' : '') +
       '<div class="relative h-full flex flex-col p-3 sm:p-3.5">' +
