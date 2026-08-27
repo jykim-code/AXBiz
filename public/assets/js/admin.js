@@ -62,7 +62,11 @@ function bulletGroup(field, label, items) {
   ]);
 }
 
-/* ===== 기업 블록 ===== */
+/* ===== 동향 1건 블록 =====
+   블록 1개 = 「기업 1곳의 동향 1건」이다(같은 기업의 다른 동향은 별개 블록).
+   그래서 블록을 빼는 버튼은 「기업 삭제」가 아니다 — 입력 목록에서 그 1건을 빼는 것이고,
+   라이브 데이터는 그대로 남는다(배포가 병합이라 draft 에 없는 항목은 손대지 않음).
+   라이브에서 지우는 것은 검수·배포 탭의 「라이브 항목 삭제」다. */
 function companyBlock(data) {
   data = data || {};
   const name = el('input', { class: 'field c-name', type: 'text', placeholder: '기업명', value: data.name || '' });
@@ -81,12 +85,13 @@ function companyBlock(data) {
   const removeBtn = el('button', {
     type: 'button',
     class: 'btn text-xs border border-ink/15 px-3 py-1.5 hover:bg-red-500 hover:text-white hover:border-red-500',
-    text: '기업 삭제',
+    text: '이 항목 빼기',
+    title: '입력 목록에서만 뺍니다 — 라이브 데이터는 지워지지 않습니다. 라이브에서 지우려면 검수·배포 탭의 「라이브 항목 삭제」를 쓰세요.',
     onclick: () => block.remove(),
   });
 
   const head = el('div', { class: 'flex items-center justify-between mb-4' }, [
-    el('div', { class: 'label', text: '기업' }),
+    el('div', { class: 'label', text: '동향 1건' }),
     removeBtn,
   ]);
 
@@ -210,7 +215,8 @@ async function loadExisting() {
     wrap.innerHTML = '';
     if (companies.length) {
       companies.forEach((c) => wrap.appendChild(companyBlock(c)));
-      status.textContent = companies.length + '개 기업 불러옴 (수정 후 저장 시 덮어쓰기)';
+      // 「빼기 = 라이브 삭제」로 읽히지 않게 여기서 한 번 더 말한다(2026-08-27 오해 사례).
+      status.textContent = '라이브 ' + companies.length + '건 불러옴 · 고쳐서 저장·배포하면 같은 건이 교체됩니다. 항목을 빼도 라이브에서는 지워지지 않습니다(삭제는 검수·배포 탭).';
     } else {
       wrap.appendChild(companyBlock());
       status.textContent = '해당 날짜 데이터 없음 (새로 입력)';
@@ -329,6 +335,8 @@ function init() {
   // 검수·배포
   document.getElementById('rvPublishAll').addEventListener('click', () => confirmPublishRv({ all: true }, '검수 목록 전체를'));
   document.getElementById('rvClearSame').addEventListener('click', clearSameRv);
+  // 라이브 항목 삭제(검수·배포 탭 하단)
+  document.getElementById('lvLoad').addEventListener('click', loadLive);
   document.getElementById('suggRefresh').addEventListener('click', loadSuggestions);
   document.getElementById('dartRefresh').addEventListener('click', loadDartMappings);
   document.getElementById('pinSave').addEventListener('click', savePinned);
@@ -774,7 +782,7 @@ function rvCard(x) {
     '<div class="flex flex-wrap gap-1.5 mt-2">' + (d.tags || []).map(t => '<span class="text-xs bg-beige border border-ink/5 rounded-full px-2.5 py-0.5">#' + escapeHtml(t) + '</span>').join('') + '</div>' +
     '<div class="flex items-center gap-2 mt-4 pt-3 border-t border-ink/5">' +
       '<button class="btn text-xs border border-ink/15 px-3 py-1.5 hover:bg-beige" data-rvact="edit">편집</button>' +
-      '<button class="btn text-xs border border-ink/15 px-3 py-1.5 hover:bg-red-500 hover:text-white hover:border-red-500" data-rvact="del">삭제</button>' +
+      '<button class="btn text-xs border border-ink/15 px-3 py-1.5 hover:bg-red-500 hover:text-white hover:border-red-500" data-rvact="del" title="검수 목록(초안)에서만 지웁니다 — 라이브 데이터는 그대로입니다">초안 삭제</button>' +
       '<button class="btn text-xs bg-ink text-white px-4 py-1.5 ml-auto hover:bg-lime hover:text-ink" data-rvact="pub">이 건 배포</button>' +
     '</div></div>';
 }
@@ -792,7 +800,7 @@ function renderReview() {
   list.querySelectorAll('.rv-dart').forEach(b => b.onclick = () => showTab('dart'));
   list.querySelectorAll('[data-rvid]').forEach(card => {
     const id = +card.getAttribute('data-rvid');
-    card.querySelector('[data-rvact="del"]').onclick = async () => { try { await API.devDeleteDraft(id); toast('삭제됨', true); loadReview(); } catch { toast('삭제 실패', false); } };
+    card.querySelector('[data-rvact="del"]').onclick = async () => { try { await API.devDeleteDraft(id); toast('초안 삭제됨 (라이브 영향 없음)', true); loadReview(); } catch { toast('초안 삭제 실패', false); } };
     card.querySelector('[data-rvact="pub"]').onclick = () => confirmPublishRv({ ids: [id] }, '이 1건을');
     card.querySelector('[data-rvact="edit"]').onclick = () => openEditDraft(card, id);
   });
@@ -831,6 +839,77 @@ async function clearSameRv() {
   if (!confirm('동일(변경 없음) ' + ids.length + '건을 검수 목록에서 삭제할까요?\n라이브엔 영향이 없습니다(draft만 정리).')) return;
   for (const id of ids) { try { await API.devDeleteDraft(id); } catch { /* 계속 */ } }
   toast(ids.length + '건 정리됨', true); loadReview();
+}
+
+/* ===== 라이브 항목 삭제 =====
+   배포는 병합이라(_publish.js) draft 에서 항목을 빼도 라이브는 그대로 남는다. 지우는
+   경로가 없어 「수동 입력에서 빼고 재배포 = 삭제」로 오해되어 왔다(2026-08-27).
+   지우는 단위는 「기업 1곳의 동향 1건」이고, 그 기업의 다른 날짜·다른 동향은 남는다.
+   되돌릴 수 없으므로 기업명을 confirm 문구에 넣어 무엇이 지워지는지 먼저 보여준다. */
+let LV_DATE = '', LV_ENTRIES = [];
+
+async function loadLive() {
+  const date = document.getElementById('lvDate').value;
+  const status = document.getElementById('lvStatus');
+  const list = document.getElementById('lvList');
+  if (!date) { status.textContent = '날짜를 먼저 선택하세요.'; list.innerHTML = ''; return; }
+  status.textContent = '불러오는 중…';
+  try {
+    const res = await API.devLive(date);
+    LV_DATE = date;
+    LV_ENTRIES = res.entries || [];
+    status.textContent = LV_ENTRIES.length ? '라이브 ' + LV_ENTRIES.length + '건' : '이 날짜에는 라이브 데이터가 없습니다.';
+    renderLive();
+  } catch (e) {
+    status.textContent = '불러오기 실패: ' + (e.status || e.message);
+    list.innerHTML = '';
+  }
+}
+
+function lvRowHTML(x) {
+  const line = x.summary || (x.keyPoints || [])[0] || '';
+  let host = '';
+  try { host = x.sourceUrl ? new URL(x.sourceUrl).hostname.replace(/^www\./, '') : ''; } catch { host = ''; }
+  return '<div class="flex items-start gap-3 bg-white rounded-2xl border border-ink/5 shadow p-4" data-lvidx="' + x.idx + '">' +
+    '<div class="flex-1 min-w-0">' +
+      '<div class="flex items-center gap-2 flex-wrap mb-1">' +
+        '<span class="font-display font-bold">' + escapeHtml(x.name) + '</span>' +
+        '<span class="text-[10px] font-semibold bg-beige rounded-full px-2 py-0.5">' + escapeHtml(x.category) + '</span>' +
+        (host ? '<span class="text-[10px] opacity-45">' + escapeHtml(host) + '</span>' : '') +
+      '</div>' +
+      (line ? '<p class="text-sm opacity-80 truncate">' + escapeHtml(line) + '</p>' : '') +
+    '</div>' +
+    '<button class="btn flex-none text-xs border border-ink/15 px-3 py-1.5 hover:bg-red-500 hover:text-white hover:border-red-500" data-lvdel title="이 동향 1건을 라이브에서 지웁니다 (되돌릴 수 없음)">라이브에서 삭제</button>' +
+  '</div>';
+}
+
+function renderLive() {
+  const list = document.getElementById('lvList');
+  list.innerHTML = LV_ENTRIES.map(lvRowHTML).join('');
+  list.querySelectorAll('[data-lvidx]').forEach((row) => {
+    const idx = +row.getAttribute('data-lvidx');
+    row.querySelector('[data-lvdel]').onclick = () => deleteLive(idx);
+  });
+}
+
+async function deleteLive(idx) {
+  const x = LV_ENTRIES.find((e) => e.idx === idx);
+  if (!x) return;
+  const msg = '「' + x.name + '」의 ' + LV_DATE + ' 동향 1건을 라이브에서 삭제합니다.\n\n' +
+    '· 이 1건만 지워집니다 — 같은 기업의 다른 날짜·다른 동향은 그대로 남습니다\n' +
+    '· 본 사이트에 즉시 반영되고 되돌릴 수 없습니다\n' +
+    '· 이미 발행한 위클리 픽은 발행 시점 내용으로 고정되어 바뀌지 않습니다\n\n' +
+    '삭제할까요?';
+  if (!confirm(msg)) return;
+  try {
+    const r = await API.devDeleteLive(LV_DATE, x.idx, x.name, x.key);
+    toast(x.name + ' 1건 삭제됨 · 남은 ' + r.remaining + '건', true);
+    if (r.dateRemoved) toast(LV_DATE + ' 항목이 모두 없어져 날짜가 목록에서 빠졌습니다', true);
+    loadLive(); // 인덱스가 밀리므로 반드시 다시 읽는다
+  } catch (e) {
+    if (e.status === 409) { toast('그 사이 데이터가 바뀌었습니다 — 다시 불러왔습니다', false); loadLive(); return; }
+    toast('삭제 실패: ' + (e.status || e.message), false);
+  }
 }
 
 /* ===== 위클리 픽 탭 =====
