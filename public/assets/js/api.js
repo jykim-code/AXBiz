@@ -317,4 +317,18 @@ const API = {
     if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; err.data = data; throw err; }
     return data;
   },
+
+  // ===== 라이브 항목 삭제 (배포는 병합이라 draft 에서 빼는 것으로는 지워지지 않는다) =====
+  async devLive(date) {
+    const res = await fetch('/api/dev/live?date=' + encodeURIComponent(date), { headers: { Accept: 'application/json', 'x-admin-pin': devPin() } });
+    let data = {}; try { data = await res.json(); } catch { /* */ }
+    if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; err.data = data; throw err; }
+    return data;
+  },
+  async devDeleteLive(date, idx, name, key) {
+    const res = await fetch('/api/dev/live', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pin': devPin() }, body: JSON.stringify({ action: 'delete', date, idx, name, key }) });
+    let data = {}; try { data = await res.json(); } catch { /* */ }
+    if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; err.data = data; throw err; }
+    return data;
+  },
 };
