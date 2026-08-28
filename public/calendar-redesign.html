@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>캘린더 카드 리디자인 시안</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+      fontFamily: {
+        sans: ['Inter','ui-sans-serif','system-ui','sans-serif'],
+        display: ['"Space Grotesk"','ui-sans-serif','system-ui','sans-serif'],
+      },
+    }},
+  };
+</script>
+<style>
+  body { background:#e8e6e1; font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased; }
+  h1,h2 { font-family:'Space Grotesk',sans-serif; }
+  .tag { font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:#7ba500; }
+  .chip { font-size:11px; background:#f7f5f0; border:1px solid rgba(17,17,17,.07); border-radius:999px; padding:2px 10px; opacity:.8; }
+
+  /* 캘린더 미니 mock */
+  .cal-mock { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; width:252px; }
+  .cal-day { height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-size:12px; cursor:pointer; position:relative; }
+  .cal-day.has { font-weight:600; }
+  .cal-day.has::after { content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:#7ba500; }
+  .cal-day.sel { background:#c8f200; color:#111; font-weight:700; }
+  .cal-day.sel::after { background:#111; }
+  .cal-day.sel.start { border-radius:8px 0 0 8px; }
+  .cal-day.sel.end { border-radius:0 8px 8px 0; }
+  .cal-day.sel.mid { border-radius:0; }
+  .cal-day.dim { opacity:.25; }
+  .cal-day.hdr { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; opacity:.5; height:20px; }
+</style>
+</head>
+<body class="py-12 px-6 space-y-20">
+<div class="max-w-[900px] mx-auto">
+
+  <h1 class="font-display font-bold text-2xl tracking-tight mb-1">캘린더 카드 리디자인</h1>
+  <p class="text-xs opacity-40 mb-2">C안(하단 탭 접기) + 날짜 중복 제거 + 모드별 브리핑 개선</p>
+  <div class="text-xs opacity-50 mb-12 bg-white/60 rounded-xl px-4 py-3 inline-block">
+    <b>개선 포인트</b>: 날짜 3개 → 1개(헤더 period label만) · 우측 패널 정보 정리 · 위클리 픽 링크 개선 · 모드별 최적화
+  </div>
+
+
+  <!-- ============================================================
+       닫힌 상태 (C안 하단 탭) — 모든 모드 공통
+       ============================================================ -->
+  <section>
+    <div class="tag mb-3">닫힌 상태 (공통)</div>
+    <div class="bg-white rounded-[24px] border border-black/5 shadow-sm overflow-hidden">
+      <div class="px-5 sm:px-7 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-lime-600">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            주간
+          </div>
+          <span class="font-display font-bold text-sm">2026-08-24 ~ 08-30</span>
+          <span class="w-px h-4 bg-black/10 hidden sm:block"></span>
+          <span class="hidden sm:flex items-baseline gap-1.5"><span class="font-display font-bold text-base">15</span><span class="text-xs opacity-50">건</span></span>
+          <span class="w-px h-4 bg-black/10 hidden md:block"></span>
+          <span class="hidden md:block text-xs opacity-40">대기업 7 · 중견 3 · 스타트업 5</span>
+        </div>
+        <button class="flex items-center gap-1 text-xs font-semibold opacity-40 hover:opacity-80 transition-opacity">
+          캘린더 펼치기
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       주(週) 모드 — 열린 상태
+       ============================================================ -->
+  <section>
+    <div class="tag mb-3">주간 모드 — 열린 상태</div>
+    <div class="bg-white rounded-[24px] border border-black/5 shadow-xl shadow-black/5 overflow-hidden">
+      <div class="px-5 sm:px-7 pt-5 pb-4 flex flex-col xl:flex-row xl:items-start gap-5 xl:gap-8">
+
+        <!-- 좌: 기간 네비 + 모드 토글 -->
+        <div class="flex-none flex flex-col gap-3">
+          <!-- 기간 네비 -->
+          <div class="flex items-center gap-2">
+            <button class="w-8 h-8 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-base leading-none">‹</button>
+            <div class="font-display font-bold text-sm w-[148px] text-center">08-24 ~ 08-30</div>
+            <button class="w-8 h-8 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-base leading-none">›</button>
+          </div>
+          <!-- 모드 토글 -->
+          <div class="inline-flex rounded-full bg-beige p-1 self-stretch">
+            <button class="flex-1 px-3 py-1 rounded-full text-xs font-semibold text-black/40">일</button>
+            <button class="flex-1 px-3 py-1 rounded-full text-xs font-semibold bg-ink text-lime">주</button>
+            <button class="flex-1 px-3 py-1 rounded-full text-xs font-semibold text-black/40">월</button>
+          </div>
+        </div>
+
+        <!-- 중: 캘린더 -->
+        <div class="flex-none">
+          <div class="cal-mock mb-0">
+            <div class="cal-day hdr">일</div><div class="cal-day hdr">월</div><div class="cal-day hdr">화</div><div class="cal-day hdr">수</div><div class="cal-day hdr">목</div><div class="cal-day hdr">금</div><div class="cal-day hdr">토</div>
+            <div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day dim">1</div>
+            <div class="cal-day dim">2</div><div class="cal-day has">3</div><div class="cal-day has">4</div><div class="cal-day has">5</div><div class="cal-day has">6</div><div class="cal-day has">7</div><div class="cal-day dim">8</div>
+            <div class="cal-day dim">9</div><div class="cal-day has">10</div><div class="cal-day has">11</div><div class="cal-day has">12</div><div class="cal-day has">13</div><div class="cal-day has">14</div><div class="cal-day dim">15</div>
+            <div class="cal-day dim">16</div><div class="cal-day has">17</div><div class="cal-day has">18</div><div class="cal-day has">19</div><div class="cal-day has">20</div><div class="cal-day has">21</div><div class="cal-day has">22</div>
+            <div class="cal-day has">23</div><div class="cal-day sel start">24</div><div class="cal-day sel mid">25</div><div class="cal-day sel mid">26</div><div class="cal-day sel mid">27</div><div class="cal-day sel mid">28</div><div class="cal-day sel end">29</div>
+            <div class="cal-day sel start end">30</div><div class="cal-day dim">31</div>
+          </div>
+          <div class="flex items-center gap-2 mt-2 text-[10px] opacity-40">
+            <span class="w-1.5 h-1.5 rounded-full bg-lime-600 inline-block"></span>
+            <span>데이터 있는 날짜</span>
+          </div>
+        </div>
+
+        <!-- 우: 브리핑 (날짜 중복 없음) -->
+        <div class="flex-1 min-w-0 xl:border-l xl:border-black/7 xl:pl-7 flex flex-col gap-3">
+          <!-- 건수 + breakdown -->
+          <div>
+            <div class="flex items-end gap-2 mb-1">
+              <span class="font-display font-bold text-4xl leading-none">15</span>
+              <span class="text-sm opacity-50 pb-0.5">건</span>
+            </div>
+            <div class="text-xs opacity-50">대기업 7 · 중견 3 · 스타트업 5</div>
+          </div>
+          <!-- 태그 -->
+          <div class="flex flex-wrap gap-1.5">
+            <span class="chip">#사이버보안특화AI</span>
+            <span class="chip">#국책과제</span>
+            <span class="chip">#컨소시엄</span>
+            <span class="chip">#공공조달</span>
+            <span class="chip">#파운데이션모델</span>
+          </div>
+          <!-- 위클리 픽 — 주간 모드에서만 표시, 버튼형 -->
+          <div class="mt-auto pt-1">
+            <a href="/weekly" class="inline-flex items-center gap-2 bg-[#c8f200] text-ink text-xs font-bold rounded-full px-3.5 py-1.5 hover:bg-[#d6f52e] transition-colors">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              이 주의 위클리 픽
+            </a>
+          </div>
+        </div>
+      </div>
+      <!-- C안 하단 접기 탭 -->
+      <button class="w-full border-t border-black/6 py-2 flex items-center justify-center gap-1.5 text-xs font-semibold opacity-35 hover:opacity-70 hover:bg-beige transition-all">
+        접기 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 15l-6-6-6 6"/></svg>
+      </button>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       일(日) 모드 — 열린 상태
+       ============================================================ -->
+  <section>
+    <div class="tag mb-3">일간 모드 — 열린 상태</div>
+    <div class="bg-white rounded-[24px] border border-black/5 shadow-xl shadow-black/5 overflow-hidden">
+      <div class="px-5 sm:px-7 pt-5 pb-4 flex flex-col xl:flex-row xl:items-start gap-5 xl:gap-8">
+        <div class="flex-none flex flex-col gap-3">
+          <div class="flex items-center gap-2">
+            <button class="w-8 h-8 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-base">‹</button>
+            <div class="font-display font-bold text-sm w-[148px] text-center">2026-08-28 (목)</div>
+            <button class="w-8 h-8 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-base">›</button>
+          </div>
+          <div class="inline-flex rounded-full bg-beige p-1 self-stretch">
+            <button class="flex-1 px-3 py-1 rounded-full text-xs font-semibold bg-ink text-lime">일</button>
+            <button class="flex-1 px-3 py-1 rounded-full text-xs font-semibold text-black/40">주</button>
+            <button class="flex-1 px-3 py-1 rounded-full text-xs font-semibold text-black/40">월</button>
+          </div>
+        </div>
+        <div class="flex-none">
+          <div class="cal-mock">
+            <div class="cal-day hdr">일</div><div class="cal-day hdr">월</div><div class="cal-day hdr">화</div><div class="cal-day hdr">수</div><div class="cal-day hdr">목</div><div class="cal-day hdr">금</div><div class="cal-day hdr">토</div>
+            <div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day dim">1</div>
+            <div class="cal-day dim">2</div><div class="cal-day has">3</div><div class="cal-day has">4</div><div class="cal-day has">5</div><div class="cal-day has">6</div><div class="cal-day has">7</div><div class="cal-day dim">8</div>
+            <div class="cal-day dim">9</div><div class="cal-day has">10</div><div class="cal-day has">11</div><div class="cal-day has">12</div><div class="cal-day has">13</div><div class="cal-day has">14</div><div class="cal-day dim">15</div>
+            <div class="cal-day dim">16</div><div class="cal-day has">17</div><div class="cal-day has">18</div><div class="cal-day has">19</div><div class="cal-day has">20</div><div class="cal-day has">21</div><div class="cal-day has">22</div>
+            <div class="cal-day has">23</div><div class="cal-day has">24</div><div class="cal-day has">25</div><div class="cal-day has">26</div><div class="cal-day has">27</div><div class="cal-day sel start end">28</div><div class="cal-day has">29</div>
+            <div class="cal-day has">30</div><div class="cal-day dim">31</div>
+          </div>
+          <div class="flex items-center gap-2 mt-2 text-[10px] opacity-40">
+            <span class="w-1.5 h-1.5 rounded-full bg-lime-600 inline-block"></span>
+            <span>데이터 있는 날짜</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-0 xl:border-l xl:border-black/7 xl:pl-7 flex flex-col gap-3">
+          <div>
+            <div class="flex items-end gap-2 mb-1">
+              <span class="font-display font-bold text-4xl leading-none">3</span>
+              <span class="text-sm opacity-50 pb-0.5">건</span>
+            </div>
+            <div class="text-xs opacity-50">대기업 2 · 스타트업 1</div>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="chip">#파운데이션모델</span>
+            <span class="chip">#공공조달</span>
+          </div>
+          <!-- 일 모드: 위클리 픽 링크 없음, 대신 이 날짜가 속한 주차 안내 -->
+          <div class="mt-auto pt-1 text-xs opacity-40">
+            8월 4주차 데이터 · <a href="#" class="underline hover:opacity-80">주간 보기</a>
+          </div>
+        </div>
+      </div>
+      <button class="w-full border-t border-black/6 py-2 flex items-center justify-center gap-1.5 text-xs font-semibold opacity-35 hover:opacity-70 hover:bg-beige transition-all">
+        접기 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 15l-6-6-6 6"/></svg>
+      </button>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       월(月) 모드 — 열린 상태
+       ============================================================ -->
+  <section>
+    <div class="tag mb-3">월간 모드 — 열린 상태</div>
+    <div class="bg-white rounded-[24px] border border-black/5 shadow-xl shadow-black/5 overflow-hidden">
+      <div class="px-5 sm:px-7 pt-5 pb-4 flex flex-col xl:flex-row xl:items-start gap-5 xl:gap-8">
+        <div class="flex-none flex flex-col gap-3">
+          <div class="flex items-center gap-2">
+            <button class="w-8 h-8 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-base">‹</button>
+            <div class="font-display font-bold text-sm w-[148px] text-center">2026년 8월</div>
+            <button class="w-8 h-8 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-base">›</button>
+          </div>
+          <div class="inline-flex rounded-full bg-beige p-1 self-stretch">
+            <button class="flex-1 px-3 py-1 rounded-full text-xs font-semibold text-black/40">일</button>
+            <button class="flex-1 px-3 py-1 rounded-full text-xs font-semibold text-black/40">주</button>
+            <button class="flex-1 px-3 py-1 rounded-full text-xs font-semibold bg-ink text-lime">월</button>
+          </div>
+        </div>
+        <div class="flex-none">
+          <div class="cal-mock">
+            <div class="cal-day hdr">일</div><div class="cal-day hdr">월</div><div class="cal-day hdr">화</div><div class="cal-day hdr">수</div><div class="cal-day hdr">목</div><div class="cal-day hdr">금</div><div class="cal-day hdr">토</div>
+            <div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day dim">1</div>
+            <div class="cal-day dim">2</div><div class="cal-day has sel mid">3</div><div class="cal-day has sel mid">4</div><div class="cal-day has sel mid">5</div><div class="cal-day has sel mid">6</div><div class="cal-day has sel mid">7</div><div class="cal-day dim">8</div>
+            <div class="cal-day dim">9</div><div class="cal-day has sel mid">10</div><div class="cal-day has sel mid">11</div><div class="cal-day has sel mid">12</div><div class="cal-day has sel mid">13</div><div class="cal-day has sel mid">14</div><div class="cal-day dim">15</div>
+            <div class="cal-day dim">16</div><div class="cal-day has sel mid">17</div><div class="cal-day has sel mid">18</div><div class="cal-day has sel mid">19</div><div class="cal-day has sel mid">20</div><div class="cal-day has sel mid">21</div><div class="cal-day has sel mid">22</div>
+            <div class="cal-day has sel mid">23</div><div class="cal-day has sel mid">24</div><div class="cal-day has sel mid">25</div><div class="cal-day has sel mid">26</div><div class="cal-day has sel mid">27</div><div class="cal-day has sel mid">28</div><div class="cal-day has sel mid">29</div>
+            <div class="cal-day has sel mid">30</div><div class="cal-day dim">31</div>
+          </div>
+          <div class="flex items-center gap-2 mt-2 text-[10px] opacity-40">
+            <span class="w-1.5 h-1.5 rounded-full bg-lime-600 inline-block"></span>
+            <span>데이터 있는 날짜</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-0 xl:border-l xl:border-black/7 xl:pl-7 flex flex-col gap-3">
+          <div>
+            <div class="flex items-end gap-2 mb-1">
+              <span class="font-display font-bold text-4xl leading-none">62</span>
+              <span class="text-sm opacity-50 pb-0.5">건</span>
+            </div>
+            <div class="text-xs opacity-50">대기업 28 · 중견 15 · 스타트업 19</div>
+          </div>
+          <!-- 월간: 주차별 분포 추가 -->
+          <div class="space-y-1">
+            <div class="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-1">주차별</div>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="w-10 opacity-50">1주차</span>
+              <div class="flex-1 h-1.5 bg-beige rounded-full overflow-hidden"><div class="h-full bg-lime-600 rounded-full" style="width:35%"></div></div>
+              <span class="opacity-50">22건</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="w-10 opacity-50">2주차</span>
+              <div class="flex-1 h-1.5 bg-beige rounded-full overflow-hidden"><div class="h-full bg-lime-600 rounded-full" style="width:24%"></div></div>
+              <span class="opacity-50">15건</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="w-10 opacity-50">3주차</span>
+              <div class="flex-1 h-1.5 bg-beige rounded-full overflow-hidden"><div class="h-full bg-lime-600 rounded-full" style="width:40%"></div></div>
+              <span class="opacity-50">25건</span>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-1.5 mt-auto">
+            <span class="chip">#사이버보안특화AI</span>
+            <span class="chip">#국책과제</span>
+            <span class="chip">#컨소시엄</span>
+          </div>
+        </div>
+      </div>
+      <button class="w-full border-t border-black/6 py-2 flex items-center justify-center gap-1.5 text-xs font-semibold opacity-35 hover:opacity-70 hover:bg-beige transition-all">
+        접기 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 15l-6-6-6 6"/></svg>
+      </button>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

@@ -185,12 +185,12 @@
         </div>
 
         <!-- 펼친 내용 -->
-        <div id="calBody" class="hidden">
-          <div class="p-5 sm:p-6 flex flex-col xl:flex-row gap-5 border-t border-ink/5">
+        <div id="calBody">
+          <div class="p-5 sm:p-6 flex flex-col lg:flex-row gap-5 border-t border-ink/5">
             <!-- 좌: 컨트롤 + 캘린더 (항상 가로 나란히) -->
             <div class="flex gap-4 flex-none">
               <!-- 기간 네비 + 모드 토글 (세로 스택) -->
-              <div class="flex-none flex flex-col gap-3 justify-start pt-px">
+              <div class="flex-none flex flex-col gap-2 justify-start pt-px">
                 <div class="flex items-center gap-1">
                   <button id="periodPrev" aria-label="이전 기간" class="w-7 h-7 rounded-full hover:bg-ink/8 flex items-center justify-center text-sm opacity-40 transition-colors">‹</button>
                   <div class="font-display font-bold text-xs text-center min-w-[108px]" id="periodLabel">—</div>
@@ -201,20 +201,21 @@
                   <button data-mode="week" class="px-3 py-1 rounded-full text-xs font-semibold">주</button>
                   <button data-mode="month" class="px-3 py-1 rounded-full text-xs font-semibold">월</button>
                 </div>
-              </div>
-              <!-- 캘린더 -->
-              <div class="flex-none">
-                <div class="grid grid-cols-7 gap-y-1 w-[196px]" id="calGrid"></div>
-                <div class="flex items-center gap-1.5 mt-2 text-[10px] opacity-25">
+                <div class="flex items-center gap-1.5 text-[10px] opacity-25">
                   <span class="w-1.5 h-1.5 rounded-full bg-lime-600 inline-block"></span>데이터 있는 날짜
                 </div>
               </div>
+              <!-- 캘린더 -->
+              <div class="flex-none">
+                <div class="grid grid-cols-7 gap-y-1 w-[245px]" id="calGrid"></div>
+              </div>
             </div>
             <!-- 브리핑 -->
-            <div class="flex-1 sm:border-l sm:border-ink/6 sm:pl-6 flex flex-col gap-4">
-              <div class="flex items-end gap-2">
+            <div class="flex-1 min-w-0 lg:border-l lg:border-ink/6 lg:pl-6 flex flex-col gap-4">
+              <div class="flex items-end gap-3 flex-wrap">
                 <span class="font-display font-bold leading-none" style="font-size:52px" id="briefCount">0</span>
                 <span class="text-sm opacity-40 pb-2">건</span>
+                <div id="briefWeekly" class="pb-1.5 flex-none"></div>
               </div>
               <div class="flex gap-2">
                 <div class="flex-1 bg-beige rounded-xl px-3 py-2.5">
@@ -230,7 +231,6 @@
                   <div class="text-[10px] uppercase tracking-widest opacity-40 mt-1">스타트업</div>
                 </div>
               </div>
-              <div id="briefWeekly"></div>
               <div class="flex flex-wrap gap-1.5" id="briefTags"></div>
               <div id="briefExtra"></div>
             </div>

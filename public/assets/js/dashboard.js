@@ -261,35 +261,57 @@ function aggregate() {
   return items;
 }
 
-/* ===== 주차 계산 헬퍼 ===== */
-function weekOfMonth(date) {
-  const first = new Date(date.getFullYear(), date.getMonth(), 1);
-  const dow0 = (first.getDay() + 6) % 7;
-  const wkStart = new Date(first);
-  wkStart.setDate(first.getDate() - dow0);
-  return Math.floor((date - wkStart) / (7 * 864e5)) + 1;
+/* ===== 주차 계산 헬퍼 (4일 이상 기준) ===== */
+// 날짜가 속한 주의 월요일을 반환
+function weekMonday(date) {
+  const dow = (date.getDay() + 6) % 7; // Mon=0
+  const s = new Date(date);
+  s.setDate(date.getDate() - dow);
+  s.setHours(0, 0, 0, 0);
+  return s;
+}
+// 주(월~일)가 속한 달 판단: 7일 중 4일 이상인 달
+function weekOwnerMonth(wkMon) {
+  const counts = {};
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(wkMon);
+    d.setDate(wkMon.getDate() + i);
+    const k = d.getFullYear() * 12 + d.getMonth();
+    counts[k] = (counts[k] || 0) + 1;
+  }
+  let bestKey = null, bestCnt = 0;
+  Object.keys(counts).forEach(function (k) {
+    if (counts[k] > bestCnt) { bestCnt = counts[k]; bestKey = +k; }
+  });
+  if (!bestKey || bestCnt < 4) return null;
+  return { year: Math.floor(bestKey / 12), month: bestKey % 12 };
+}
+// 해당 달의 첫 번째 주 월요일 반환
+function firstWeekMonOfMonth(y, m) {
+  const first = new Date(y, m, 1);
+  const s = weekMonday(first);
+  const owner = weekOwnerMonth(s);
+  if (owner && owner.year === y && owner.month === m) return s;
+  const next = new Date(s);
+  next.setDate(s.getDate() + 7);
+  return next;
 }
 
 /* ===== 월간 주차별 바 차트 HTML ===== */
 function buildMonthlyWeekBars() {
   const a = parseYmd(state.anchor);
   const y = a.getFullYear(), m = a.getMonth();
-  const ms = ymd(y, m + 1, 1);
-  const me = ymd(y, m + 1, new Date(y, m + 1, 0).getDate());
-  const first = parseYmd(ms);
-  const dow0 = (first.getDay() + 6) % 7;
-  const wk0 = new Date(first);
-  wk0.setDate(first.getDate() - dow0);
+  const cur = firstWeekMonOfMonth(y, m);
   const weeks = [];
-  for (let w = 0; w < 6; w++) {
-    const ws = new Date(wk0); ws.setDate(wk0.getDate() + w * 7);
-    const we = new Date(ws); we.setDate(ws.getDate() + 6);
-    const wsStr = fmtDate(ws), weStr = fmtDate(we);
-    if (wsStr > me || weStr < ms) continue;
-    weeks.push({ label: (weeks.length + 1) + '주차', start: wsStr, end: weStr, count: 0 });
+  for (let n = 1; n <= 6; n++) {
+    const we = new Date(cur); we.setDate(cur.getDate() + 6);
+    const owner = weekOwnerMonth(cur);
+    if (!owner || owner.year !== y || owner.month !== m) break;
+    weeks.push({ label: n + '주차', start: fmtDate(cur), end: fmtDate(we), count: 0 });
+    cur.setDate(cur.getDate() + 7);
   }
   (state.reports || []).forEach(function (r) {
-    if (!r.date || r.date < ms || r.date > me) return;
+    if (!r.date) return;
     weeks.forEach(function (w) { if (r.date >= w.start && r.date <= w.end) w.count += (r.companies || []).length; });
   });
   if (!weeks.some(function (w) { return w.count > 0; })) return '';
@@ -304,8 +326,32 @@ function buildMonthlyWeekBars() {
         '</div>' +
         '<span class="opacity-50 w-8 text-right">' + (w.count || '—') + '</span>' +
       '</div>';
-    }).join('') +
-    '</div>';
+    }).join('') + '</div>';
+}
+
+/* ===== 위클리 픽 버튼 (해당 주 발행 여부 확인 후 렌더) ===== */
+const _wkCache = {}; // dateStr → {available, week} | null
+function fetchWeeklyBtn(dateStr, el) {
+  if (_wkCache[dateStr] !== undefined) {
+    renderWeeklyBtn(el, _wkCache[dateStr]);
+    return;
+  }
+  fetch('/api/weekly?date=' + encodeURIComponent(dateStr), { headers: { Accept: 'application/json' } })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) {
+      _wkCache[dateStr] = (data && data.available && data.week) ? data : null;
+      // anchor 가 바뀌었으면 무시
+      if (dateStr === state.anchor && state.mode === 'week') renderWeeklyBtn(el, _wkCache[dateStr]);
+    })
+    .catch(function () { _wkCache[dateStr] = null; });
+}
+function renderWeeklyBtn(el, data) {
+  if (!el) return;
+  if (!data) { el.innerHTML = ''; return; }
+  el.innerHTML =
+    '<a href="/weekly?w=' + encodeURIComponent(data.week) + '" class="inline-flex items-center gap-2 bg-lime text-ink text-xs font-bold rounded-full px-3.5 py-1.5 hover:opacity-90 transition-opacity">' +
+    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
+    '이 주의 위클리 픽</a>';
 }
 
 /* ===== 기간 브리핑 ===== */
@@ -326,11 +372,6 @@ function updateBrief(items, cols) {
   const tagsEl = document.getElementById('briefTags');
   const extraEl = document.getElementById('briefExtra');
 
-  const weeklyBtn =
-    '<a href="/weekly" class="inline-flex items-center gap-2 bg-lime text-ink text-xs font-bold rounded-full px-3.5 py-1.5 hover:opacity-90 transition-opacity">' +
-    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
-    '이 주의 위클리 픽</a>';
-
   if (!items.length) {
     if (bdSummary) bdSummary.textContent = '';
     if (largEl) largEl.textContent = '0';
@@ -348,13 +389,21 @@ function updateBrief(items, cols) {
   if (midEl) midEl.textContent = cols.mid.length;
   if (startupEl) startupEl.textContent = cols.startup.length;
 
-  // 주간 모드: 위클리 픽 버튼을 분류 박스 바로 아래에
-  if (weeklyEl) weeklyEl.innerHTML = state.mode === 'week' ? weeklyBtn : '';
+  // 주간 모드: 해당 주 발행 여부 확인 후 버튼 표시
+  if (weeklyEl) {
+    if (state.mode === 'week') {
+      weeklyEl.innerHTML = ''; // 조회 중 비워둠
+      fetchWeeklyBtn(state.anchor, weeklyEl);
+    } else {
+      weeklyEl.innerHTML = '';
+    }
+  }
 
   const freq = {};
   items.forEach((c) => (c.tags || []).forEach((t) => (freq[t] = (freq[t] || 0) + 1)));
   const top = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 6);
-  tagsEl.innerHTML = top
+  // 월간 모드는 태그 미표시
+  tagsEl.innerHTML = state.mode === 'month' ? '' : top
     .map((t) => '<span class="text-[11px] opacity-80 bg-beige border border-ink/5 rounded-full px-2.5 py-0.5">#' + escapeHtml(t) + '</span>')
     .join('');
 
@@ -550,10 +599,14 @@ async function init() {
   const calBody = document.getElementById('calBody');
   const calToggleChev = document.getElementById('calToggleChev');
   const calToggleLbl = document.getElementById('calToggleLbl');
+  // 기본 상태: 펼쳐진 상태 → 레이블/화살표 초기값 설정
+  // 열린 상태: 화살표 ˅(아래) / 닫힌 상태: 화살표 ˄(위)
+  if (calToggleChev) calToggleChev.style.transform = '';
+  if (calToggleLbl) calToggleLbl.textContent = '캘린더 닫기';
   if (calToggleBtn && calBody) {
     calToggleBtn.addEventListener('click', function () {
       const isNowHidden = calBody.classList.toggle('hidden');
-      if (calToggleChev) calToggleChev.style.transform = isNowHidden ? '' : 'rotate(180deg)';
+      if (calToggleChev) calToggleChev.style.transform = isNowHidden ? 'rotate(180deg)' : '';
       if (calToggleLbl) calToggleLbl.textContent = isNowHidden ? '캘린더 펼치기' : '캘린더 닫기';
     });
   }

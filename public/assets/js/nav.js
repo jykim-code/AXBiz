@@ -59,6 +59,15 @@
   function injectFooter() {
     if (document.body.dataset.noFooter !== undefined) return;
 
+    // footer를 항상 최하단에 고정 (body flex-col + main flex-1)
+    // index.html은 자체 h-screen 레이아웃이 있어 스크롤 구조가 다름 → 제외
+    var path = location.pathname;
+    if (path !== '/' && path !== '/index.html') {
+      document.body.style.cssText += ';display:flex;flex-direction:column;min-height:100vh';
+      var directMain = document.querySelector('body > main');
+      if (directMain) directMain.style.flex = '1';
+    }
+
     const footer = document.createElement('footer');
     footer.className = 'bg-white border-t border-ink/8';
 
