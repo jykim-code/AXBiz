@@ -47,25 +47,24 @@
     .card-body { transition: none; }
   }
 </style>
+<link rel="stylesheet" href="/assets/css/dark.css" />
+<script>!function(){var s=localStorage.getItem('ax-dark');if(s==='1'||(s===null&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}()</script>
 </head>
 <body class="min-h-screen bg-beige selection:bg-lime selection:text-ink">
 <div class="flex flex-col min-h-screen lg:h-screen">
 
   <!-- ===== Nav ===== -->
   <nav class="flex-none bg-lime/90 backdrop-blur-md border-b border-ink/5 sticky top-0 z-20">
-    <div class="max-w-[1600px] mx-auto px-5 sm:px-8 h-20 flex items-center justify-between">
-      <div class="flex items-center gap-3 min-w-0">
-        <button data-sb-open aria-label="메뉴 열기" class="-ml-1 p-1 rounded-lg hover:bg-ink/10 flex-none">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-        </button>
+    <div class="max-w-[1600px] mx-auto px-5 sm:px-8 h-[68px] flex items-center justify-between">
+      <div class="flex items-center gap-3 flex-none">
         <a href="/" aria-label="홈(대시보드)으로" class="flex-none hover:opacity-80 transition"><img src="/assets/HANCOM.png" alt="HANCOM" class="h-7 w-auto flex-none" /></a>
         <span class="w-px h-5 bg-ink/20 flex-none hidden sm:block"></span>
         <div class="font-display font-bold text-xl tracking-tight">AX Biz Radar</div>
         <span class="hidden md:inline text-sm font-medium opacity-80">AX 레이더 : 시장의 동향 포착에서 인사이트까지</span>
       </div>
-      <div class="text-right flex-none">
-        <div class="text-[10px] font-semibold uppercase tracking-widest opacity-75">Report Date</div>
-        <div class="font-display font-semibold text-lg leading-tight" id="selDate">—</div>
+      <div class="flex items-center gap-4 flex-none">
+        <nav data-nav-links class="hidden sm:flex items-center gap-6"></nav>
+        <button data-nav-mobile aria-label="메뉴" class="sm:hidden p-1.5 rounded-lg hover:bg-ink/10"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
       </div>
     </div>
   </nav>
@@ -161,41 +160,80 @@
         </div>
       </div>
 
-      <!-- Bottom: 기간(일/주/월) 컨트롤 + 캘린더 + 브리핑 -->
-      <div class="sn-reveal flex-none bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 px-5 sm:px-7 py-4 flex flex-col xl:flex-row xl:items-center gap-4 xl:gap-7">
-        <!-- 기간 네비 + 일/주/월 토글 (세로 스택) -->
-        <div class="flex-none flex flex-col gap-2.5">
-          <div class="flex items-center gap-3 min-w-[190px]">
-            <button id="periodPrev" aria-label="이전 기간" class="w-9 h-9 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-lg">‹</button>
-            <div class="font-display font-bold text-base flex-1 text-center" id="periodLabel">—</div>
-            <button id="periodNext" aria-label="다음 기간" class="w-9 h-9 rounded-full bg-beige hover:bg-lime transition-colors flex items-center justify-center text-lg">›</button>
+      <!-- Bottom: 접기/펼치기 캘린더 카드 (C안) -->
+      <div class="sn-reveal flex-none bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 overflow-hidden">
+        <!-- 요약 행 (항상 표시) -->
+        <div class="px-5 sm:px-7 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-lime-600 flex-none"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span class="text-[10px] font-bold uppercase tracking-widest text-lime-600" id="briefKindBadge">주간</span>
+            </div>
+            <span class="font-display font-bold text-sm" id="periodLabelSummary">—</span>
+            <span class="w-px h-4 bg-ink/10 hidden sm:block"></span>
+            <span class="hidden sm:flex items-baseline gap-1.5">
+              <span class="font-display font-bold text-base" id="briefCountSummary">0</span>
+              <span class="text-xs opacity-50">건</span>
+            </span>
+            <span class="w-px h-4 bg-ink/10 hidden md:block"></span>
+            <span class="hidden md:block text-xs opacity-40" id="briefBreakdownSummary"></span>
           </div>
-          <div class="inline-flex self-stretch rounded-full bg-beige p-1" id="modeToggle">
-            <button data-mode="day" class="flex-1 px-4 py-1.5 rounded-full text-sm font-semibold">일</button>
-            <button data-mode="week" class="flex-1 px-4 py-1.5 rounded-full text-sm font-semibold">주</button>
-            <button data-mode="month" class="flex-1 px-4 py-1.5 rounded-full text-sm font-semibold">월</button>
-          </div>
+          <button id="calToggleBtn" class="flex items-center gap-1 text-xs font-semibold opacity-40 hover:opacity-80 transition-opacity">
+            <span id="calToggleLbl">캘린더 펼치기</span>
+            <svg id="calToggleChev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="transition:transform .2s"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
         </div>
 
-        <!-- 캘린더 -->
-        <div class="flex-none">
-          <div class="grid grid-cols-7 gap-y-1 w-full sm:w-[300px]" id="calGrid"></div>
-        </div>
-
-        <!-- 기간 브리핑 -->
-        <div class="flex-1 min-w-0 w-full xl:border-l xl:border-ink/10 xl:pl-6 flex flex-col gap-2">
-          <div class="flex items-baseline gap-2">
-            <span class="text-[10px] font-bold uppercase tracking-widest text-lime-600" id="briefKind">Weekly</span>
-            <span class="font-display font-semibold text-sm" id="briefDate">—</span>
-          </div>
-          <div class="flex items-baseline gap-3">
-            <span class="font-display font-bold text-3xl leading-none" id="briefCount">0</span>
-            <span class="text-xs opacity-80 leading-snug" id="briefBreakdown">데이터 없음</span>
-          </div>
-          <div class="flex flex-wrap gap-1.5" id="briefTags"></div>
-          <div class="text-xs opacity-75 flex flex-wrap items-center gap-x-4 gap-y-1 mt-auto pt-1">
-            <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-lime-600"></span> 분석 데이터 있는 날짜</span>
-            <a href="/weekly" class="font-semibold text-lime-600 hover:text-ink">위클리 픽 보기 →</a>
+        <!-- 펼친 내용 -->
+        <div id="calBody" class="hidden">
+          <div class="p-5 sm:p-6 flex flex-col xl:flex-row gap-5 border-t border-ink/5">
+            <!-- 좌: 컨트롤 + 캘린더 (항상 가로 나란히) -->
+            <div class="flex gap-4 flex-none">
+              <!-- 기간 네비 + 모드 토글 (세로 스택) -->
+              <div class="flex-none flex flex-col gap-3 justify-start pt-px">
+                <div class="flex items-center gap-1">
+                  <button id="periodPrev" aria-label="이전 기간" class="w-7 h-7 rounded-full hover:bg-ink/8 flex items-center justify-center text-sm opacity-40 transition-colors">‹</button>
+                  <div class="font-display font-bold text-xs text-center min-w-[108px]" id="periodLabel">—</div>
+                  <button id="periodNext" aria-label="다음 기간" class="w-7 h-7 rounded-full hover:bg-ink/8 flex items-center justify-center text-sm opacity-40 transition-colors">›</button>
+                </div>
+                <div class="inline-flex rounded-full bg-white border border-ink/10 p-0.5 shadow-sm" id="modeToggle">
+                  <button data-mode="day" class="px-3 py-1 rounded-full text-xs font-semibold">일</button>
+                  <button data-mode="week" class="px-3 py-1 rounded-full text-xs font-semibold">주</button>
+                  <button data-mode="month" class="px-3 py-1 rounded-full text-xs font-semibold">월</button>
+                </div>
+              </div>
+              <!-- 캘린더 -->
+              <div class="flex-none">
+                <div class="grid grid-cols-7 gap-y-1 w-[196px]" id="calGrid"></div>
+                <div class="flex items-center gap-1.5 mt-2 text-[10px] opacity-25">
+                  <span class="w-1.5 h-1.5 rounded-full bg-lime-600 inline-block"></span>데이터 있는 날짜
+                </div>
+              </div>
+            </div>
+            <!-- 브리핑 -->
+            <div class="flex-1 sm:border-l sm:border-ink/6 sm:pl-6 flex flex-col gap-4">
+              <div class="flex items-end gap-2">
+                <span class="font-display font-bold leading-none" style="font-size:52px" id="briefCount">0</span>
+                <span class="text-sm opacity-40 pb-2">건</span>
+              </div>
+              <div class="flex gap-2">
+                <div class="flex-1 bg-beige rounded-xl px-3 py-2.5">
+                  <div class="font-display font-bold text-2xl leading-none" id="briefLarge">0</div>
+                  <div class="text-[10px] uppercase tracking-widest opacity-40 mt-1">대기업</div>
+                </div>
+                <div class="flex-1 bg-beige rounded-xl px-3 py-2.5">
+                  <div class="font-display font-bold text-2xl leading-none" id="briefMid">0</div>
+                  <div class="text-[10px] uppercase tracking-widest opacity-40 mt-1">중견</div>
+                </div>
+                <div class="flex-1 bg-beige rounded-xl px-3 py-2.5">
+                  <div class="font-display font-bold text-2xl leading-none" id="briefStartup">0</div>
+                  <div class="text-[10px] uppercase tracking-widest opacity-40 mt-1">스타트업</div>
+                </div>
+              </div>
+              <div id="briefWeekly"></div>
+              <div class="flex flex-wrap gap-1.5" id="briefTags"></div>
+              <div id="briefExtra"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -212,7 +250,7 @@
 <script src="assets/js/graph.js"></script>
 <script src="assets/js/dashboard.js"></script>
 <script src="assets/js/ask-fab.js"></script>
-<script src="assets/js/sidebar.js"></script>
+<script src="assets/js/nav.js"></script>
 <script src="/assets/js/dev-toolbar.js"></script>
 </body>
 </html>

@@ -34,14 +34,23 @@
   /* 픽 섹션의 큰 순번 — 라이트 배경에서는 윤곽선만 남겨 본문을 가리지 않게 한다 */
   .num-out   { -webkit-text-stroke:1.5px rgba(17,17,17,.22); color:transparent; }
 </style>
+<link rel="stylesheet" href="/assets/css/dark.css" />
+<script>!function(){var s=localStorage.getItem('ax-dark');if(s==='1'||(s===null&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}()</script>
 </head>
 <body class="min-h-screen bg-beige">
-  <header class="h-20 bg-lime/90 backdrop-blur-md border-b border-ink/5 sticky top-0 z-20 flex items-center gap-3 px-5 sm:px-8">
-    <button data-sb-open aria-label="메뉴 열기" class="-ml-1 p-1 rounded-lg hover:bg-ink/10"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
-    <a href="/" aria-label="홈(대시보드)으로" class="flex-none hover:opacity-80 transition"><img src="/assets/HANCOM.png" alt="HANCOM" class="h-6 w-auto" /></a>
-    <span class="hidden sm:inline w-px h-5 bg-ink/20"></span>
-    <!-- 상세(?w=)에서는 weekly.js 가 이 자리를 목록으로 가는 링크로 바꾼다 -->
-    <span id="wkCrumb" class="font-display font-semibold text-sm">위클리 픽</span>
+  <header class="h-[68px] bg-lime/90 backdrop-blur-md border-b border-ink/5 sticky top-0 z-20">
+    <div class="max-w-[1600px] mx-auto px-5 sm:px-8 h-full flex items-center justify-between">
+      <div class="flex items-center gap-3 flex-none">
+        <a href="/" aria-label="홈(대시보드)으로" class="flex-none hover:opacity-80 transition"><img src="/assets/HANCOM.png" alt="HANCOM" class="h-6 w-auto" /></a>
+        <span class="hidden sm:inline w-px h-5 bg-ink/20 flex-none"></span>
+        <!-- 상세(?w=)에서는 weekly.js 가 이 자리를 목록으로 가는 링크로 바꾼다 -->
+        <span id="wkCrumb" class="font-display font-semibold text-sm">위클리 픽</span>
+      </div>
+      <div class="flex items-center gap-4 flex-none">
+        <nav data-nav-links class="hidden sm:flex items-center gap-6"></nav>
+        <button data-nav-mobile aria-label="메뉴" class="sm:hidden p-1.5 rounded-lg hover:bg-ink/10"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      </div>
+    </div>
   </header>
 
   <!-- 폭·여백은 각 블록이 스스로 잡는다. 픽 섹션이 전체폭 다크로 깔려야 하므로
@@ -60,7 +69,7 @@
 <script src="/assets/js/news.js"></script>
 <script src="/assets/js/weekly.js"></script>
 <script src="/assets/js/ask-fab.js"></script>
-<script src="/assets/js/sidebar.js"></script>
+<script src="/assets/js/nav.js"></script>
 <script src="/assets/js/dev-toolbar.js"></script>
 </body>
 </html>

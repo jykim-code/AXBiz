@@ -21,13 +21,22 @@
   h1,h2,h3,h4,h5,h6 { font-family:'Space Grotesk','Pretendard',sans-serif; }
   ::selection { background:#c8f200; color:#111; }
 </style>
+<link rel="stylesheet" href="/assets/css/dark.css" />
+<script>!function(){var s=localStorage.getItem('ax-dark');if(s==='1'||(s===null&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}()</script>
 </head>
 <body class="min-h-screen bg-beige">
-  <header class="h-20 bg-lime/90 backdrop-blur-md border-b border-ink/5 sticky top-0 z-20 flex items-center gap-3 px-5 sm:px-8">
-    <button data-sb-open aria-label="메뉴 열기" class="-ml-1 p-1 rounded-lg hover:bg-ink/10"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+  <header class="h-[68px] bg-lime/90 backdrop-blur-md border-b border-ink/5 sticky top-0 z-20">
+    <div class="max-w-[1600px] mx-auto px-5 sm:px-8 h-full flex items-center justify-between">
+    <div class="flex items-center gap-3 flex-none">
     <a href="/" aria-label="홈(대시보드)으로" class="flex-none hover:opacity-80 transition"><img src="/assets/HANCOM.png" alt="HANCOM" class="h-6 w-auto" /></a>
-    <span class="hidden sm:inline w-px h-5 bg-ink/20"></span>
+    <span class="hidden sm:inline w-px h-5 bg-ink/20 flex-none"></span>
     <span class="font-display font-semibold text-sm">검색</span>
+    </div>
+    <div class="flex items-center gap-4 flex-none">
+    <nav data-nav-links class="hidden sm:flex items-center gap-6"></nav>
+    <button data-nav-mobile aria-label="메뉴" class="sm:hidden p-1.5 rounded-lg hover:bg-ink/10"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    </div>
+    </div>
   </header>
 
   <main class="max-w-[1100px] w-full mx-auto px-5 sm:px-8 py-6">
@@ -69,7 +78,7 @@
 <script src="/assets/js/ontology.js"></script>
 <script src="/assets/js/explore.js"></script>
 <script src="/assets/js/ask-fab.js"></script>
-<script src="/assets/js/sidebar.js"></script>
+<script src="/assets/js/nav.js"></script>
 <script src="/assets/js/dev-toolbar.js"></script>
 </body>
 </html>

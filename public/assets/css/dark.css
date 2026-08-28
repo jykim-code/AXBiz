@@ -1,0 +1,200 @@
+/* ============================================================
+   AX Biz Radar — 다크 모드 오버라이드
+   html.dark 클래스가 <html>에 붙으면 적용된다.
+   nav.js 의 initDarkMode() 가 head 인라인 스크립트보다 먼저
+   classList.add('dark') 를 처리하므로 FOUC 가 없다.
+   ============================================================ */
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* ── 기본 배경 / 텍스트 ──────────────────────────────────── */
+html.dark body {
+  background-color: #141414 !important;
+  color: #efefec !important;
+}
+
+/* bg-beige (버튼·서브 패널·헤더 서브 바 등 raised surface) */
+html.dark .bg-beige {
+  background-color: #222 !important;
+}
+
+/* bg-white 카드 */
+html.dark .bg-white {
+  background-color: #1e1e1e !important;
+}
+
+/* bg-ink (지식 그래프 다크 카드 — 이미 다크, 살짝 밝게) */
+html.dark .bg-ink {
+  background-color: #1c1c1c !important;
+}
+
+/* ── 헤더 / nav ─────────────────────────────────────────── */
+html.dark header,
+html.dark nav {
+  background-color: rgba(18, 18, 18, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.07) !important;
+  color: #efefec !important;
+}
+
+/* 라임 배경 nav/header override (bg-lime\/90 등) */
+html.dark header[class*="bg-lime"],
+html.dark nav[class*="bg-lime"] {
+  background-color: rgba(18, 18, 18, 0.96) !important;
+}
+
+/* HANCOM 로고 — 다크 잉크 로고 → 밝게 반전 */
+html.dark img[src*="HANCOM"] {
+  filter: invert(1) brightness(1.05);
+}
+
+/* nav 안의 active 링크 (bg-ink/15 → white overlay로 전환) */
+html.dark .bg-ink\/15 {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+html.dark .hover\:bg-ink\/10:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+html.dark .hover\:bg-ink\/5:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ── 텍스트 ──────────────────────────────────────────────── */
+html.dark .text-ink {
+  color: #efefec !important;
+}
+html.dark .text-ink\/80 {
+  color: rgba(239, 239, 236, 0.8) !important;
+}
+html.dark .text-ink\/75 {
+  color: rgba(239, 239, 236, 0.75) !important;
+}
+html.dark .text-ink\/70 {
+  color: rgba(239, 239, 236, 0.7) !important;
+}
+html.dark .text-ink\/60 {
+  color: rgba(239, 239, 236, 0.6) !important;
+}
+html.dark .text-ink\/50 {
+  color: rgba(239, 239, 236, 0.5) !important;
+}
+html.dark .text-ink\/40 {
+  color: rgba(239, 239, 236, 0.4) !important;
+}
+html.dark .text-ink\/30 {
+  color: rgba(239, 239, 236, 0.3) !important;
+}
+
+/* lime-600 — 다크에서 살짝 밝게 */
+html.dark .text-lime-600 {
+  color: #a0c900 !important;
+}
+html.dark .bg-lime-600 {
+  background-color: #a0c900 !important;
+}
+
+/* ── 보더 ────────────────────────────────────────────────── */
+html.dark .border-ink\/5  { border-color: rgba(255, 255, 255, 0.05) !important; }
+html.dark .border-ink\/8  { border-color: rgba(255, 255, 255, 0.08) !important; }
+html.dark .border-ink\/10 { border-color: rgba(255, 255, 255, 0.10) !important; }
+html.dark .border-ink\/12 { border-color: rgba(255, 255, 255, 0.12) !important; }
+html.dark .border-ink\/15 { border-color: rgba(255, 255, 255, 0.15) !important; }
+html.dark .border-ink\/20 { border-color: rgba(255, 255, 255, 0.20) !important; }
+html.dark .divide-ink\/8  > * + * { border-color: rgba(255, 255, 255, 0.08) !important; }
+html.dark .divide-ink\/10 > * + * { border-color: rgba(255, 255, 255, 0.10) !important; }
+
+/* ── bg ink 계열 (subtle overlay) ────────────────────────── */
+html.dark .bg-ink\/5  { background-color: rgba(255, 255, 255, 0.05) !important; }
+html.dark .bg-ink\/10 { background-color: rgba(255, 255, 255, 0.10) !important; }
+
+/* ── hover bg 역전 ───────────────────────────────────────── */
+html.dark .hover\:bg-lime:hover  { background-color: #c8f200 !important; }
+html.dark .hover\:bg-beige:hover { background-color: rgba(255, 255, 255, 0.05) !important; }
+html.dark .hover\:bg-ink:hover   { background-color: #efefec !important; color: #111 !important; }
+
+/* ── 그림자 ──────────────────────────────────────────────── */
+html.dark .shadow-xl.shadow-ink\/5 {
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,.35), 0 8px 10px -6px rgba(0,0,0,.25) !important;
+}
+
+/* ── 입력 필드 ───────────────────────────────────────────── */
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #252525 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #efefec !important;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: rgba(239, 239, 236, 0.4) !important;
+}
+html.dark input:focus,
+html.dark textarea:focus,
+html.dark select:focus {
+  border-color: #c8f200 !important;
+}
+
+/* ── 검색 드롭다운 / 자동완성 ────────────────────────────── */
+html.dark #heroAnswer {
+  background-color: #1e1e1e !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #efefec !important;
+}
+
+/* ── 캘린더 ──────────────────────────────────────────────── */
+/* 데이터 없는 날 hover */
+html.dark [data-date]:not([class*="bg-lime"]):hover {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* ── 스크롤바 ────────────────────────────────────────────── */
+html.dark .col-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* ── ring (focus/active) ──────────────────────────────────── */
+html.dark .ring-1.ring-ink\/10 {
+  --tw-ring-color: rgba(255, 255, 255, 0.1) !important;
+}
+html.dark .focus\:ring-lime:focus {
+  --tw-ring-color: rgba(200, 242, 0, 0.5) !important;
+}
+
+/* ── footer (nav.js 주입) ────────────────────────────────── */
+html.dark footer {
+  background-color: #1a1a1a !important;
+  border-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* ── 모바일 드롭다운 (nav.js 주입) ───────────────────────── */
+html.dark #nav-mobile-menu {
+  background: rgba(20, 20, 20, 0.97) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ── 다크 토글 버튼 ─────────────────────────────────────── */
+#dark-toggle {
+  transition: transform 0.25s ease;
+}
+#dark-toggle:hover {
+  transform: rotate(18deg);
+}
+
+/* ── bg-ink 안 (지식 그래프) — 이미 다크이므로 최소 조정 ── */
+/* text-white / border-white 계열은 유지 */
+html.dark .bg-ink .bg-lime-600 {
+  background-color: #a0c900 !important;
+}
+
+/* ── 지식 그래프 카드 테두리 ─────────────────────────────── */
+html.dark .bg-ink .border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ── selection 다크 모드 유지 (lime) ─────────────────────── */
+html.dark ::selection {
+  background: #c8f200;
+  color: #111;
+}

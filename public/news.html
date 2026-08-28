@@ -36,11 +36,12 @@
      높이는 상단 바 56px + 진행 세그먼트·하단 조작 줄 96px 을 뺀 값. */
   :root { --nw-col: 620px; --nw-h: min(calc(100dvh - 152px), 880px); }
 </style>
+<link rel="stylesheet" href="/assets/css/dark.css" />
+<script>!function(){var s=localStorage.getItem('ax-dark');if(s==='1'||(s===null&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}()</script>
 </head>
-<body class="min-h-[100dvh] flex flex-col">
+<body class="min-h-[100dvh] flex flex-col" data-no-footer>
 
   <header class="h-14 flex-none bg-lime text-ink flex items-center gap-3 px-4 sm:px-5">
-    <button data-sb-open aria-label="메뉴 열기" class="-ml-1 p-1 rounded-lg hover:bg-ink/10"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
     <a href="/" aria-label="홈(대시보드)으로" class="flex-none hover:opacity-80 transition"><img src="/assets/HANCOM.png" alt="HANCOM" class="h-5 w-auto" /></a>
     <span class="hidden sm:inline w-px h-4 bg-ink/25"></span>
     <span class="font-display font-bold text-[12px] uppercase tracking-[.18em]">AX Biz Radar News</span>
@@ -55,6 +56,6 @@
 <script src="/assets/js/util.js"></script>
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/news.js"></script>
-<script src="/assets/js/sidebar.js"></script>
+<script src="/assets/js/nav.js"></script>
 </body>
 </html>

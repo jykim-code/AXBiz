@@ -261,28 +261,116 @@ function aggregate() {
   return items;
 }
 
+/* ===== 주차 계산 헬퍼 ===== */
+function weekOfMonth(date) {
+  const first = new Date(date.getFullYear(), date.getMonth(), 1);
+  const dow0 = (first.getDay() + 6) % 7;
+  const wkStart = new Date(first);
+  wkStart.setDate(first.getDate() - dow0);
+  return Math.floor((date - wkStart) / (7 * 864e5)) + 1;
+}
+
+/* ===== 월간 주차별 바 차트 HTML ===== */
+function buildMonthlyWeekBars() {
+  const a = parseYmd(state.anchor);
+  const y = a.getFullYear(), m = a.getMonth();
+  const ms = ymd(y, m + 1, 1);
+  const me = ymd(y, m + 1, new Date(y, m + 1, 0).getDate());
+  const first = parseYmd(ms);
+  const dow0 = (first.getDay() + 6) % 7;
+  const wk0 = new Date(first);
+  wk0.setDate(first.getDate() - dow0);
+  const weeks = [];
+  for (let w = 0; w < 6; w++) {
+    const ws = new Date(wk0); ws.setDate(wk0.getDate() + w * 7);
+    const we = new Date(ws); we.setDate(ws.getDate() + 6);
+    const wsStr = fmtDate(ws), weStr = fmtDate(we);
+    if (wsStr > me || weStr < ms) continue;
+    weeks.push({ label: (weeks.length + 1) + '주차', start: wsStr, end: weStr, count: 0 });
+  }
+  (state.reports || []).forEach(function (r) {
+    if (!r.date || r.date < ms || r.date > me) return;
+    weeks.forEach(function (w) { if (r.date >= w.start && r.date <= w.end) w.count += (r.companies || []).length; });
+  });
+  if (!weeks.some(function (w) { return w.count > 0; })) return '';
+  const max = Math.max.apply(null, weeks.map(function (w) { return w.count; })) || 1;
+  return '<div class="space-y-1.5">' +
+    '<div class="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-1">주차별</div>' +
+    weeks.map(function (w) {
+      return '<div class="flex items-center gap-2 text-xs">' +
+        '<span class="w-10 opacity-50">' + w.label + '</span>' +
+        '<div class="flex-1 h-1.5 bg-beige rounded-full overflow-hidden">' +
+          '<div class="h-full rounded-full" style="width:' + Math.round(w.count / max * 100) + '%;background:#7ba500"></div>' +
+        '</div>' +
+        '<span class="opacity-50 w-8 text-right">' + (w.count || '—') + '</span>' +
+      '</div>';
+    }).join('') +
+    '</div>';
+}
+
 /* ===== 기간 브리핑 ===== */
 function updateBrief(items, cols) {
-  document.getElementById('briefKind').textContent = { day: 'Daily', week: 'Weekly', month: 'Monthly' }[state.mode];
-  document.getElementById('briefDate').textContent = periodLabel();
+  const modeLabel = { day: '일간', week: '주간', month: '월간' }[state.mode];
+  const kindBadge = document.getElementById('briefKindBadge');
+  if (kindBadge) kindBadge.textContent = modeLabel;
+
   document.getElementById('briefCount').textContent = items.length;
-  const bd = document.getElementById('briefBreakdown');
+  const countSummary = document.getElementById('briefCountSummary');
+  if (countSummary) countSummary.textContent = items.length;
+
+  const bdSummary = document.getElementById('briefBreakdownSummary');
+  const largEl = document.getElementById('briefLarge');
+  const midEl = document.getElementById('briefMid');
+  const startupEl = document.getElementById('briefStartup');
+  const weeklyEl = document.getElementById('briefWeekly');
   const tagsEl = document.getElementById('briefTags');
-  if (!items.length) { bd.textContent = '데이터 없음'; tagsEl.innerHTML = ''; return; }
-  bd.textContent = '대기업 ' + cols.large.length + ' · 중견 ' + cols.mid.length + ' · 스타트업 ' + cols.startup.length;
+  const extraEl = document.getElementById('briefExtra');
+
+  const weeklyBtn =
+    '<a href="/weekly" class="inline-flex items-center gap-2 bg-lime text-ink text-xs font-bold rounded-full px-3.5 py-1.5 hover:opacity-90 transition-opacity">' +
+    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
+    '이 주의 위클리 픽</a>';
+
+  if (!items.length) {
+    if (bdSummary) bdSummary.textContent = '';
+    if (largEl) largEl.textContent = '0';
+    if (midEl) midEl.textContent = '0';
+    if (startupEl) startupEl.textContent = '0';
+    if (weeklyEl) weeklyEl.innerHTML = '';
+    tagsEl.innerHTML = '';
+    if (extraEl) extraEl.innerHTML = '';
+    return;
+  }
+
+  const breakdownText = '대기업 ' + cols.large.length + ' · 중견 ' + cols.mid.length + ' · 스타트업 ' + cols.startup.length;
+  if (bdSummary) bdSummary.textContent = breakdownText;
+  if (largEl) largEl.textContent = cols.large.length;
+  if (midEl) midEl.textContent = cols.mid.length;
+  if (startupEl) startupEl.textContent = cols.startup.length;
+
+  // 주간 모드: 위클리 픽 버튼을 분류 박스 바로 아래에
+  if (weeklyEl) weeklyEl.innerHTML = state.mode === 'week' ? weeklyBtn : '';
+
   const freq = {};
   items.forEach((c) => (c.tags || []).forEach((t) => (freq[t] = (freq[t] || 0) + 1)));
   const top = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 6);
   tagsEl.innerHTML = top
     .map((t) => '<span class="text-[11px] opacity-80 bg-beige border border-ink/5 rounded-full px-2.5 py-0.5">#' + escapeHtml(t) + '</span>')
     .join('');
+
+  if (!extraEl) return;
+  if (state.mode === 'month') {
+    extraEl.innerHTML = buildMonthlyWeekBars();
+  } else {
+    extraEl.innerHTML = '';
+  }
 }
 
 /* ===== 기간 카드 렌더 ===== */
 function renderPeriod() {
   const label = periodLabel();
-  document.getElementById('selDate').textContent = label;
-  document.getElementById('periodLabel').textContent = label; // 하단 네비 기간 라벨
+  document.getElementById('periodLabel').textContent = label;
+  const pls = document.getElementById('periodLabelSummary'); if (pls) pls.textContent = label;
   const items = aggregate();
   const cols = { large: [], mid: [], startup: [] };
   items.forEach((c) => { const k = CAT[c.category]; if (k) cols[k].push(c); });
@@ -342,7 +430,7 @@ function renderCal() {
 /* ===== 모드 토글 활성 표시 ===== */
 function renderToggle() {
   document.querySelectorAll('#modeToggle button').forEach((b) => {
-    b.className = 'flex-1 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ' +
+    b.className = 'flex-1 px-3.5 py-1 rounded-full text-xs font-semibold transition-colors ' +
       (b.dataset.mode === state.mode ? 'bg-ink text-lime' : 'text-ink/60 hover:text-ink');
   });
 }
@@ -443,7 +531,7 @@ async function init() {
   // 값이 없거나 형식이 다르면 기존 동작(최신 날짜)을 그대로 쓴다.
   const qDate = new URLSearchParams(location.search).get('date') || '';
   state.anchor = (/^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : null) || state.dates[0] || todayYmd();
-  if (!state.dates.length) document.getElementById('selDate').textContent = '데이터 없음';
+  if (!state.dates.length) { const pls = document.getElementById('periodLabelSummary'); if (pls) pls.textContent = '데이터 없음'; }
 
   renderToggle();
   renderPeriod();
@@ -456,6 +544,19 @@ async function init() {
   // 기간 네비 ◀ ▶
   document.getElementById('periodPrev').onclick = () => { stepPeriod(-1); renderPeriod(); renderCal(); };
   document.getElementById('periodNext').onclick = () => { stepPeriod(1); renderPeriod(); renderCal(); };
+
+  // 캘린더 카드 토글 — 요약 바 버튼으로 열고 닫기 모두 처리
+  const calToggleBtn = document.getElementById('calToggleBtn');
+  const calBody = document.getElementById('calBody');
+  const calToggleChev = document.getElementById('calToggleChev');
+  const calToggleLbl = document.getElementById('calToggleLbl');
+  if (calToggleBtn && calBody) {
+    calToggleBtn.addEventListener('click', function () {
+      const isNowHidden = calBody.classList.toggle('hidden');
+      if (calToggleChev) calToggleChev.style.transform = isNowHidden ? '' : 'rotate(180deg)';
+      if (calToggleLbl) calToggleLbl.textContent = isNowHidden ? '캘린더 펼치기' : '캘린더 닫기';
+    });
+  }
 
   setupHeroSearch();
 }
