@@ -55,6 +55,13 @@
     btn.title = isDark() ? '라이트 모드' : '다크 모드';
   }
 
+  /* nav 는 다크 모드에서 라임 → 잉크로 바뀌므로(dark.css) 로고 파일도 함께 바꿔야 한다.
+     예전에는 dark.css 가 `filter: invert(1)` 로 반전했는데, 그러면 H 자 오렌지 강조까지
+     시안으로 뒤집혀 브랜드 색이 사라졌다(2026-08-31 사용자 지시). */
+  function syncLogos() {
+    if (typeof syncHancomLogos === 'function') syncHancomLogos();
+  }
+
   /* ── footer 주입 ─────────────────────────────── */
   function injectFooter() {
     if (document.body.dataset.noFooter !== undefined) return;
@@ -80,6 +87,7 @@
       document.documentElement.classList.toggle('dark', next);
       localStorage.setItem('ax-dark', next ? '1' : '0');
       updateToggleBtn(toggleBtn);
+      syncLogos();
     });
 
     const inner = document.createElement('div');
@@ -157,6 +165,7 @@
     injectNavLinks();
     injectFooter();
     injectMobileMenu();
+    syncLogos(); // footer 주입 뒤에 한 번 — 주입된 로고까지 함께 맞춘다
   }
 
   if (document.readyState !== 'loading') mount();

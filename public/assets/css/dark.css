@@ -44,10 +44,12 @@ html.dark nav[class*="bg-lime"] {
   background-color: rgba(18, 18, 18, 0.96) !important;
 }
 
-/* HANCOM 로고 — 다크 잉크 로고 → 밝게 반전 */
-html.dark img[src*="HANCOM"] {
-  filter: invert(1) brightness(1.05);
-}
+/* HANCOM 로고 — 여기서 색을 만들지 않는다.
+   `filter: invert(1)` 은 검정 글자를 흰 글자로 바꾸는 동시에 H 자 오렌지 강조(#ef5222)를
+   시안(#10addd)으로 뒤집어 브랜드 색을 없앤다. 그래서 필터를 걷고 흰 글자 판(HANCOM-w.png)을
+   따로 두었다. 갈아끼우는 일은 util.js 의 syncHancomLogos() 가 하고, 다크 모드와 무관하게
+   바탕이 정해진 판(뉴스레터 슬라이드·위클리 커버)은 data-logo-fixed 로 제외한다.
+   (2026-08-31 사용자 지시) */
 
 /* nav 안의 active 링크 (bg-ink/15 → white overlay로 전환) */
 html.dark .bg-ink\/15 {
