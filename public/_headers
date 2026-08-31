@@ -3,10 +3,15 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self' https://cloudflareinsights.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'
 
 # 참고: Tailwind Play CDN(런타임 JIT)이 'unsafe-eval'/'unsafe-inline'을 요구하므로
 # script/style 은 완화돼 있다. 빌드 단계를 도입하면 nonce/hash 로 강화 가능.
+
+# 참고: Cloudflare Web Analytics 비콘은 스니펫을 직접 심는 방식이라 두 곳이 필요하다.
+# script-src 에 static.cloudflareinsights.com(비콘 파일), connect-src 에
+# cloudflareinsights.com(수집 엔드포인트 /cdn-cgi/rum). 자동 주입 방식이면 수집이
+# 자기 도메인으로 프록시되어 connect-src 'self' 로 충분하나, 우리는 수동 삽입이다.
 
 # 브랜드 이미지 — 내용이 바뀌면 파일명을 바꾸는 자산이라 길게 캐시한다.
 # 기본값(max-age=0, must-revalidate)이면 Google Chat 이 카드를 그릴 때마다 재검증 요청을 보낸다.
