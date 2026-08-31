@@ -239,13 +239,14 @@ function prevHTML(prev) {
 // 색 역할: ink=상단 라벨 / accent=주차(가장 먼저 읽혀야 하는 것) / sub=브랜드 줄 / dim=수치·키워드.
 // 라임 배경에서는 라임보다 튀는 악센트가 없으므로 accent 를 ink 로 두고 크기로만 위계를 만든다.
 // 배경이 베이지(#f7f5f0)인 페이지 위에 놓이므로 베이지 커버는 쓰지 않는다(경계가 사라진다).
+// darkBg — 어두운 바탕인 배색. 로고 파일(흰 글자 / 검정 글자)을 고르는 데 쓴다.
 const SKINS = [
   { bg: 'bg-ink', ink: 'text-white', accent: 'text-lime', sub: 'text-white/70', dim: 'text-white/45',
-    bar: 'bg-lime', rule: 'border-white/20', num: 'text-white/[.07]', invertLogo: true },
+    bar: 'bg-lime', rule: 'border-white/20', num: 'text-white/[.07]', darkBg: true },
   { bg: 'bg-lime', ink: 'text-ink', accent: 'text-ink', sub: 'text-ink/60', dim: 'text-ink/50',
-    bar: 'bg-ink', rule: 'border-ink/20', num: 'text-ink/[.09]', invertLogo: false },
+    bar: 'bg-ink', rule: 'border-ink/20', num: 'text-ink/[.09]', darkBg: false },
   { bg: 'bg-white', ink: 'text-ink', accent: 'text-lime-600', sub: 'text-ink/75', dim: 'text-ink/45',
-    bar: 'bg-lime', rule: 'border-ink/12', num: 'text-ink/[.06]', invertLogo: false },
+    bar: 'bg-lime', rule: 'border-ink/12', num: 'text-ink/[.06]', darkBg: false },
 ];
 const skinOf = (e) => SKINS[(Number.isInteger(e.issueNo) ? e.issueNo : 0) % SKINS.length];
 
@@ -271,8 +272,9 @@ function coverHTML(e) {
     '<span class="w-[3px] h-3 ' + s.bar + ' flex-none"></span>' +
     '<span class="font-display font-bold text-[9px] sm:text-[10px] uppercase tracking-[.16em] truncate">Weekly Picks' +
     (e.issueNo ? ' No.' + no2(e.issueNo) : '') + '</span></div>' +
-    '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-3 sm:h-3.5 w-auto flex-none opacity-70' +
-    (s.invertLogo ? ' brightness-0 invert' : '') + '" />' +
+    // 커버 배색은 회차 번호로 정해지고 다크 모드와 무관하다 → 배색에 맞는 파일을 박아 둔다
+    '<img src="' + hancomLogo(s.darkBg) + '" alt="HANCOM" data-logo-fixed ' +
+    'class="h-3 sm:h-3.5 w-auto flex-none opacity-70" />' +
     '</div>' +
 
     // 하단 — 헤드라인 + 수치. 회차를 가르는 정보는 주차 하나뿐이라 그것만 크게 띄우고
@@ -337,7 +339,8 @@ function upcomingCoverHTML(u) {
     '<span class="w-[3px] h-3 bg-ink/25 flex-none"></span>' +
     '<span class="font-display font-bold text-[9px] sm:text-[10px] uppercase tracking-[.16em] truncate text-ink/45">Coming soon</span>' +
     '</div>' +
-    '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-3 sm:h-3.5 w-auto flex-none opacity-30" />' +
+    // 발행 예정 자리는 베이지 바탕 고정이라 검정 글자 판을 쓴다
+    '<img src="' + LOGO_ON_LIGHT + '" alt="HANCOM" data-logo-fixed class="h-3 sm:h-3.5 w-auto flex-none opacity-30" />' +
     '</div>' +
 
     // 상태 한 줄 — 예정 주차는 서버가 「오늘이 속한 주」로 정하므로 지금 실제로 쌓이는 중인 주다.

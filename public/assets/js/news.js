@@ -152,7 +152,8 @@
       (d.issueNo ? '<span aria-hidden="true" class="pointer-events-none absolute -right-6 -bottom-16 font-display font-bold leading-none tracking-tighter text-[220px] text-ink/[.07]">' + no2(d.issueNo) + '</span>' : '') +
 
       '<div class="relative flex items-center gap-2">' +
-      '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-4 w-auto" />' +
+      // 이 판은 늘 라임 바탕이라 다크 모드와 무관하게 검정 글자 판을 쓴다(data-logo-fixed)
+      '<img src="' + LOGO_ON_LIGHT + '" alt="HANCOM" data-logo-fixed class="h-4 w-auto" />' +
       '<span class="w-px h-3.5 bg-ink/25"></span>' +
       '<span class="font-display font-bold text-[11px] uppercase tracking-[.2em]">AX Biz Radar News</span>' +
       (d.issueNo ? '<span class="ml-auto font-display font-bold text-[11px] tracking-widest">No.' + no2(d.issueNo) + '</span>' : '') +
@@ -219,15 +220,16 @@
      · 안 올린 항목 → 배색 판 + 제목 큰 활자. 이것이 기본 상태이며 사진은 선택이다 */
   /* 판 머리 — 기업명·분류·날짜·로고. 사진 판과 도형 판이 같은 것을 쓴다(2026-08-24 사용자 지시).
      큰 제목은 얹지 않는다 — 바로 아래 헤드라인과 같은 문장이라 두 번 읽힌다.
-     다크 배경에서는 로고를 반전한다(회차 커버와 같은 처리). */
+     로고는 바탕에 맞는 파일을 쓴다 — 어두운 판은 흰 글자 판, 밝은 판은 검정 글자 판.
+     반전 필터를 걸면 H 자 오렌지가 시안으로 뒤집힌다(2026-08-31 사용자 지시). */
   function panelHead(p, dark) {
     return '<div class="flex items-start justify-between gap-3">' +
       '<div class="min-w-0">' +
       '<div class="font-display font-bold text-[21px] sm:text-[24px] tracking-tight leading-none truncate">' + escapeHtml(p.company) + '</div>' +
       '<div class="text-[10px] font-bold uppercase tracking-widest ' + (dark ? 'text-white/75' : 'text-ink/55') + ' mt-1.5">' +
       escapeHtml([p.category, p.date].filter(Boolean).join(' · ')) + '</div></div>' +
-      '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-3.5 w-auto flex-none ' +
-      (dark ? 'opacity-85 brightness-0 invert' : 'opacity-60') + '" /></div>';
+      '<img src="' + hancomLogo(dark) + '" alt="HANCOM" data-logo-fixed class="h-3.5 w-auto flex-none ' +
+      (dark ? 'opacity-85' : 'opacity-60') + '" /></div>';
   }
 
   /* 사진 판. 이미지 출처는 화면에 표기하지 않는다(2026-08-24 사용자 지시) — 관리자 입력에는
@@ -334,7 +336,8 @@
       '<div class="nw-scroll relative flex-1 px-6 sm:px-7 pt-7 pb-8">' +
       // 제호 줄 — 표지와 같은 구성이라 여기가 끝이라는 것이 한눈에 읽힌다
       '<div class="flex items-center gap-2 mb-7">' +
-      '<img src="/assets/HANCOM.png" alt="HANCOM" class="h-4 w-auto" />' +
+      // 이 판은 늘 라임 바탕이라 다크 모드와 무관하게 검정 글자 판을 쓴다(data-logo-fixed)
+      '<img src="' + LOGO_ON_LIGHT + '" alt="HANCOM" data-logo-fixed class="h-4 w-auto" />' +
       '<span class="w-px h-3.5 bg-ink/25"></span>' +
       '<span class="font-display font-bold text-[11px] uppercase tracking-[.2em]">AX Biz Radar News</span>' +
       (d.issueNo ? '<span class="ml-auto font-display font-bold text-[11px] tracking-widest">No.' + no2(d.issueNo) + '</span>' : '') +
@@ -604,7 +607,7 @@
       '<div class="relative h-full flex flex-col p-3 sm:p-3.5">' +
 
       '<div class="flex items-center gap-1">' +
-      '<img src="/assets/HANCOM.png" alt="" class="h-2 w-auto" />' +
+      '<img src="' + LOGO_ON_LIGHT + '" alt="" data-logo-fixed class="h-2 w-auto" />' +
       '<span class="w-px h-1.5 bg-ink/25"></span>' +
       '<span class="font-display font-bold text-[5.5px] sm:text-[6.5px] uppercase tracking-[.16em]">AX Biz Radar News</span>' +
       (d.issueNo ? '<span class="ml-auto font-display font-bold text-[5.5px] sm:text-[6.5px] tracking-widest">No.' + no2(d.issueNo) + '</span>' : '') +

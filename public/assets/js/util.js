@@ -40,3 +40,25 @@ const REDUCED_MOTION =
   typeof window !== 'undefined' &&
   window.matchMedia &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ── 한컴 로고 ─────────────────────────────────
+   로고 색은 CSS 필터로 만들지 않고 파일 두 개를 갈아끼운다(2026-08-31 사용자 지시).
+   `filter: invert()` 는 글자만 뒤집지 않고 H 자 오렌지 강조(#ef5222)까지 시안(#10addd)으로
+   바꿔 브랜드 색을 없앤다. 두 파일은 판형(716x158)과 잉크 위치가 같게 맞춰 두었으므로
+   같은 h-* 클래스에서 크기가 어긋나지 않는다. */
+const LOGO_ON_LIGHT = '/assets/HANCOM.png';   // 밝은 바탕 → 검정 글자
+const LOGO_ON_DARK = '/assets/HANCOM-w.png';  // 어두운 바탕 → 흰 글자
+function hancomLogo(onDark) {
+  return onDark ? LOGO_ON_DARK : LOGO_ON_LIGHT;
+}
+
+/* 다크 모드를 따라 배경이 바뀌는 로고(nav·사이드바 등)를 현재 모드에 맞게 갈아끼운다.
+   자기 판의 배경색을 스스로 아는 로고(뉴스레터 판·위클리 커버)는 `data-logo-fixed` 를
+   달아 두어 여기서 건드리지 않는다 — 그 판들은 다크 모드와 무관하게 바탕이 정해져 있다. */
+function syncHancomLogos(root) {
+  const want = hancomLogo(document.documentElement.classList.contains('dark'));
+  (root || document).querySelectorAll('img[src*="HANCOM"]:not([data-logo-fixed])')
+    .forEach(function (img) {
+      if (img.getAttribute('src') !== want) img.setAttribute('src', want);
+    });
+}
