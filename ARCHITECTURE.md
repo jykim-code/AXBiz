@@ -1,7 +1,7 @@
 # AX Biz Radar — 데이터 처리 전과정 기술 설명서
 
 > 데이터가 어디서 들어와 어디에 저장되고, 어느 지점에서 LLM이 호출되며, 무엇이 캐시되고 어디에 비용이
-> 발생하는지를 코드 기준으로 정리한 문서다. 작성 기준: 2026-08-13, `main` 브랜치.
+> 발생하는지를 코드 기준으로 정리한 문서다. 작성 기준: 2026-08-30, `main` 브랜치.
 > 키 교체·게이트웨이 전환 절차는 `LLM-PROVIDER-GUIDE.md`, 운영 조작법은 `ADMIN-GUIDE.md`를 본다.
 
 ---
@@ -466,15 +466,28 @@ Google Chat 이 카드를 그릴 때마다 재검증 요청이 간다. **내용�
 | `functions/_auth.js` | PIN 검증 |
 | `functions/_confluence.js` | 컨플 페이지 조회·파싱 공용 |
 | `functions/_dart.js` | DART 호출·캐시 |
+| `functions/_weekly-message.js` | 위클리 픽 메신저 문구 생성·발송(2단계) |
 | `functions/api/ask.js` | RAG 검색 |
 | `functions/api/period-summary.js` | 기간 종합 |
 | `functions/api/company-summary.js` | 기업 요약 읽기(+백그라운드 갱신) |
+| `functions/api/company-profile.js` | 기업 프로필(DART 회사개황·재무) |
+| `functions/api/company-meta.js` | 기업↔DART corp_code 매핑 조회 |
+| `functions/api/company-aliases.js` | 기업 이름 별칭 목록 |
 | `functions/api/reports.js` | 날짜 upsert(자동화 진입점) |
+| `functions/api/import-confluence.js` | Confluence 페이지 직접 가져오기 |
+| `functions/api/weekly.js` | 위클리 픽 회차 저장·발행·발송 |
+| `functions/api/pick-image.js` | 위클리 픽 이미지 R2 업로드·서빙 |
+| `functions/api/tags.js` | 태그 일괄 조회·수정·삭제 |
+| `functions/api/pinned-tags.js` | 핀 태그 설정 |
+| `functions/api/suggest-tags.js` | LLM 태그 추천 |
+| `functions/api/suggestions.js` | 공개 의견함 접수 |
 | `functions/api/dev/import-daily.js` | 컨플 섹션 A LLM 추출 → draft |
 | `functions/api/dev/publish.js` | draft → 라이브 발행 |
+| `functions/api/dev/live.js` | 라이브 항목 직접 조회·삭제 |
 | `functions/api/reindex.js` | 벡터 재색인(분할) |
+| `functions/api/backfill-summaries.js` | 기업 요약 일괄 백필 |
 | `schema.sql` | D1 스키마 전체 |
-| `wrangler.toml` | D1·AI·Vectorize·KV 바인딩 |
+| `wrangler.toml` | D1·AI·Vectorize·KV·R2 바인딩 |
 
 ---
 
