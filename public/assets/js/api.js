@@ -293,8 +293,12 @@ const API = {
     if (!res.ok) { const err = new Error('REQUEST_FAILED'); err.status = res.status; throw err; }
     return res.json();
   },
-  async devCreateDrafts(date, items) {
-    const res = await fetch('/api/dev/drafts', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pin': devPin() }, body: JSON.stringify({ action: 'create', date, items }) });
+  // base — [기존 데이터 불러오기]로 띄운 라이브 목록(있으면 폼이 그 날짜의 전체 목록이라는 뜻).
+  // 넘기면 폼에서 뺀 항목이 배포 때 라이브에서도 지워진다. 신규 입력이면 null.
+  async devCreateDrafts(date, items, base) {
+    const body = { action: 'create', date, items };
+    if (Array.isArray(base)) body.base = base;
+    const res = await fetch('/api/dev/drafts', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pin': devPin() }, body: JSON.stringify(body) });
     let d = {}; try { d = await res.json(); } catch { /* */ }
     if (!res.ok) { const err = new Error(d.error || 'REQUEST_FAILED'); err.status = res.status; throw err; }
     return d;
@@ -316,6 +320,10 @@ const API = {
     let data = {}; try { data = await res.json(); } catch { /* */ }
     if (!res.ok) { const err = new Error(data.error || 'REQUEST_FAILED'); err.status = res.status; err.data = data; throw err; }
     return data;
+  },
+  // 배포하지 않고 「지워질 것」만 계산 — 확인창에서 먼저 보여주려는 것이다.
+  async devPublishPlan(payload) {
+    return this.devPublish(Object.assign({}, payload || {}, { dryRun: true }));
   },
 
   // ===== 라이브 항목 삭제 (배포는 병합이라 draft 에서 빼는 것으로는 지워지지 않는다) =====

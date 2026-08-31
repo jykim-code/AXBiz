@@ -64,9 +64,10 @@ function bulletGroup(field, label, items) {
 
 /* ===== 동향 1건 블록 =====
    블록 1개 = 「기업 1곳의 동향 1건」이다(같은 기업의 다른 동향은 별개 블록).
-   그래서 블록을 빼는 버튼은 「기업 삭제」가 아니다 — 입력 목록에서 그 1건을 빼는 것이고,
-   라이브 데이터는 그대로 남는다(배포가 병합이라 draft 에 없는 항목은 손대지 않음).
-   라이브에서 지우는 것은 검수·배포 탭의 「라이브 항목 삭제」다. */
+   「이 항목 빼기」의 결과는 폼을 어떻게 시작했는지에 달려 있다(2026-08-31 사용자 지시):
+     · [기존 데이터 불러오기]로 시작 → 이 폼이 그 날짜의 전체 목록이므로 뺀 항목은 배포 때 라이브에서도 삭제
+     · 빈 폼에서 신규 입력 → 그 날짜의 일부만 올리는 것이므로 입력 목록에서만 빠짐(라이브 유지)
+   지우는 것은 배포 시점이고 저장만으로는 아무것도 지워지지 않는다. */
 function companyBlock(data) {
   data = data || {};
   const name = el('input', { class: 'field c-name', type: 'text', placeholder: '기업명', value: data.name || '' });
@@ -86,7 +87,8 @@ function companyBlock(data) {
     type: 'button',
     class: 'btn text-xs border border-ink/15 px-3 py-1.5 hover:bg-red-500 hover:text-white hover:border-red-500',
     text: '이 항목 빼기',
-    title: '입력 목록에서만 뺍니다 — 라이브 데이터는 지워지지 않습니다. 라이브에서 지우려면 검수·배포 탭의 「라이브 항목 삭제」를 쓰세요.',
+    title: '불러온 목록에서 빼면 배포 시 라이브에서도 삭제됩니다(저장만으로는 지워지지 않음). '
+      + '신규 입력 중이라면 입력 목록에서만 빠집니다.',
     onclick: () => block.remove(),
   });
 
@@ -198,6 +200,11 @@ function collect() {
   return companies;
 }
 
+/* [기존 데이터 불러오기]로 띄운 라이브 목록. 이것이 있으면 수동 입력 폼은 그 날짜의
+   **전체 목록**으로 취급되고, 폼에서 뺀 항목은 배포 때 라이브에서도 지워진다.
+   날짜를 바꾸거나 신규 입력으로 시작하면 무효가 된다(그때는 폼이 전체 목록이 아니다). */
+let loadedBase = null;
+
 /* ===== 기존 데이터 로드 ===== */
 async function loadExisting() {
   const date = document.getElementById('reportDate').value;
@@ -215,10 +222,14 @@ async function loadExisting() {
     wrap.innerHTML = '';
     if (companies.length) {
       companies.forEach((c) => wrap.appendChild(companyBlock(c)));
-      // 「빼기 = 라이브 삭제」로 읽히지 않게 여기서 한 번 더 말한다(2026-08-27 오해 사례).
-      status.textContent = '라이브 ' + companies.length + '건 불러옴 · 고쳐서 저장·배포하면 같은 건이 교체됩니다. 항목을 빼도 라이브에서는 지워지지 않습니다(삭제는 검수·배포 탭).';
+      /* 불러온 목록을 기준선으로 기억한다 — 이 폼은 이제 그 날짜의 전체 목록이고,
+         여기서 뺀 항목은 배포 때 라이브에서도 지워진다(2026-08-31 사용자 지시). */
+      loadedBase = { date, entries: companies };
+      status.textContent = '라이브 ' + companies.length + '건 불러옴 · 고쳐서 저장·배포하면 같은 건이 교체되고, '
+        + '여기서 뺀 항목은 배포 시 라이브에서도 삭제됩니다.';
     } else {
       wrap.appendChild(companyBlock());
+      loadedBase = null;
       status.textContent = '해당 날짜 데이터 없음 (새로 입력)';
     }
   } catch (e) {
@@ -244,14 +255,19 @@ async function save() {
     status.style.color = '#dc2626';
     return;
   }
+  // 기준선은 불러온 날짜와 저장 날짜가 같을 때만 유효하다(날짜를 바꿨으면 다른 날의 목록이다)
+  const base = loadedBase && loadedBase.date === date ? loadedBase.entries : null;
+
   btn.disabled = true;
   status.style.color = '#111';
   status.textContent = 'draft 저장 중…';
   try {
-    const res = await API.devCreateDrafts(date, companies);
+    const res = await API.devCreateDrafts(date, companies, base);
+    const rm = res.willRemove || [];
     status.style.color = '#7ba500';
-    status.textContent = 'draft ' + res.count + '건 저장 — 검수·배포 탭에서 배포하세요 (라이브 미반영)';
-    toast('draft ' + res.count + '건 저장 (라이브 미반영)', true);
+    status.textContent = 'draft ' + res.count + '건 저장 — 검수·배포 탭에서 배포하세요 (라이브 미반영)'
+      + (rm.length ? ' · 배포 시 ' + rm.length + '건 삭제 예정: ' + rm.map((r) => r.name).join(', ') : '');
+    toast('draft ' + res.count + '건 저장' + (rm.length ? ' · 삭제 예정 ' + rm.length + '건' : '') + ' (라이브 미반영)', true);
     showTab('review');
   } catch (e) {
     if (e.status === 403) {
@@ -318,6 +334,17 @@ function init() {
   );
   document.getElementById('loadBtn').addEventListener('click', loadExisting);
   document.getElementById('saveBtn').addEventListener('click', save);
+
+  /* 날짜를 바꾸면 기준선을 버린다 — 8/24 를 불러온 목록으로 8/25 를 배포하면 8/25 의 항목이
+     「빠진 것」으로 오인돼 지워진다. save() 에서도 날짜를 대조하지만 여기서 미리 끊어
+     상태줄 안내가 사실과 어긋나지 않게 한다. */
+  document.getElementById('reportDate').addEventListener('change', () => {
+    if (loadedBase && loadedBase.date !== document.getElementById('reportDate').value) {
+      loadedBase = null;
+      const st = document.getElementById('loadStatus');
+      if (st) st.textContent = '날짜가 바뀌어 불러온 목록 기준이 해제됐습니다 — 다시 불러오면 「빼기 = 삭제」가 적용됩니다.';
+    }
+  });
 
   // 탭: 검수·배포 / 가져오기 / DART / 의견함 / 수동 입력 / 설정
   document.getElementById('tabReviewBtn').addEventListener('click', () => showTab('review'));
@@ -828,10 +855,40 @@ function openEditDraft(card, id) {
     } catch { toast('저장 실패', false); }
   };
 }
-function confirmPublishRv(payload, label) {
-  if (!confirm(label + ' 라이브에 배포할까요?\n배포하면 본 사이트에 즉시 반영되고 같은 (날짜·기업) 항목은 교체됩니다.')) return;
-  API.devPublish(payload).then(r => { toast((r.publishedIds ? r.publishedIds.length : 0) + '건 배포됨 → 라이브 반영', true); loadReview(); })
-    .catch(e => toast('배포 실패: ' + (e.status || e.message), false));
+/* 삭제 예정 안내 — 「불러와서 고친」 날짜는 폼에서 뺀 항목이 라이브에서 지워진다.
+   되돌릴 수 없으므로 무엇이 지워지는지 확인창에서 먼저 보여 준다(2026-08-31 사용자 지시). */
+async function pendingRemovals(payload) {
+  try {
+    const { plan } = await API.devPublishPlan(payload);
+    return plan || [];
+  } catch { return []; } // 조회 실패는 배포를 막지 않는다 — 서버가 배포 시점에 다시 계산한다
+}
+
+async function confirmPublishRv(payload, label) {
+  const rm = await pendingRemovals(payload);
+  let msg = label + ' 라이브에 배포할까요?\n배포하면 본 사이트에 즉시 반영되고 같은 (날짜·기업) 항목은 교체됩니다.';
+  if (rm.length) {
+    const lines = rm.map((g) => '  · ' + g.date + ': ' + g.remove.map((r) => r.name).join(', ')).join('\n');
+    msg += '\n\n[삭제] 불러온 목록에서 빠진 다음 ' + rm.reduce((n, g) => n + g.remove.length, 0)
+      + '건이 라이브에서 지워집니다. 되돌릴 수 없습니다.\n' + lines;
+  }
+  if (!confirm(msg)) return;
+  API.devPublish(payload).then(r => {
+    const del = Object.values(r.removedByDate || {}).reduce((n, a) => n + a.length, 0);
+    toast((r.publishedIds ? r.publishedIds.length : 0) + '건 배포됨'
+      + (del ? ' · ' + del + '건 삭제됨' : '') + ' → 라이브 반영', true);
+    if ((r.datesRemoved || []).length) toast('항목이 0이 되어 날짜 제거: ' + r.datesRemoved.join(', '), true);
+    loadReview();
+  }).catch(e => {
+    if (e.status === 409 && e.data && e.data.error === 'STALE_BASE') {
+      const names = (e.data.staleDates || []).map(s => s.date + ': ' + s.stale.map(x => x.name).join(', ')).join('\n');
+      alert('불러온 뒤 아래 항목이 바뀌어 그 날짜는 배포하지 않았습니다.\n지우면 남의 수정이 사라지므로 멈췄습니다.\n\n'
+        + names + '\n\n수동 입력에서 그 날짜를 다시 불러와 확인하세요.');
+      loadReview();
+      return;
+    }
+    toast('배포 실패: ' + (e.status || e.message), false);
+  });
 }
 async function clearSameRv() {
   const ids = RV_DRAFTS.filter(d => d.diff === 'same').map(d => d.id);
