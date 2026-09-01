@@ -218,18 +218,16 @@
      위 비주얼 판(밝음 또는 사진) + 아래 다크 텍스트 판. 비주얼 판이 두 갈래다.
      · 관리자가 이미지를 올린 항목 → 사진이 판을 채우고 활자를 얹는다
      · 안 올린 항목 → 배색 판 + 제목 큰 활자. 이것이 기본 상태이며 사진은 선택이다 */
-  /* 판 머리 — 기업명·분류·날짜·로고. 사진 판과 도형 판이 같은 것을 쓴다(2026-08-24 사용자 지시).
+  /* 판 머리 — 기업명·분류·날짜. 사진 판과 도형 판이 같은 것을 쓴다(2026-08-24 사용자 지시).
      큰 제목은 얹지 않는다 — 바로 아래 헤드라인과 같은 문장이라 두 번 읽힌다.
-     로고는 바탕에 맞는 파일을 쓴다 — 어두운 판은 흰 글자 판, 밝은 판은 검정 글자 판.
-     반전 필터를 걸면 H 자 오렌지가 시안으로 뒤집힌다(2026-08-31 사용자 지시). */
+     **로고는 얹지 않는다(2026-09-01 사용자 지시).** 판 안의 그림은 그 기업의 동향을 가리키는
+     것이라 우리 로고가 그 위에 오면 출처로 읽힐 여지가 있다. 제호는 표지·마무리 장과
+     겹쳐 띄우기 썸네일에만 둔다. */
   function panelHead(p, dark) {
-    return '<div class="flex items-start justify-between gap-3">' +
-      '<div class="min-w-0">' +
+    return '<div class="min-w-0">' +
       '<div class="font-display font-bold text-[21px] sm:text-[24px] tracking-tight leading-none truncate">' + escapeHtml(p.company) + '</div>' +
       '<div class="text-[10px] font-bold uppercase tracking-widest ' + (dark ? 'text-white/75' : 'text-ink/55') + ' mt-1.5">' +
-      escapeHtml([p.category, p.date].filter(Boolean).join(' · ')) + '</div></div>' +
-      '<img src="' + hancomLogo(dark) + '" alt="HANCOM" data-logo-fixed class="h-3.5 w-auto flex-none ' +
-      (dark ? 'opacity-85' : 'opacity-60') + '" /></div>';
+      escapeHtml([p.category, p.date].filter(Boolean).join(' · ')) + '</div></div>';
   }
 
   /* 사진 판. 이미지 출처는 화면에 표기하지 않는다(2026-08-24 사용자 지시) — 관리자 입력에는

@@ -278,16 +278,13 @@ function intro() {
      그 자리에서 알아야 하고, 한 장만 캡처해 공유해도 무엇인지 남아야 한다.
      큰 제목은 얹지 않는다 — 바로 아래 헤드라인과 같은 문장이라 두 번 읽힌다
    · 안 올린 항목 → 배색 + 관계망 도형만. 활자를 넣지 않는다. 이것이 기본 상태다 */
-/* 판 머리 — 기업명·분류·날짜·로고. 사진 판과 도형 판이 같은 것을 쓴다.
-   다크 배경에서는 로고를 반전한다(회차 커버와 같은 처리). */
+/* 판 머리 — 기업명·분류·날짜. 사진 판과 도형 판이 같은 것을 쓴다.
+   로고는 얹지 않는다(2026-09-01 사용자 지시) — `news.js` panelHead 와 같은 조판이다. */
 function panelHead(p, dark) {
-  return '<div class="flex items-start justify-between gap-3">' +
-    '<div class="min-w-0">' +
+  return '<div class="min-w-0">' +
     '<div class="font-display font-bold text-[21px] sm:text-[24px] tracking-tight leading-none truncate">' + esc(p.company) + '</div>' +
     '<div class="text-[10px] font-bold uppercase tracking-widest ' + (dark ? 'text-white/75' : 'text-ink/55') + ' mt-1.5">' +
-    esc(p.category) + ' · ' + esc(p.date) + '</div></div>' +
-    '<img src="public/assets/HANCOM.png" alt="HANCOM" class="h-3.5 w-auto flex-none ' +
-    (dark ? 'opacity-85 brightness-0 invert' : 'opacity-60') + '" onerror="this.style.display=\'none\'" /></div>';
+    esc(p.category) + ' · ' + esc(p.date) + '</div></div>';
 }
 
 /* 이미지 출처는 화면에 표기하지 않는다(2026-08-24 사용자 지시) — 관리자 입력에는 여전히
