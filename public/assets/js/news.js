@@ -21,13 +21,19 @@
     el.textContent = [
       '.nw-frame{width:min(100%,var(--nw-col,620px));height:var(--nw-h,min(calc(100dvh - 152px),880px));margin:0 auto}',
       '.nw-bar{width:min(100%,var(--nw-col,620px));margin:0 auto;padding-left:20px;padding-right:20px}',
-      /* 넘기는 동작의 실체 — 가로 scroll-snap. 터치 스와이프와 트랙패드 가로 제스처가 별도 구현
-         없이 동작하고, 키보드는 같은 스크롤을 호출한다. 드래그 물리를 직접 만들면 본문 세로
-         스크롤과 텍스트 선택이 깨진다. */
-      '.nw-track{display:flex;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;' +
-        'overscroll-behavior-x:contain;scrollbar-width:none;-ms-overflow-style:none}',
+      /* 넘기는 동작의 실체 — 가로 이동은 코드가 직접 한다(2026-09-01 사용자 지적
+         「조금 세게 하면 여러 장 넘어간다」, 데스크톱·모바일 동일).
+         원래는 native 가로 스크롤 + scroll-snap 에 맡겼는데, 스냅은 「어디에 멈출지」만 정하고
+         관성 자체를 막지 못한다. 세게 밀면 스냅 지점 여러 개를 지나쳐 브라우저가 2~3장 뒤에
+         내려놓고, 이것은 트랙패드에도 똑같이 일어난다(손 뗀 뒤 되돌리는 보정으로는 못 막는다).
+         그래서 overflow:hidden 으로 native 가로 스크롤과 그 관성을 끊고 scrollLeft 를 코드가
+         정한다(overflow:hidden 이어도 scrollLeft 는 프로그램으로 움직인다).
+         touch-action:pan-y — 세로 읽기는 브라우저에 남긴다. 그래야 본문 판(.nw-scroll)이
+         손가락으로 그대로 스크롤되고, 가로만 우리 것이 된다. */
+      '.nw-track{display:flex;height:100%;overflow:hidden;touch-action:pan-y;' +
+        'overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none}',
       '.nw-track::-webkit-scrollbar{display:none}',
-      '.nw-slide{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:start;display:flex;flex-direction:column;overflow:hidden}',
+      '.nw-slide{flex:0 0 100%;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden}',
       /* 픽의 비주얼 판(사진 또는 도형). 34% 를 쓰되 최소·최대를 둔다.
          화면이 낮을 때(가로로 돌린 휴대폰, 짧은 창) 최소 210px 이 프레임의 대부분을 먹어
          본문이 몇십 px 만 남는다 — 그때는 판을 줄이고 본문에 자리를 준다. */
@@ -419,17 +425,24 @@
       prev.disabled = idx === 0;
       next.disabled = idx === pages.length - 1;
     }
-    // 넘기기 = 트랙을 한 칸 스크롤하는 것. 키보드·버튼·목차가 모두 이 한 곳을 지난다.
+    /* 넘기기 = 트랙을 한 칸 스크롤하는 것. 키보드·버튼·목차·제스처가 모두 이 한 곳을 지난다.
+       몇 장이 넘어가는지는 오직 여기서 정해진다 — 관성이 끼어들 자리가 없다. */
     function go(i, smooth) {
       idx = Math.max(0, Math.min(pages.length - 1, i));
       track.scrollTo({ left: idx * track.clientWidth, behavior: smooth === false ? 'auto' : 'smooth' });
       paint();
     }
 
-    // 스와이프·트랙패드로 넘긴 경우엔 스크롤 위치가 먼저 바뀌므로 거기서 순번을 되읽는다.
+    /* 손가락 제스처 상태. 아래 scroll 리스너가 이 값을 보므로 여기서 먼저 선언한다.
+       dLock — 0=방향 미정, 1=가로(우리가 끈다), -1=세로(본문 읽기라 손대지 않는다) */
+    let dOn = false, dLock = 0, dX = 0, dY = 0, dBase = 0, dT = 0;
+
+    /* 순번은 go() 가 정하지만, 창 크기 변화나 브라우저가 스스로 맞춘 위치처럼 코드를 거치지
+       않는 이동이 있어 위치에서 되읽는다. 손가락으로 끄는 중에는 읽지 않는다 — 그때는 판이
+       칸 사이에 걸쳐 있고, 그 중간값을 순번으로 삼으면 손 떼는 순간의 기준이 한 칸 밀린다. */
     let raf = 0;
     track.addEventListener('scroll', function () {
-      if (raf) return;
+      if (raf || (dOn && dLock === 1)) return;
       raf = requestAnimationFrame(function () {
         raf = 0;
         const i = Math.round(track.scrollLeft / track.clientWidth);
@@ -469,31 +482,68 @@
       else if (k === 'End') { e.preventDefault(); go(pages.length - 1); }
     }, sig);
 
-    /* 스와이프 보강(2026-08-24 사용자 지적 「스와이프가 안 된다」).
-       scroll-snap-type: x mandatory 에서는 짧거나 느린 스와이프가 스냅 임계값을 넘지 못해
-       제자리로 되돌아온다 — 손은 움직였는데 화면은 그대로여서 안 되는 것으로 보인다.
-       그래서 손을 뗀 뒤 스냅이 가라앉을 때까지 기다렸다가, 가로로 충분히 움직였는데도 칸이
-       그대로면 우리가 넘긴다. 브라우저가 이미 넘겼으면 칸이 달라져 있어 두 번 넘어가지 않고,
-       탭이 클릭으로 처리돼 이미 넘어간 경우도 같은 검사로 걸러진다. */
-    let swX = 0, swY = 0, swIdx = 0, swOn = false;
+    /* 손가락 — 끄는 동안 판이 따라오고, 손을 떼면 한 칸을 정한다.
+       방향은 처음 8px 로 한 번만 정한다(dragLock). 세로로 잡히면 그 제스처는 본문 읽기라
+       손대지 않는다 — 가로·세로를 매 프레임 다시 판단하면 비스듬한 손짓에서 둘이 싸운다.
+       touch-action:pan-y 가 이미 가로 팬을 막으므로 preventDefault 가 필요 없다(passive 유지). */
+    const OVER = 80;   // 첫 장·끝 장에서 손을 따라가는 한계. 절반만 따라와 「더 없다」를 알린다.
+
     track.addEventListener('touchstart', function (e) {
-      if (!e.touches || e.touches.length !== 1) { swOn = false; return; }
-      swX = e.touches[0].clientX; swY = e.touches[0].clientY; swIdx = idx; swOn = true;
+      if (!e.touches || e.touches.length !== 1) { dOn = false; return; }
+      dOn = true; dLock = 0;
+      dX = e.touches[0].clientX; dY = e.touches[0].clientY;
+      dBase = idx * track.clientWidth; dT = Date.now();
     }, Object.assign({ passive: true }, sig));
+
+    track.addEventListener('touchmove', function (e) {
+      if (!dOn || !e.touches || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - dX, dy = e.touches[0].clientY - dY;
+      if (dLock === 0) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;      // 아직 방향을 모른다
+        dLock = Math.abs(dx) > Math.abs(dy) ? 1 : -1;
+      }
+      if (dLock !== 1) return;
+      const max = (pages.length - 1) * track.clientWidth;
+      let x = dBase - dx;
+      if (x < 0) x = -Math.min(-x, OVER) / 2;
+      else if (x > max) x = max + Math.min(x - max, OVER) / 2;
+      track.scrollLeft = x;
+    }, Object.assign({ passive: true }, sig));
+
+    /* 한 칸을 정하는 기준 둘. 거리(판 폭의 18%, 최대 90px)는 천천히 끌어 옮기는 경우고,
+       속도는 짧게 튕기는 경우다(2026-08-24 「스와이프가 안 된다」가 이 경우였다).
+       둘 다 아니면 제자리로 되돌린다. 어느 쪽이든 결과는 한 칸이다. */
+    function endDrag(dx, ms) {
+      if (dLock !== 1) { dOn = false; return; }
+      dOn = false;
+      const far = Math.abs(dx) > Math.min(90, track.clientWidth * 0.18);
+      const fast = Math.abs(dx) / Math.max(1, ms) > 0.35;      // px/ms
+      go(idx + ((far || fast) ? (dx < 0 ? 1 : -1) : 0));
+    }
     track.addEventListener('touchend', function (e) {
-      if (!swOn) return;
-      swOn = false;
+      if (!dOn) return;
       const t = e.changedTouches && e.changedTouches[0];
-      if (!t) return;
-      const dx = t.clientX - swX, dy = t.clientY - swY;
-      // 가로 제스처로 볼 수 있는 최소치. 세로로 더 많이 움직였으면 본문을 읽으려던 것이다.
-      if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
-      const from = swIdx;
-      setTimeout(function () {
-        if (Math.round(track.scrollLeft / track.clientWidth) !== from) return;   // 이미 넘어갔다
-        go(from + (dx < 0 ? 1 : -1));
-      }, 140);
+      endDrag(t ? t.clientX - dX : 0, Date.now() - dT);
     }, Object.assign({ passive: true }, sig));
+    track.addEventListener('touchcancel', function () {
+      if (dOn) { dOn = false; if (dLock === 1) go(idx); }
+    }, Object.assign({ passive: true }, sig));
+
+    /* 트랙패드·휠 가로 제스처 — 한 제스처에 wheel 이 수십 번 오고 관성까지 붙는다.
+       그 전부를 한 칸으로 묶는다: 첫 이벤트에서 넘기고, 이벤트가 140ms 넘게 끊길 때까지를
+       같은 제스처로 본다(관성이 이어지는 동안은 계속 같은 제스처다).
+       세로 휠은 본문 판이 쓰므로 건드리지 않는다 — 그때는 preventDefault 도 하지 않는다. */
+    let wBusy = false, wTimer = 0;
+    track.addEventListener('wheel', function (e) {
+      const h = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
+      if (!h || Math.abs(h) < 2) return;
+      e.preventDefault();
+      clearTimeout(wTimer);
+      wTimer = setTimeout(function () { wBusy = false; }, 140);
+      if (wBusy) return;
+      wBusy = true;
+      go(idx + (h > 0 ? 1 : -1));
+    }, Object.assign({ passive: false }, sig));
 
     // 창 크기가 바뀌면 칸 폭도 바뀐다. 현재 장을 다시 정렬하지 않으면 두 장이 반쯤 걸쳐 보인다.
     window.addEventListener('resize', function () { go(idx, false); }, sig);
