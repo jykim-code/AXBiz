@@ -485,6 +485,26 @@ function renderToggle() {
 }
 
 /* ===== 카드 토글 (이벤트 위임 + 키보드) ===== */
+// 본문을 드래그해 선택하고 버튼을 놓으면 click 이 카드에서 발생해 펼친 카드가 닫혔다.
+// 누른 지점과 뗀 지점의 거리, 그리고 카드 안에 남은 선택 영역으로 「읽으려는 드래그」를 걸러낸다.
+const DRAG_SLOP_PX = 4;
+let cardPress = null;
+
+function onCardPress(e) {
+  cardPress = { x: e.clientX, y: e.clientY };
+}
+
+function isTextDrag(e, card) {
+  const p = cardPress;
+  cardPress = null;
+  if (p && Math.abs(e.clientX - p.x) + Math.abs(e.clientY - p.y) > DRAG_SLOP_PX) return true;
+  const sel = window.getSelection ? window.getSelection() : null;
+  if (!sel || sel.isCollapsed || !String(sel).trim()) return false;
+  const node = sel.anchorNode;
+  const el = node && (node.nodeType === 1 ? node : node.parentNode);
+  return !!(el && card.contains(el));
+}
+
 function onCardActivate(e) {
   const card = e.target.closest('.card');
   if (!card) return;
@@ -494,6 +514,8 @@ function onCardActivate(e) {
   if (e.type === 'keydown') {
     if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
     e.preventDefault();
+  } else if (isTextDrag(e, card)) {
+    return; // 텍스트를 읽기 위한 드래그이므로 토글하지 않는다
   }
   const open = card.classList.toggle('open');
   card.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -538,6 +560,7 @@ async function loadPeriodSummary(card) {
 function setupCardInteractions() {
   ['large', 'mid', 'startup'].forEach((k) => {
     const col = document.getElementById('col-' + k);
+    col.addEventListener('mousedown', onCardPress);
     col.addEventListener('click', onCardActivate);
     col.addEventListener('keydown', onCardActivate);
   });
