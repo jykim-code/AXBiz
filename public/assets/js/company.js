@@ -331,6 +331,10 @@ function metricRow(label, series, yoy) {
 // 매출액·영업이익 분기별 묶음 막대 + 범례.
 // 값 범위가 억~조 단위로 크고 음수도 있어 √(제곱근) 스케일 + 0 기준선(가운데 선) 사용.
 // 막대 높이는 √보정(크기 순서 유지·시인성 확보), 정확한 값은 라벨로 표기.
+// 색: 매출액만 라임으로 박고 나머지(영업이익 막대·라벨·기준선)는 currentColor 로 둔다.
+// SVG 속성은 Tailwind 클래스도 dark.css 도 닿지 않아 #111 로 박아 두었더니 다크 모드에서
+// 영업이익 막대가 어두운 카드에 묻혀 사라졌다. currentColor 면 카드가 물려주는 글자색을
+// 따라가므로 라이트에서는 종전과 같은 검정, 다크에서는 밝은 회색이 된다.
 function groupedBarChart(pts) {
   const flat = pts.flatMap((p) => [p.revenue, p.operatingProfit]).filter((v) => v != null);
   if (!flat.length) return '';
@@ -342,14 +346,14 @@ function groupedBarChart(pts) {
   const n = pts.length, slot = pw / n, bw = Math.min(20, slot * 0.3), gap = 6;
   let g = '';
   // 범례
-  g += '<rect x="' + padX + '" y="10" width="11" height="11" rx="2" fill="#c8f200"/><text x="' + (padX + 16) + '" y="19" font-size="11" fill="#111">매출액</text>';
-  g += '<rect x="' + (padX + 72) + '" y="10" width="11" height="11" rx="2" fill="#111"/><text x="' + (padX + 88) + '" y="19" font-size="11" fill="#111">영업이익</text>';
+  g += '<rect x="' + padX + '" y="10" width="11" height="11" rx="2" fill="#c8f200"/><text x="' + (padX + 16) + '" y="19" font-size="11" fill="currentColor">매출액</text>';
+  g += '<rect x="' + (padX + 72) + '" y="10" width="11" height="11" rx="2" fill="currentColor"/><text x="' + (padX + 88) + '" y="19" font-size="11" fill="currentColor">영업이익</text>';
   // 0 기준선(가운데 선)
-  g += '<line x1="' + padX + '" y1="' + zeroY + '" x2="' + (W - padX) + '" y2="' + zeroY + '" stroke="#111" stroke-opacity=".18" stroke-width="1"/>';
+  g += '<line x1="' + padX + '" y1="' + zeroY + '" x2="' + (W - padX) + '" y2="' + zeroY + '" stroke="currentColor" stroke-opacity=".18" stroke-width="1"/>';
   pts.forEach((p, i) => {
     const cx = padX + slot * i + slot / 2;
     const labels = [];
-    [['revenue', '#c8f200', -(bw + gap / 2)], ['operatingProfit', '#111', gap / 2]].forEach(([key, color, off]) => {
+    [['revenue', '#c8f200', -(bw + gap / 2)], ['operatingProfit', 'currentColor', gap / 2]].forEach(([key, color, off]) => {
       const v = p[key];
       if (v == null) { labels.push(null); return; }
       const x = cx + off, h = Math.max(2, mag(v) * scale);
@@ -367,9 +371,9 @@ function groupedBarChart(pts) {
     labels.forEach((L) => {
       if (!L) return;
       const ly = Math.max(10, Math.min(H - 20, L.ly)); // 상단/분기라벨과 충돌 방지
-      g += '<text x="' + L.x + '" y="' + ly + '" text-anchor="middle" font-size="8.5" font-weight="700" fill="#111">' + fmtKRW(L.v) + '</text>';
+      g += '<text x="' + L.x + '" y="' + ly + '" text-anchor="middle" font-size="8.5" font-weight="700" fill="currentColor">' + fmtKRW(L.v) + '</text>';
     });
-    g += '<text x="' + cx + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="#888">' + escapeHtml(p.period) + '</text>';
+    g += '<text x="' + cx + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity=".55">' + escapeHtml(p.period) + '</text>';
   });
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="w-full" preserveAspectRatio="xMidYMid meet">' + g + '</svg>';
 }

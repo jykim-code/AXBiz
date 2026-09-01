@@ -240,15 +240,20 @@ function prevHTML(prev) {
 // 라임 배경에서는 라임보다 튀는 악센트가 없으므로 accent 를 ink 로 두고 크기로만 위계를 만든다.
 // 배경이 베이지(#f7f5f0)인 페이지 위에 놓이므로 베이지 커버는 쓰지 않는다(경계가 사라진다).
 // darkBg — 어두운 바탕인 배색. 로고 파일(흰 글자 / 검정 글자)을 고르는 데 쓴다.
+// themed — 바탕이 다크 모드를 따라 바뀌는 배색. bg-ink·bg-lime 은 두 모드에서 같은 색이지만
+//   bg-white 는 다크에서 어두운 판이 된다(dark.css) → 그 위 로고도 흰 글자 판을 써야 한다.
+//   그래서 이 배색만 data-logo-fixed 를 달지 않고 모드 전환 때 갈아끼우게 둔다.
 const SKINS = [
   { bg: 'bg-ink', ink: 'text-white', accent: 'text-lime', sub: 'text-white/70', dim: 'text-white/45',
     bar: 'bg-lime', rule: 'border-white/20', num: 'text-white/[.07]', darkBg: true },
   { bg: 'bg-lime', ink: 'text-ink', accent: 'text-ink', sub: 'text-ink/60', dim: 'text-ink/50',
     bar: 'bg-ink', rule: 'border-ink/20', num: 'text-ink/[.09]', darkBg: false },
   { bg: 'bg-white', ink: 'text-ink', accent: 'text-lime-600', sub: 'text-ink/75', dim: 'text-ink/45',
-    bar: 'bg-lime', rule: 'border-ink/12', num: 'text-ink/[.06]', darkBg: false },
+    bar: 'bg-lime', rule: 'border-ink/12', num: 'text-ink/[.06]', darkBg: false, themed: true },
 ];
 const skinOf = (e) => SKINS[(Number.isInteger(e.issueNo) ? e.issueNo : 0) % SKINS.length];
+// 이 커버의 바탕이 지금 어두운가 — 배색이 고정된 판은 배색이, 모드를 따르는 판은 현재 모드가 정한다
+const coverOnDark = (s) => (s.themed ? isDarkMode() : s.darkBg);
 
 function coverHTML(e) {
   const s = skinOf(e);
@@ -272,8 +277,9 @@ function coverHTML(e) {
     '<span class="w-[3px] h-3 ' + s.bar + ' flex-none"></span>' +
     '<span class="font-display font-bold text-[9px] sm:text-[10px] uppercase tracking-[.16em] truncate">Weekly Picks' +
     (e.issueNo ? ' No.' + no2(e.issueNo) : '') + '</span></div>' +
-    // 커버 배색은 회차 번호로 정해지고 다크 모드와 무관하다 → 배색에 맞는 파일을 박아 둔다
-    '<img src="' + hancomLogo(s.darkBg) + '" alt="HANCOM" data-logo-fixed ' +
+    // 배색이 고정된 커버(잉크·라임)는 배색에 맞는 파일을 박아 두고,
+    // 바탕이 모드를 따르는 커버(흰 판)는 박지 않아 모드 전환 때 함께 갈아끼워진다
+    '<img src="' + hancomLogo(coverOnDark(s)) + '" alt="HANCOM"' + (s.themed ? '' : ' data-logo-fixed') + ' ' +
     'class="h-3 sm:h-3.5 w-auto flex-none opacity-70" />' +
     '</div>' +
 
@@ -339,8 +345,8 @@ function upcomingCoverHTML(u) {
     '<span class="w-[3px] h-3 bg-ink/25 flex-none"></span>' +
     '<span class="font-display font-bold text-[9px] sm:text-[10px] uppercase tracking-[.16em] truncate text-ink/45">Coming soon</span>' +
     '</div>' +
-    // 발행 예정 자리는 베이지 바탕 고정이라 검정 글자 판을 쓴다
-    '<img src="' + LOGO_ON_LIGHT + '" alt="HANCOM" data-logo-fixed class="h-3 sm:h-3.5 w-auto flex-none opacity-30" />' +
+    // 발행 예정 자리도 베이지 바탕이 모드를 따라 어두워진다 → 로고를 박지 않고 모드에 맞춘다
+    '<img src="' + hancomLogo(isDarkMode()) + '" alt="HANCOM" class="h-3 sm:h-3.5 w-auto flex-none opacity-30" />' +
     '</div>' +
 
     // 상태 한 줄 — 예정 주차는 서버가 「오늘이 속한 주」로 정하므로 지금 실제로 쌓이는 중인 주다.
