@@ -19,7 +19,8 @@
 <script>
   tailwind.config = { theme: { extend: {
     // panel 은 겹쳐 띄우는 뉴스레터 캐러셀의 다크 판 색이다(news.js). 없으면 그 판이 투명해진다.
-    colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500', panel: '#161616' },
+    // 색은 CSS 변수로 조립한다(정의·뒤집기는 /assets/css/dark.css) → 투명도가 다크 모드를 따라온다
+    colors: { lime: 'rgb(var(--c-lime) / <alpha-value>)', beige: 'rgb(var(--c-beige) / <alpha-value>)', ink: 'rgb(var(--c-ink) / <alpha-value>)', 'lime-600': 'rgb(var(--c-lime-600) / <alpha-value>)', panel: '#161616' },
     fontFamily: { sans: ['Inter','Pretendard','ui-sans-serif','system-ui','sans-serif'], display: ['"Space Grotesk"','Pretendard','ui-sans-serif','system-ui','sans-serif'] },
   }}};
 </script>

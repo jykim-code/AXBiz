@@ -52,6 +52,13 @@ function hancomLogo(onDark) {
   return onDark ? LOGO_ON_DARK : LOGO_ON_LIGHT;
 }
 
+/* 지금 다크 모드인가. 바탕이 모드를 따라 바뀌는 판(bg-white·bg-beige 커버 등)에서
+   처음 그릴 때 어느 로고 파일을 쓸지 정하는 데 쓴다. 이후 모드 전환은 nav 가
+   syncHancomLogos() 로 갈아끼운다(그 판에는 data-logo-fixed 를 달지 않아야 한다). */
+function isDarkMode() {
+  return document.documentElement.classList.contains('dark');
+}
+
 /* 다크 모드를 따라 배경이 바뀌는 로고(nav·사이드바 등)를 현재 모드에 맞게 갈아끼운다.
    자기 판의 배경색을 스스로 아는 로고(뉴스레터 판·위클리 커버)는 `data-logo-fixed` 를
    달아 두어 여기서 건드리지 않는다 — 그 판들은 다크 모드와 무관하게 바탕이 정해져 있다. */

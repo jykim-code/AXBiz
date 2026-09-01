@@ -1,31 +1,69 @@
 /* ============================================================
-   AX Biz Radar — 다크 모드 오버라이드
+   AX Biz Radar — 테마 토큰 + 다크 모드 오버라이드
    html.dark 클래스가 <html>에 붙으면 적용된다.
    nav.js 의 initDarkMode() 가 head 인라인 스크립트보다 먼저
    classList.add('dark') 를 처리하므로 FOUC 가 없다.
+
+   ── 왜 토큰인가 (2026-09-01) ──────────────────────────────
+   이전에는 유틸리티 클래스를 하나씩 덮었다(html.dark .text-ink\/70 …).
+   그러면 새로 쓰는 투명도가 매번 빠진다: text-ink/85·/90·/55·/35 와
+   arbitrary 값(text-ink/[.06])까지 34종이 누락되어 다크 모드에서
+   본문(주요 내용·시사점·한컴 인사이트)이 어두운 바탕에 어두운 글자로
+   깔려 읽히지 않았다.
+   지금은 Tailwind config 의 색 자체를 `rgb(var(--c-ink) / <alpha-value>)`
+   로 두고 여기서 변수만 바꾼다. 투명도가 몇이든, 앞으로 새로 쓰든
+   자동으로 모드를 따른다. 페이지별 config 는 각 HTML <head> 에 있다.
+   ⚠ /admin 과 /preview 는 이 파일을 읽지 않는 라이트 전용 화면이라
+     literal 색을 그대로 둔다(토큰으로 바꾸면 변수가 없어 색이 사라진다).
    ============================================================ */
+
+/* ── 테마 토큰 ───────────────────────────────────────────── */
+/* 값은 `R G B`(공백 구분) — Tailwind 가 rgb(var(--x) / 0.85) 로 조립한다 */
+:root {
+  --c-ink: 17 17 17;          /* #111  글자·테두리 기준색 */
+  --c-beige: 247 245 240;     /* #f7f5f0  페이지·서브 패널 바탕 */
+  --c-lime: 200 242 0;        /* #c8f200  브랜드 (두 모드 공통) */
+  --c-lime-600: 123 165 0;    /* #7ba500  라벨용 */
+}
 
 html.dark {
   color-scheme: dark;
+  --c-ink: 239 239 236;       /* 글자색이 뒤집힌다 → text-ink/xx 전부 따라온다 */
+  --c-beige: 34 34 34;        /* raised surface */
+  --c-lime: 200 242 0;        /* 브랜드색은 뒤집지 않는다 */
+  --c-lime-600: 160 201 0;    /* 어두운 바탕에서 살짝 밝게 */
 }
 
-/* ── 기본 배경 / 텍스트 ──────────────────────────────────── */
+/* ── 배색이 고정된 판 ────────────────────────────────────
+   라임은 두 모드에서 같은 밝은 색이다. 그 위 글자는 늘 어두워야 하므로
+   라임 판 안에서는 ink 토큰을 라이트 값으로 되돌린다. 변수는 상속되므로
+   판 안쪽 text-ink/60·border-ink/20·bg-ink/25 까지 투명도 그대로 따라온다
+   (위클리 커버 배색 2번, 뉴스레터 라임 슬라이드, 라임 칩·선택된 날짜 등).
+   color 도 함께 지정한다 — 색 클래스 없이 body 색을 물려받는 요소가 있다.
+   header·nav 는 제외한다: 다크에서 라임 바가 잉크 바로 바뀌므로(아래) 글자가 밝아야 한다. */
+html.dark .bg-lime:not(header):not(nav),
+html.dark .hover\:bg-lime:hover,
+html.dark .group:hover .group-hover\:bg-lime {
+  --c-ink: 17 17 17;
+  --c-lime-600: 123 165 0;
+  color: #111;
+}
+
+/* ── 기본 텍스트 ────────────────────────────────────────── */
+/* 바탕은 body 의 bg-beige(=--c-beige)가 담당한다. 여기서 다시 칠하지 않는다. */
 html.dark body {
-  background-color: #141414 !important;
   color: #efefec !important;
 }
 
-/* bg-beige (버튼·서브 패널·헤더 서브 바 등 raised surface) */
-html.dark .bg-beige {
-  background-color: #222 !important;
-}
-
-/* bg-white 카드 */
+/* ── 고정 서페이스(토큰을 쓰지 않는 흰색·잉크 판) ───────── */
+/* bg-white 카드 — white 는 토큰이 아니다(text-white/70 등은 다크 판 위에서 그대로 써야 한다) */
 html.dark .bg-white {
   background-color: #1e1e1e !important;
 }
 
-/* bg-ink (지식 그래프 다크 카드 — 이미 다크, 살짝 밝게) */
+/* bg-ink 솔리드 판(지식 그래프·기간 종합 박스·시사점 아이콘 칩)은
+   두 모드 모두 어두워야 한다 — 안쪽이 text-white 기준으로 짜여 있다.
+   투명도가 붙은 bg-ink/5·/20 은 별개 클래스라 토큰을 따라 밝은 오버레이가 된다. */
 html.dark .bg-ink {
   background-color: #1c1c1c !important;
 }
@@ -38,7 +76,7 @@ html.dark nav {
   color: #efefec !important;
 }
 
-/* 라임 배경 nav/header override (bg-lime\/90 등) */
+/* 라임 배경 nav/header override (bg-lime\/90, bg-lime 등) */
 html.dark header[class*="bg-lime"],
 html.dark nav[class*="bg-lime"] {
   background-color: rgba(18, 18, 18, 0.96) !important;
@@ -51,71 +89,8 @@ html.dark nav[class*="bg-lime"] {
    바탕이 정해진 판(뉴스레터 슬라이드·위클리 커버)은 data-logo-fixed 로 제외한다.
    (2026-08-31 사용자 지시) */
 
-/* nav 안의 active 링크 (bg-ink/15 → white overlay로 전환) */
-html.dark .bg-ink\/15 {
-  background-color: rgba(255, 255, 255, 0.15) !important;
-}
-html.dark .hover\:bg-ink\/10:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-}
-html.dark .hover\:bg-ink\/5:hover {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-}
-
-/* ── 텍스트 ──────────────────────────────────────────────── */
-html.dark .text-ink {
-  color: #efefec !important;
-}
-html.dark .text-ink\/80 {
-  color: rgba(239, 239, 236, 0.8) !important;
-}
-html.dark .text-ink\/75 {
-  color: rgba(239, 239, 236, 0.75) !important;
-}
-html.dark .text-ink\/70 {
-  color: rgba(239, 239, 236, 0.7) !important;
-}
-html.dark .text-ink\/60 {
-  color: rgba(239, 239, 236, 0.6) !important;
-}
-html.dark .text-ink\/50 {
-  color: rgba(239, 239, 236, 0.5) !important;
-}
-html.dark .text-ink\/40 {
-  color: rgba(239, 239, 236, 0.4) !important;
-}
-html.dark .text-ink\/30 {
-  color: rgba(239, 239, 236, 0.3) !important;
-}
-
-/* lime-600 — 다크에서 살짝 밝게 */
-html.dark .text-lime-600 {
-  color: #a0c900 !important;
-}
-html.dark .bg-lime-600 {
-  background-color: #a0c900 !important;
-}
-
-/* ── 보더 ────────────────────────────────────────────────── */
-html.dark .border-ink\/5  { border-color: rgba(255, 255, 255, 0.05) !important; }
-html.dark .border-ink\/8  { border-color: rgba(255, 255, 255, 0.08) !important; }
-html.dark .border-ink\/10 { border-color: rgba(255, 255, 255, 0.10) !important; }
-html.dark .border-ink\/12 { border-color: rgba(255, 255, 255, 0.12) !important; }
-html.dark .border-ink\/15 { border-color: rgba(255, 255, 255, 0.15) !important; }
-html.dark .border-ink\/20 { border-color: rgba(255, 255, 255, 0.20) !important; }
-html.dark .divide-ink\/8  > * + * { border-color: rgba(255, 255, 255, 0.08) !important; }
-html.dark .divide-ink\/10 > * + * { border-color: rgba(255, 255, 255, 0.10) !important; }
-
-/* ── bg ink 계열 (subtle overlay) ────────────────────────── */
-html.dark .bg-ink\/5  { background-color: rgba(255, 255, 255, 0.05) !important; }
-html.dark .bg-ink\/10 { background-color: rgba(255, 255, 255, 0.10) !important; }
-
-/* ── hover bg 역전 ───────────────────────────────────────── */
-html.dark .hover\:bg-lime:hover  { background-color: #c8f200 !important; }
-html.dark .hover\:bg-beige:hover { background-color: rgba(255, 255, 255, 0.05) !important; }
-html.dark .hover\:bg-ink:hover   { background-color: #efefec !important; color: #111 !important; }
-
-/* ── 그림자 ──────────────────────────────────────────────── */
+/* ── 그림자 ──────────────────────────────────────────────
+   shadow-ink/5 를 토큰에 맡기면 밝은 잉크가 번쩍이는 글로우가 된다 → 검정으로 고정. */
 html.dark .shadow-xl.shadow-ink\/5 {
   box-shadow: 0 20px 25px -5px rgba(0,0,0,.35), 0 8px 10px -6px rgba(0,0,0,.25) !important;
 }
@@ -157,12 +132,13 @@ html.dark .col-scroll::-webkit-scrollbar-thumb {
 }
 
 /* ── ring (focus/active) ──────────────────────────────────── */
-html.dark .ring-1.ring-ink\/10 {
-  --tw-ring-color: rgba(255, 255, 255, 0.1) !important;
-}
 html.dark .focus\:ring-lime:focus {
   --tw-ring-color: rgba(200, 242, 0, 0.5) !important;
 }
+
+/* ── hover 반전 ──────────────────────────────────────────── */
+/* bg-ink hover 는 다크에서 뒤집는다(어두운 바탕에 어두운 hover 는 안 보인다) */
+html.dark .hover\:bg-ink:hover { background-color: #efefec !important; color: #111 !important; }
 
 /* ── footer (nav.js 주입) ────────────────────────────────── */
 html.dark footer {
@@ -184,19 +160,14 @@ html.dark #nav-mobile-menu {
   transform: rotate(18deg);
 }
 
-/* ── bg-ink 안 (지식 그래프) — 이미 다크이므로 최소 조정 ── */
-/* text-white / border-white 계열은 유지 */
-html.dark .bg-ink .bg-lime-600 {
-  background-color: #a0c900 !important;
-}
-
 /* ── 지식 그래프 카드 테두리 ─────────────────────────────── */
 html.dark .bg-ink .border-white\/10 {
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* ── selection 다크 모드 유지 (lime) ─────────────────────── */
+/* ── selection — 라임 판 위 글자는 늘 어둡게 ─────────────── */
+/* body 의 selection:text-ink 유틸이 밝은 잉크로 덮는 것을 막는다 */
 html.dark ::selection {
   background: #c8f200;
-  color: #111;
+  color: #111 !important;
 }

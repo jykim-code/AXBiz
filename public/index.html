@@ -14,7 +14,14 @@
   tailwind.config = {
     theme: {
       extend: {
-        colors: { lime: '#c8f200', beige: '#f7f5f0', ink: '#111', 'lime-600': '#7ba500' },
+        // 색은 CSS 변수로 조립한다 → 투명도가 몇이든(text-ink/85 처럼) 다크 모드를 따라온다.
+        // 변수 정의와 뒤집기는 /assets/css/dark.css 한 곳에 있다.
+        colors: {
+          lime: 'rgb(var(--c-lime) / <alpha-value>)',
+          beige: 'rgb(var(--c-beige) / <alpha-value>)',
+          ink: 'rgb(var(--c-ink) / <alpha-value>)',
+          'lime-600': 'rgb(var(--c-lime-600) / <alpha-value>)',
+        },
         fontFamily: {
           sans: ['Inter', 'Pretendard', 'ui-sans-serif', 'system-ui', 'sans-serif'],
           display: ['"Space Grotesk"', 'Pretendard', 'ui-sans-serif', 'system-ui', 'sans-serif'],
