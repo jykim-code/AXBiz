@@ -194,8 +194,11 @@
         <!-- 펼친 내용 -->
         <div id="calBody">
           <div class="p-5 sm:p-6 flex flex-col lg:flex-row gap-5 border-t border-ink/5">
-            <!-- 좌: 컨트롤 + 캘린더 (항상 가로 나란히) -->
-            <div class="flex gap-4 flex-none">
+            <!-- 좌: 컨트롤 + 캘린더 — 폭을 고정하지 않고 남는 공간을 나눠 쓴다.
+                 예전에는 `flex-none` + 캘린더 `w-[245px]` 로 433px 를 박아 두었는데, 375px 폰에서
+                 쓸 수 있는 폭이 295px 이라 카드의 overflow-hidden 에 잘려 오른쪽 4열이 사라졌다.
+                 캘린더는 design-preview.html 기준대로 `flex-1 max-w-[560px]` 유동으로 둔다. -->
+            <div class="flex flex-wrap items-start gap-4 flex-1 min-w-0">
               <!-- 기간 네비 + 모드 토글 (세로 스택) -->
               <div class="flex-none flex flex-col gap-2 justify-start pt-px">
                 <div class="flex items-center gap-1">
@@ -212,9 +215,10 @@
                   <span class="w-1.5 h-1.5 rounded-full bg-lime-600 inline-block"></span>데이터 있는 날짜
                 </div>
               </div>
-              <!-- 캘린더 -->
-              <div class="flex-none">
-                <div class="grid grid-cols-7 gap-y-1 w-[245px]" id="calGrid"></div>
+              <!-- 캘린더 — 어느 폭에서도 남는 공간을 채운다. min-w 는 레이아웃 폭이 아니라
+                   줄바꿈 문턱이다: 컨트롤과 나란히 두기에 좁아지면 캘린더가 아래 줄로 내려간다. -->
+              <div class="flex-1 min-w-[210px]">
+                <div class="grid grid-cols-7 gap-y-1 w-full max-w-[560px]" id="calGrid"></div>
               </div>
             </div>
             <!-- 브리핑 -->
