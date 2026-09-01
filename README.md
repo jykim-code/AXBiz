@@ -21,6 +21,16 @@
 - 하단: 월 **캘린더** (데이터 있는 날 라임 하이라이트, 기본=최신일)
 - 기업 카드: 주요 내용 / 시사점 / 한컴 인사이트(라임 박스) / 출처·Confluence 링크 / 태그 칩
 
+### 공통 — 헤더·푸터·다크 모드
+- 헤더 nav 링크와 푸터는 `nav.js`가 모든 페이지에 주입한다. 페이지 HTML에 복사하지 않는다
+- **다크 모드** 토글은 푸터 우측(의견 보내기 링크 왼쪽)에 있다. 선택은 `localStorage.ax-dark`에
+  남고, 값이 없으면 OS 설정(`prefers-color-scheme`)을 따른다
+- 색은 `assets/css/dark.css`의 `html.dark` 오버라이드로만 바꾼다. 각 페이지 `<head>`의 인라인
+  스크립트가 클래스를 먼저 붙여 첫 페인트에 밝은 화면이 스치지 않는다
+- 로고는 색 반전을 쓰지 않고 **바탕에 맞는 파일**을 쓴다(`HANCOM.png` 검정 글자 /
+  `HANCOM-w.png` 흰 글자). 반전은 H자 강조색까지 뒤집어 오렌지가 시안이 된다.
+  바탕이 이미 정해진 판(뉴스레터 슬라이드·위클리 커버)은 `data-logo-fixed`로 제외한다
+
 ## 기술 스택
 
 | 레이어 | 기술 |
@@ -31,6 +41,7 @@
 | 이미지 저장 | Cloudflare R2 (`ax-biz-radar-img`) |
 | 백엔드 | Cloudflare Pages Functions (`functions/api/*`) |
 | LLM | Cloudflare AI Workers AI (기업 요약·AI 질의응답) |
+| 방문 통계 | Cloudflare Web Analytics (공개 페이지 6곳에 비콘, 관리자·검수는 제외) |
 | 배포 | Cloudflare Pages + GitHub Actions (stg → main) |
 
 ## 파일 구조
@@ -45,6 +56,9 @@ public/
   feedback.html           # 피드백
   preview.html            # draft 합본 미리보기 (관리자용)
   admin/index.html        # 관리자 입력 페이지 (/admin)
+  _headers                # 보안 헤더(CSP·X-Frame-Options) · /assets/*.png 캐시
+  assets/css/
+    dark.css              # 다크 모드 오버라이드 (html.dark)
   assets/js/
     util.js               # escapeHtml / safeUrl 등 출력 안전 유틸
     api.js                # /api/* fetch 래퍼
@@ -54,10 +68,12 @@ public/
     news.js               # 뉴스레터 슬라이드 렌더
     explore.js            # 탐색 필터·목록 렌더
     company.js            # 기업 프로필 렌더
+    feedback.js           # 의견 보내기 폼 (POST /api/suggestions)
     sidebar.js            # 사이드바 (동향 상세)
-    nav.js                # 상단 네비게이션
+    nav.js                # 헤더 nav·푸터 주입 + 다크 모드 토글
     ask-fab.js            # AI 질의응답 플로팅 버튼
     admin.js              # PIN 게이트·동적 폼·저장
+    dev-toolbar.js        # 미리보기 모드 배너 (?preview=1, 탭 내 고정)
     entry.js              # 동향 항목 공통 렌더
     ontology.js           # 태그 온톨로지
     company-alias.js      # 기업 이름 정규화

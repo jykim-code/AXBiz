@@ -1,7 +1,7 @@
 # AX Biz Radar — 데이터 처리 전과정 기술 설명서
 
 > 데이터가 어디서 들어와 어디에 저장되고, 어느 지점에서 LLM이 호출되며, 무엇이 캐시되고 어디에 비용이
-> 발생하는지를 코드 기준으로 정리한 문서다. 작성 기준: 2026-08-30, `main` 브랜치.
+> 발생하는지를 코드 기준으로 정리한 문서다. 작성 기준: 2026-09-01, `main` 브랜치.
 > 키 교체·게이트웨이 전환 절차는 `LLM-PROVIDER-GUIDE.md`, 운영 조작법은 `ADMIN-GUIDE.md`를 본다.
 
 ---
@@ -102,10 +102,17 @@
 | 파일 | 용도 |
 |---|---|
 | `ax-biz-radar-icon.png` (256×256) | Google Chat 웹훅 카드 아이콘. `/assets/ax-biz-radar-icon.png` |
-| `HANCOM.png` · `hancom_favicon.png` | 헤더 로고 · favicon |
+| `HANCOM.png` · `HANCOM-w.png` | 헤더·푸터·발행물 로고. 검정 글자 판 / 흰 글자 판을 **바탕에 따라 골라 쓴다** |
+| `hancom_favicon.png` | favicon (전 페이지 공통) |
 
 `_headers` 에서 `/assets/*.png` 를 `immutable` 로 캐시한다. 기본값(`max-age=0, must-revalidate`)이면
 Google Chat 이 카드를 그릴 때마다 재검증 요청이 간다. **내용을 바꿀 때는 파일명을 바꿔야 한다.**
+
+로고 두 판은 CSS 필터로 만들지 않는다. `filter: invert(1)` 은 글자만 고르지 않고 H 자 강조색까지
+뒤집어 `#ef5222` 를 `#10addd` 로 바꾼다. 다크 모드에 따라 바탕이 바뀌는 자리(nav·footer)는
+`util.js` 의 `syncHancomLogos()` 가 파일을 갈아끼우고, 바탕이 이미 정해진 판(뉴스레터 슬라이드·
+위클리 커버·발행 예정 자리)은 `data-logo-fixed` 로 제외한다. 두 파일은 판형(716×158)과 잉크 위치를
+맞춰 놓아 같은 `h-*` 클래스에서 오차 0px 로 겹친다.
 
 > ⚠ Pages 는 없는 경로에 404 가 아니라 **HTML 폴백을 200 으로** 돌려준다. 웹훅의 이미지 주소를
 > 잘못 적으면 수신 측이 HTML 을 받아 이미지가 조용히 안 뜬다. 주소를 바꿀 때는 실제 응답의
@@ -325,7 +332,10 @@ Google Chat 이 카드를 그릴 때마다 재검증 요청이 간다. **내용�
 - 인증 없이 호출 가능한 엔드포인트는 `/api/health`, `/api/dates`, `/api/reports`(GET), `/api/reports/all`,
   `/api/company-summary`, `/api/company-profile`, `/api/period-summary`, `/api/ask`, `/api/pinned-tags`(GET),
   `/api/suggestions`(POST)다. 쓰기 계열과 `/api/dev/*`는 모두 PIN이 필요하다
-- 출력 이스케이프(`escapeHtml`·`safeUrl`)와 CSP 헤더(`public/_headers`)를 적용한다
+- 출력 이스케이프(`escapeHtml`·`safeUrl`)와 CSP 헤더(`public/_headers`)를 적용한다.
+  외부 출처로 열어 둔 것은 Tailwind·jsDelivr CDN(`script-src`·`style-src`·`font-src`)과
+  방문 통계 비콘 2곳(`script-src` 의 `static.cloudflareinsights.com`, `connect-src` 의
+  `cloudflareinsights.com`)뿐이다. `img-src` 는 `'self' data:` 로 닫혀 있어 타사 이미지 핫링크가 막힌다
 - `/admin`은 대시보드 어디에도 노출하지 않는다. URL을 아는 사람만 접근한다
 - 라이브에는 `published`만 노출한다. 검수 프리뷰(`/preview`)는 PIN이 있어야 draft 합본을 본다
 
@@ -435,6 +445,17 @@ Google Chat 이 카드를 그릴 때마다 재검증 요청이 간다. **내용�
 
 ---
 
+## 10-2. 방문 통계 (Cloudflare Web Analytics)
+
+- 비콘 스니펫을 **공개 페이지 6곳**(`index`·`weekly`·`news`·`company`·`explore`·`feedback`)의
+  `</body>` 앞에 직접 심는다. `/admin`·`/preview`·`/dev` 는 내부 트래픽이라 통계를 왜곡하므로 넣지 않는다
+- 수동 삽입 방식이라 CSP 두 곳이 필요하다(10절). 자동 주입 방식이면 수집이 자기 도메인으로
+  프록시되어 `connect-src 'self'` 로 충분하지만, 우리는 스니펫을 직접 심었다
+- 우리 저장소에는 아무것도 쌓이지 않는다. D1·KV 를 쓰지 않고 수치는 Cloudflare 대시보드에서 본다.
+  그래서 **관리자 화면에서 지표를 보는 동선은 아직 없다**(`TODO.md` 상사 피드백 D)
+
+---
+
 ## 11. 알려진 제약
 
 | 제약 | 내용 | 관련 |
@@ -450,7 +471,7 @@ Google Chat 이 카드를 그릴 때마다 재검증 요청이 간다. **내용�
 | 발행본 스냅샷 구멍 | `save` 가 발행본 `payload` 를 덮어써 [다시 발행] 없이 공개 내용이 바뀐다 | 10-1절 |
 | stg·운영 저장소 공유 | D1·R2 바인딩이 하나뿐이라 stg 관리자에서 발행하면 운영에도 즉시 공개된다 | 2절 |
 | 동적 OG 없음 | 회차별 제목·이미지를 링크 미리보기에 주입하지 못한다. 카톡 OG 는 실제 PNG 가 필요해 래스터화가 따로 든다 | 위클리 Phase 2 |
-| 이미지 크롭 불가 | Workers 에 이미지 처리가 없어 잘리는 기준점만 저장한다. 상세 페이지는 원본 비율·크기로 싣고(잘리지 않음) 잘리는 것은 판 높이가 고정인 뉴스레터 슬라이드뿐이다. 교체 시 이전 R2 객체가 고아로 남고 정리 도구가 없다 | 10-1절 |
+| 이미지 크롭 불가 | Workers 에 이미지 처리가 없어 잘리는 기준점(위·가운데·아래)만 저장하고 브라우저 `object-position` 으로 맞춘다. 상세·뉴스레터 **양쪽 모두 12:5 판 고정**이라 비율이 다른 원본은 위아래가 잘리고, 판보다 작은 사진은 레터박스로 메운다. 교체 시 이전 R2 객체가 고아로 남고 정리 도구가 없다 | 10-1절 |
 
 ---
 
