@@ -2,7 +2,7 @@
 //   GET            → draft 목록(+ 라이브 대비 diff: 'new'|'replace') desc
 //   POST {id, action:'delete'} → draft 삭제
 import { pinOk, forbidden } from '../../_auth.js';
-import { entryKey, writeManualBase, clearManualBase, readManualBase, planRemovals } from '../../_publish.js';
+import { entryKey } from '../../_publish.js';
 
 // 내용 비교용 시그니처(요약 제외 — 실질 콘텐츠만). 같으면 '동일'.
 const norm = (v) => (Array.isArray(v) ? v.map((x) => String(x || '').trim()).filter(Boolean).join('||') : String(v == null ? '' : v).trim());
@@ -61,16 +61,6 @@ export async function onRequestPost({ request, env }) {
     const items = Array.isArray(body?.items) ? body.items.slice(0, 50) : [];
     let count = 0;
 
-    /* base — [기존 데이터 불러오기]로 띄운 라이브 목록. 있으면 이 draft 묶음은 그 날짜의
-       **전체 목록**이라는 뜻이고, 여기서 빠진 항목은 배포 때 라이브에서 삭제된다.
-       없으면(신규 입력) 예전 기준선을 지운다 — 남겨 두면 관계없는 다음 배포가 그것을 물려받아
-       엉뚱한 항목을 지운다. */
-    const base = Array.isArray(body?.base) ? body.base.slice(0, 200) : null;
-    let baseCount = 0;
-    try {
-      if (base) baseCount = await writeManualBase(env, date, base);
-      else await clearManualBase(env, date);
-    } catch (err) { console.error('drafts create: base', date, err); }
     for (const it of items) {
       const name = String(it?.name || '').trim().slice(0, 200);
       if (!name) continue;
@@ -96,15 +86,7 @@ export async function onRequestPost({ request, env }) {
       } catch (err) { console.error('drafts create', name, err); }
     }
 
-    // 배포 때 몇 건이 지워질지 저장 직후에 알려 준다 — 되돌릴 수 없는 일이라 배포 전에 보여야 한다.
-    let willRemove = [];
-    if (base) {
-      try {
-        const plan = await planRemovals(env, date, await readManualBase(env, date), items);
-        willRemove = plan.remove;
-      } catch (err) { console.error('drafts create: plan', date, err); }
-    }
-    return Response.json({ ok: true, count, date, baseCount, willRemove });
+    return Response.json({ ok: true, count, date });
   }
 
   const id = +body?.id;
