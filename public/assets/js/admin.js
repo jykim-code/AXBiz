@@ -127,14 +127,14 @@ function companyBlock(data) {
     sugBox,
   ]);
 
-  /* AX 진입은 태그가 아니라 항목 필드다. 「그 기업이 AX 시장에 처음 진입」은 작성자 판단이라
+  /* AX 신규 진입은 태그가 아니라 항목 필드다. 「그 기업이 AX 시장에 처음 진입」은 작성자 판단이라
      계산할 수 없어 여기서 켠다. 「신규」 배지는 첫 등장으로 자동 판정되므로 입력란이 없다. */
   const axEntry = el('input', { class: 'c-ax-entry', type: 'checkbox' });
   axEntry.checked = data.axEntry === true;
   const axWrap = el('label', { class: 'flex items-start gap-2 cursor-pointer select-none' }, [
     axEntry,
     el('span', { class: 'text-xs leading-snug' }, [
-      el('span', { class: 'font-semibold', text: 'AX 진입 배지' }),
+      el('span', { class: 'font-semibold', text: 'AX 신규 진입 배지' }),
       el('span', { class: 'opacity-60', text: ' — 이 기업이 AX·AI 에이전트 시장에 처음 진입한 건일 때만 켠다. 우리 데이터 첫 등장(「신규」 배지)은 자동 판정되므로 켜지 않아도 된다' }),
     ]),
   ]);
@@ -791,8 +791,8 @@ function rvCard(x) {
       '<span class="text-[11px] font-bold rounded-full px-2 py-0.5 ' + bc + '">' + bt + '</span>' +
       '<span class="font-display font-bold">' + escapeHtml(x.company) + '</span>' +
       '<span class="text-[10px] font-semibold bg-beige rounded-full px-2 py-0.5">' + escapeHtml(x.category || '') + '</span>' +
-      // AX 진입은 태그가 아니라 필드라 태그 칩에 안 보인다. 검수 화면에서 눈으로 확인할 수 있게 둔다.
-      (d.axEntry === true ? '<span class="text-[10px] font-bold text-lime-600 border border-lime-600/40 rounded-full px-2 py-0.5" title="AX 시장 첫 진입 배지가 대시보드에 표시됨">AX 진입</span>' : '') +
+      // AX 신규 진입은 태그가 아니라 필드라 태그 칩에 안 보인다. 검수 화면에서 눈으로 확인할 수 있게 둔다.
+      (d.axEntry === true ? '<span class="text-[10px] font-bold text-lime-600 border border-lime-600/40 rounded-full px-2 py-0.5" title="AX 시장 첫 진입 배지가 대시보드에 표시됨">AX 신규 진입</span>' : '') +
       dart +
       '<span class="text-[10px] opacity-45 ml-auto">' + escapeHtml(x.source === 'daily' ? '데일리' : '히스토리') + ' · ' + escapeHtml(x.date) + '</span></div>' +
     (d.summary ? '<p class="text-sm font-semibold mb-2">' + escapeHtml(d.summary) + '</p>' : '') +

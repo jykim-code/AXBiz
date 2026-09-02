@@ -18,7 +18,7 @@ const state = {
    붙어서 「새로 생긴 기업」으로 오해된다. 우리 추적이 늘어난 추이는 주간 페이지의
    「신규 편입 기업 N곳」(functions/api/weekly.js newCompanies)이 담당하고, 그 수치는
    태그가 아니라 reports 이력에서 계산되므로 이 결정과 무관하게 그대로 돈다.
-   카드에 남는 상태 배지는 「AX 진입」 하나뿐이다. */
+   카드에 남는 상태 배지는 「AX 신규 진입」 하나뿐이다. */
 
 /* ===== 지식 그래프 (전체 기간 누적) ===== */
 function hash(s) {
@@ -173,17 +173,19 @@ function cardHTML(co) {
     ? '<span class="opacity-50 font-normal">기간 종합 불러오는 중…</span>'
     : escapeHtml((latest.summary && String(latest.summary).trim()) || (latest.keyPoints && latest.keyPoints[0]) || '');
   const badge = n > 1 ? '<span class="text-[10px] font-bold text-lime-600 bg-lime/15 rounded-full px-2 py-0.5 flex-none">' + n + '건</span>' : '';
-  /* AX 진입 배지 — 태그 칩이 아니라 기업명 옆에 둔다(2026-09-03 사용자 지시).
+  /* AX 신규 진입 배지 — 태그 칩이 아니라 기업명 옆에 둔다(2026-09-03 사용자 지시).
      그 기업이 AX·AI 에이전트 시장에 처음 진입했다는 작성자 판단이며(axEntry 필드) 우리
      데이터로는 계산할 수 없다. 「N건」이 연한 라임 바탕을 쓰고 있어 테두리로 구분한다.
      bg-ink 는 쓰지 않는다 — 다크에서 #1c1c1c 가 되어 카드(#1e1e1e)에 묻힌다. */
   const axBadge = co.axEntry
-    ? '<span class="text-[10px] font-bold text-lime-600 border border-lime-600/40 rounded-full px-2 py-0.5 flex-none" title="AX·AI 에이전트 시장 첫 진입">AX 진입</span>'
+    ? '<span class="text-[10px] font-bold text-lime-600 border border-lime-600/40 rounded-full px-2 py-0.5 flex-none whitespace-nowrap" title="AX·AI 에이전트 시장 첫 진입">AX 신규 진입</span>'
     : '';
   const dateChip = co.date ? '<span class="text-[11px] text-ink/55 font-medium ml-auto flex-none">' + escapeHtml(co.date) + '</span>' : '';
   let h = '<div class="card group bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 hover:-translate-y-1 transition-transform duration-300 cursor-pointer" role="button" tabindex="0" aria-expanded="false" data-company="' + escapeHtml(co.name) + '">';
   h += '<div class="p-6 flex items-start gap-3"><div class="flex-1 min-w-0">' +
-    '<div class="flex items-center gap-2">' +
+    // flex-wrap: 「AX 신규 진입」 배지가 붙으면 기업명이 긴 카드에서 헤더가 넘친다.
+    // 배지·날짜가 모두 flex-none 이고 기업명 링크는 줄어들지 않으므로 접히게 둔다.
+    '<div class="flex items-center gap-2 flex-wrap">' +
     '<a href="/company?name=' + encodeURIComponent(co.name) + '" class="font-display font-bold text-lg tracking-tight hover:text-lime-600 inline-flex items-center gap-1" title="기업 상세 보기">' + escapeHtml(co.name) +
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>' +
     axBadge + badge + dateChip + '</div>' +
@@ -262,7 +264,7 @@ function aggregate() {
       const co = (map[c.name] = map[c.name] || { name: c.name, category: c.category, entries: [], _tags: new Set() });
       co.entries.push(Object.assign({ date: r.date }, c));
       (c.tags || []).forEach((t) => co._tags.add(t));
-      if (c.axEntry === true) co.axEntry = true; // 기간 내 한 건이라도 AX 진입이면 배지
+      if (c.axEntry === true) co.axEntry = true; // 기간 내 한 건이라도 AX 신규 진입이면 배지
       co.category = c.category; // 최신 분류 반영(대개 동일)
     });
   });
