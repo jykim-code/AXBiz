@@ -172,6 +172,9 @@
 - [ ] (선택) `GET /api/companies` 그리드 서버화 / 관리자 활동 로그
 - [ ] **`/api/reports/all` 캐시 헤더** — `cache-control` 이 없어(Pages 기본 `max-age=0, must-revalidate`) 진입마다 584.9KB 를 다시 받고 다시 파싱한다
 - [ ] **CLAUDE.md 「통합 검수 창구」 보완** — stg 는 주소가 하나뿐이라 **마지막에 푸시한 브랜치가 가져간다**(`deploy.yml` 이 main 푸시 때 `--branch=stg` 도 배포 + `preview.yml` 이 브랜치·PR 마다 stg 배포). 2026-09-01 에 25분 사이 stg 배포가 6건 찍혀 검수 요청이 두 번 어긋났다. 세션이 둘 이상 돌면 검수는 **배포 고정 주소**(`https://<id>.ax-biz-radar.pages.dev`, `wrangler pages deployment list` 로 확인)로 주고받는다는 한 줄 추가
+- [ ] **뉴스레터 조판 이중 관리** — `weekly-preview-news.html` 이 `news.js` 의 조판 함수를 복사해 갖고 있다.
+      2026-09-01 하루에 두 번 걸렸다: 로고 제거는 두 파일을 같이 고쳤고, 넘기기 개편은 `news.js` 만
+      고쳐 프리뷰 파일의 제스처가 운영과 달라졌다. 프리뷰가 `news.js` 를 불러 쓰게 바꾸거나 폐기 판단
 
 ---
 
