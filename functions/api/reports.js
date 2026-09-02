@@ -7,6 +7,7 @@ import { reindexDate } from '../_rag.js';
 import { generateAndStore } from '../_summary.js';
 import { syncCompanyEntries } from '../_entries.js';
 import { stripTrailingPeriod } from '../_style.js';
+import { splitMetaTags } from '../_meta-tags.js';
 
 const CATEGORIES = ['대기업', '중견기업', '스타트업·중소'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -52,6 +53,7 @@ function sanitizeCompany(c) {
   const name = String(c.name || '').trim();
   const category = String(c.category || '').trim();
   if (!name || !CATEGORIES.includes(category)) return null;
+  const meta = splitMetaTags(c.tags, c.axEntry);
   return {
     name: name.slice(0, MAX_NAME),
     category,
@@ -61,7 +63,9 @@ function sanitizeCompany(c) {
     keyPoints: asStringArray(c.keyPoints),
     implications: asStringArray(c.implications),
     hancomInsight: asStringArray(c.hancomInsight),
-    tags: asStringArray(c.tags),
+    // 메타 태그(신규편입·AX신규진입)는 태그로 저장하지 않는다 — _meta-tags.js 참조.
+    tags: asStringArray(meta.tags),
+    axEntry: meta.axEntry,
   };
 }
 

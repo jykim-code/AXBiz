@@ -11,7 +11,23 @@ const state = {
   dateSet: new Set(), // 빠른 조회용
   mode: 'week', // 'day' | 'week' | 'month' — 기본값 주간(2026-08-10 사용자 지시, 이전 월간)
   anchor: null, // 기준 날짜 'YYYY-MM-DD'
+  firstSeen: {}, // 기업명 → 그 기업이 처음 등장한 날짜. 「신규」 배지 판정용
 };
+
+/* 기업별 첫 등장 날짜. state.reports 는 전체 이력이라 여기서 계산할 수 있다.
+   「신규」를 사람이 태그로 붙이던 방식은 폐기했다 — 라이브 19건 중 3건이 그 기업의
+   첫 등장이 아닌데 붙어 있었다(2026-09-03 사용자 지시). 계산하면 소급해서도 맞는다. */
+function buildFirstSeen(reports) {
+  const first = {};
+  (reports || []).forEach((r) => {
+    if (!r || !r.date) return;
+    (r.companies || []).forEach((c) => {
+      if (!c || !c.name) return;
+      if (!first[c.name] || r.date < first[c.name]) first[c.name] = r.date;
+    });
+  });
+  return first;
+}
 
 /* ===== 지식 그래프 (전체 기간 누적) ===== */
 function hash(s) {
@@ -166,13 +182,25 @@ function cardHTML(co) {
     ? '<span class="opacity-50 font-normal">기간 종합 불러오는 중…</span>'
     : escapeHtml((latest.summary && String(latest.summary).trim()) || (latest.keyPoints && latest.keyPoints[0]) || '');
   const badge = n > 1 ? '<span class="text-[10px] font-bold text-lime-600 bg-lime/15 rounded-full px-2 py-0.5 flex-none">' + n + '건</span>' : '';
+  /* 상태 배지 — 태그 칩이 아니라 기업명 옆에 둔다(2026-09-03 사용자 지시).
+       신규   : 우리 데이터에 처음 등장한 기업. 서버 저장 없이 계산된다
+       AX 진입: 그 기업이 AX 시장에 처음 진입했다는 작성자 판단(axEntry 필드)
+     세 배지가 같은 자리에 오므로 무게로 구분한다: 신규=라임 솔리드, AX 진입=라임 테두리,
+     N건=연한 라임 바탕. bg-ink 는 쓰지 않는다 — 다크에서 #1c1c1c 가 되어 카드(#1e1e1e)에 묻힌다.
+     bg-lime 판 안에서는 dark.css 가 ink 토큰을 라이트 값으로 되돌리므로 글자가 두 모드 모두 어둡다. */
+  const newBadge = co.isNew
+    ? '<span class="text-[10px] font-bold text-ink bg-lime rounded-full px-2 py-0.5 flex-none" title="우리 데이터에 처음 등장한 기업">신규</span>'
+    : '';
+  const axBadge = co.axEntry
+    ? '<span class="text-[10px] font-bold text-lime-600 border border-lime-600/40 rounded-full px-2 py-0.5 flex-none" title="AX·AI 에이전트 시장 첫 진입">AX 진입</span>'
+    : '';
   const dateChip = co.date ? '<span class="text-[11px] text-ink/55 font-medium ml-auto flex-none">' + escapeHtml(co.date) + '</span>' : '';
   let h = '<div class="card group bg-white rounded-[24px] border border-ink/5 shadow-xl shadow-ink/5 hover:-translate-y-1 transition-transform duration-300 cursor-pointer" role="button" tabindex="0" aria-expanded="false" data-company="' + escapeHtml(co.name) + '">';
   h += '<div class="p-6 flex items-start gap-3"><div class="flex-1 min-w-0">' +
     '<div class="flex items-center gap-2">' +
     '<a href="/company?name=' + encodeURIComponent(co.name) + '" class="font-display font-bold text-lg tracking-tight hover:text-lime-600 inline-flex items-center gap-1" title="기업 상세 보기">' + escapeHtml(co.name) +
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-lime-600 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></a>' +
-    badge + dateChip + '</div>' +
+    newBadge + axBadge + badge + dateChip + '</div>' +
     '<p class="card-summary' + (n > 1 ? ' is-period' : '') + ' text-sm font-bold text-ink mt-1.5 leading-snug">' + sumText + '</p></div>' +
     '<span class="chev flex-none mt-1 opacity-75 transition-transform duration-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m6 9 6 6 6-6"/></svg></span></div>';
   h += '<div class="card-body"><div class="px-6 pb-6 space-y-5">';
@@ -248,6 +276,7 @@ function aggregate() {
       const co = (map[c.name] = map[c.name] || { name: c.name, category: c.category, entries: [], _tags: new Set() });
       co.entries.push(Object.assign({ date: r.date }, c));
       (c.tags || []).forEach((t) => co._tags.add(t));
+      if (c.axEntry === true) co.axEntry = true; // 기간 내 한 건이라도 AX 진입이면 배지
       co.category = c.category; // 최신 분류 반영(대개 동일)
     });
   });
@@ -257,6 +286,10 @@ function aggregate() {
     co.count = co.entries.length;
     co.date = co.entries[0] ? co.entries[0].date : '';
     co.tags = [...co._tags];
+    // 그 기업의 첫 등장이 이 기간 안에 들어 있으면 「신규」. 일간에서는 첫 등장 그날에만,
+    // 주간·월간에서는 그 주(달)에 처음 들어온 기업에 뜬다.
+    const f = state.firstSeen[co.name];
+    co.isNew = !!f && co.entries.some((e) => e.date === f);
   });
   return items;
 }
@@ -591,6 +624,7 @@ async function init() {
 
   // 전체 보고서(그래프·기간 집계 공용)
   try { state.reports = await API.all(); } catch { state.reports = []; }
+  state.firstSeen = buildFirstSeen(state.reports);
 
   // 그래프/통계: 전체 누적 — graph.js(Cytoscape)가 담당, 미로드 시 buildGraph(SVG) 폴백
   const render = typeof initGraph === 'function' ? initGraph : buildGraph;
