@@ -25,6 +25,7 @@ const COMPANY_ALIAS = {
   'Cohere': ['코히어'],
   'Mistral AI': ['미스트랄', 'Mistral'],
   'DeepSeek': ['딥시크', '딥식'],
+  'OpenClaw': ['오픈클로'],  // 개인 오픈소스 프로젝트(제작자 피터 스타인버거), 분류는 스타트업·중소
   '문샷 AI': ['문샷', 'Moonshot', '키미', 'Kimi'],
   '메타': ['Meta', '페이스북', 'Facebook', '인스타그램', '라마', 'Llama'],
   '세일즈포스': ['Salesforce'],
@@ -57,7 +58,9 @@ const COMPANY_ALIAS = {
   'GS건설': ['지에스건설', 'GS E&C'],
   '우리은행': ['우리금융', 'Woori'],
   '폴라리스그룹': ['폴라리스', '폴라리스오피스', 'Polaris'],
-  'NC AI': ['엔씨AI', '엔씨소프트', 'NCSOFT'],
+  '삼성생명': ['삼성생명보험', 'Samsung Life'],
+  'KB증권': ['케이비증권', 'KB Securities', '깨비AI'],
+  'NC AI': ['엔씨AI', '엔씨소프트', 'NCSOFT', '바르코', 'VARCO'],
   'NC AX': ['엔씨AX', '엔씨에이엑스', 'NC IDS', '엔씨아이디에스'],  // 옛 사명 NC IDS
   '파수 AI': ['파수', 'Fasoo'],
 
@@ -85,6 +88,7 @@ const COMPANY_ALIAS = {
   '지오영': ['GeoYoung'],
   '플래티어': ['Plateer'],
   '피씨엔': ['PCN'],
+  '한국딥러닝': ['딥옵스', 'DEEP Ops'],  // 확인된 영문 사명 표기가 없어 제품명만 둔다
   'BHSN': ['비에이치에스엔'],
   // '클라이온' — 확인된 영문·약칭 표기가 없어 비워 둔다. 확인되면 여기에 추가.
 };

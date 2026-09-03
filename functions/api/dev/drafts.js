@@ -3,10 +3,11 @@
 //   POST {id, action:'delete'} → draft 삭제
 import { pinOk, forbidden } from '../../_auth.js';
 import { entryKey } from '../../_publish.js';
+import { splitMetaTags } from '../../_meta-tags.js';
 
 // 내용 비교용 시그니처(요약 제외 — 실질 콘텐츠만). 같으면 '동일'.
 const norm = (v) => (Array.isArray(v) ? v.map((x) => String(x || '').trim()).filter(Boolean).join('||') : String(v == null ? '' : v).trim());
-const sig = (e) => { e = e || {}; return [norm(e.category), norm(e.keyPoints), norm(e.implications), norm(e.hancomInsight), norm(e.tags), norm(e.sourceUrl), norm(e.confluenceUrl)].join('@@'); };
+const sig = (e) => { e = e || {}; return [norm(e.category), norm(e.keyPoints), norm(e.implications), norm(e.hancomInsight), norm(e.tags), norm(e.sourceUrl), norm(e.confluenceUrl), e.axEntry === true ? 'ax' : ''].join('@@'); };
 
 export async function onRequestGet({ request, env }) {
   if (!pinOk(env, request)) return forbidden();
@@ -65,13 +66,15 @@ export async function onRequestPost({ request, env }) {
       const name = String(it?.name || '').trim().slice(0, 200);
       if (!name) continue;
       const category = CATEGORIES.includes(it?.category) ? it.category : '대기업';
+      // 메타 태그(신규편입·AX신규진입)는 태그로 남기지 않고 axEntry 로 옮긴다 — _meta-tags.js 참조.
+      const meta = splitMetaTags(arr(it?.tags, []), it?.axEntry);
       const data = JSON.stringify({
         name, category,
         summary: String(it?.summary || '').trim().slice(0, 300),
         sourceUrl: String(it?.sourceUrl || '').trim().slice(0, 1000),
         confluenceUrl: String(it?.confluenceUrl || '').trim().slice(0, 1000),
         keyPoints: arr(it?.keyPoints, []), implications: arr(it?.implications, []),
-        hancomInsight: arr(it?.hancomInsight, []), tags: arr(it?.tags, []),
+        hancomInsight: arr(it?.hancomInsight, []), tags: meta.tags, axEntry: meta.axEntry,
       });
       // source_ref = 동향 신원(출처 URL). 같은 날 같은 기업의 다른 동향은 별개 draft 로
       // 공존하고, 같은 동향을 다시 넣으면 그 건만 갱신된다.
@@ -102,12 +105,17 @@ export async function onRequestPost({ request, env }) {
       if (!row) return Response.json({ error: 'NOT_FOUND' }, { status: 404 });
       let cur = {}; try { cur = JSON.parse(row.data || '{}'); } catch { cur = {}; }
       const d = body.data || {};
+      // axEntry 는 태그로도(작성 양식) 필드로도(검수 화면 체크박스) 올 수 있다.
+      // 값이 오지 않으면 기존 값을 유지한다 — 수정 시 소실되면 배지가 조용히 사라진다.
+      const metaSrc = d.tags != null ? arr(d.tags, []) : (cur.tags || []);
+      const meta = splitMetaTags(metaSrc, d.axEntry != null ? d.axEntry === true : cur.axEntry);
       const merged = Object.assign({}, cur, {
         summary: d.summary != null ? String(d.summary).trim().slice(0, 300) : (cur.summary || ''),
         keyPoints: arr(d.keyPoints, cur.keyPoints || []),
         implications: arr(d.implications, cur.implications || []),
         hancomInsight: arr(d.hancomInsight, cur.hancomInsight || []),
-        tags: arr(d.tags, cur.tags || []),
+        tags: meta.tags,
+        axEntry: meta.axEntry,
         category: CATEGORIES.includes(d.category) ? d.category : (cur.category || row.category),
         sourceUrl: d.sourceUrl != null ? String(d.sourceUrl).trim() : (cur.sourceUrl || ''),
         confluenceUrl: d.confluenceUrl != null ? String(d.confluenceUrl).trim() : (cur.confluenceUrl || ''),

@@ -17,6 +17,7 @@ import { pinOk, forbidden } from '../_auth.js';
 import { entryKey } from '../_publish.js';
 import { stripTrailingPeriod, replaceEmDash, replaceAxisWord, hasAxisWord } from '../_style.js';
 import { buildWeeklyMessage } from '../_weekly-message.js';
+import { META_TAGS as SHARED_META_TAGS } from '../_meta-tags.js';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 // 픽 수는 제한하지 않는다 — 그 주에 주목할 것이 많으면 많이 싣는다(2026-08-24 사용자 지시).
@@ -119,7 +120,9 @@ function toItem(date, c) {
 // 주제가 아니라 상태를 표시하는 메타 태그. 금주 키워드 목록에서 뺀다 — 빼지 않으면 「신규편입」이
 // 1위로 올라와(실측: 한 주 9건) 바로 아래 「신규 편입 기업 N곳」과 같은 말을 두 번 하게 된다.
 // 항목 자체의 태그 칩에는 그대로 남는다. 원본 데이터를 고치는 것이 아니라 집계에서만 제외한다.
-const META_TAGS = new Set(['신규편입', 'AX신규진입']);
+// 정의는 functions/_meta-tags.js 한 곳에 둔다. 적재 단계에서 이미 걷어내지만,
+// 2026-09-03 이전 축적분에 태그로 남아 있을 수 있어 여기서도 계속 걸러낸다.
+const META_TAGS = SHARED_META_TAGS;
 const EMPTY_SET = new Set();
 
 /* ===== 수치 집계 (코드) =====
