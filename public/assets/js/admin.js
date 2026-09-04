@@ -780,9 +780,40 @@ function rvSect(label, arr) {
     ? '<div><span class="label">' + label + '</span><ul class="list-disc pl-5 opacity-85 text-sm">' + arr.map(t => '<li>' + escapeHtml(t) + '</li>').join('') + '</ul></div>'
     : '';
 }
+/* 검수 카드의 링크 — 원문을 보면서 검수해야 하므로 카드에서 바로 열 수 있게 둔다.
+   URL 은 LLM 추출과 컨플 본문에서 오고 서버 sanitize 가 스킴을 검사하지 않으므로
+   여기서 http(s) 만 통과시킨다(javascript: 가 href 에 들어가는 것을 막는다). */
+function rvSafeUrl(u) {
+  const s = String(u || '').trim();
+  return /^https?:\/\//i.test(s) ? s : '';
+}
+const RV_EXT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 flex-none"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>';
+function rvLink(url, label, title) {
+  const u = rvSafeUrl(url);
+  if (!u) return '';
+  return '<a href="' + escapeHtml(u) + '" target="_blank" rel="noopener noreferrer"' +
+    ' class="inline-flex items-center gap-1 text-xs font-semibold text-lime-600 hover:text-ink"' +
+    ' title="' + escapeHtml(title) + '">' + escapeHtml(label) + RV_EXT_ICON + '</a>';
+}
+// 매체를 한눈에 알 수 있게 호스트명을 라벨로 쓴다(zdnet.co.kr / aitimes.com …).
+function rvSrcLabel(url) {
+  const u = rvSafeUrl(url);
+  if (!u) return '';
+  try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return '원문'; }
+}
+
 function rvCard(x) {
   const [bt, bc] = RV_DIFF[x.diff] || RV_DIFF['new'];
   const d = x.data || {};
+  const links = [
+    rvLink(d.sourceUrl, '원문 ' + rvSrcLabel(d.sourceUrl), '출처 기사를 새 탭에서 엽니다'),
+    rvLink(d.confluenceUrl, '컨플루언스 회차', '회차 페이지를 새 탭에서 엽니다'),
+  ].filter(Boolean).join('');
+  // 출처 URL 이 없으면 동향 신원(_publish.js entryKey)이 내용 해시로 잡혀
+  // 내용을 고칠 때마다 새 동향이 된다. 검수 단계에서 눈에 보이게 경고한다.
+  const linkRow = links
+    ? '<div class="flex items-center gap-3 flex-wrap mb-2">' + links + '</div>'
+    : '<div class="text-[11px] font-semibold text-red-500 mb-2">출처 URL 없음 — 편집에서 넣어야 동향 신원이 URL 로 잡힙니다</div>';
   const dart = !x.dartLinked
     ? '<button type="button" class="rv-dart text-[11px] font-bold rounded-full px-2 py-0.5 bg-red-50 text-red-500 border border-red-200 hover:bg-red-100" title="DART 연결 탭으로 이동 (재무 표시용 1회 매핑)">DART 미연결</button>'
     : '';
@@ -795,6 +826,7 @@ function rvCard(x) {
       (d.axEntry === true ? '<span class="text-[10px] font-bold text-lime-600 border border-lime-600/40 rounded-full px-2 py-0.5" title="AX 시장 첫 진입 배지가 대시보드에 표시됨">AX 신규 진입</span>' : '') +
       dart +
       '<span class="text-[10px] opacity-45 ml-auto">' + escapeHtml(x.source === 'daily' ? '데일리' : '히스토리') + ' · ' + escapeHtml(x.date) + '</span></div>' +
+    linkRow +
     (d.summary ? '<p class="text-sm font-semibold mb-2">' + escapeHtml(d.summary) + '</p>' : '') +
     '<div class="space-y-1.5">' + rvSect('주요 내용', d.keyPoints) + rvSect('시사점', d.implications) + rvSect('한컴 인사이트', d.hancomInsight) + '</div>' +
     '<div class="flex flex-wrap gap-1.5 mt-2">' + (d.tags || []).map(t => '<span class="text-xs bg-beige border border-ink/5 rounded-full px-2.5 py-0.5">#' + escapeHtml(t) + '</span>').join('') + '</div>' +
