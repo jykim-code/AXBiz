@@ -19,12 +19,16 @@ function toText(html) {
 }
 
 // 섹션 A(상위 보고용)만 슬라이스. 마커 못 찾으면 전체(상한)로 폴백.
+//   「섹션 B」는 반드시 섹션 A 이후에서 찾는다. 머리말에 그 말이 먼저 나오는 회차가 있고
+//   (260903: "catch-up 처리: … 섹션 B에만 기재하고 …"), 그때 b < a 가 되어 정상 경로가
+//   무너지고 상한 폴백으로 떨어진다. 그러면 섹션 A 뒷부분 항목이 잘려 통째로 누락된다.
+const MAX_SECTION_CHARS = 30000; // 섹션 A 7건 실측 약 14,000자. 회차가 커지는 추세라 여유를 둔다.
 function sliceSectionA(text) {
   const a = text.search(/섹션\s*A/);
-  const b = text.search(/섹션\s*B/);
-  if (a >= 0 && b > a) return text.slice(a, b);
-  if (a >= 0) return text.slice(a, a + 12000);
-  return text.slice(0, 12000);
+  if (a < 0) return text.slice(0, MAX_SECTION_CHARS);
+  const rel = text.slice(a).search(/섹션\s*B/); // a 기준 상대 위치
+  if (rel > 0) return text.slice(a, a + rel);
+  return text.slice(a, a + MAX_SECTION_CHARS);
 }
 
 // 조사 기준일: 본문 "조사 기준일: YYYY-MM-DD" → 제목 [YYMMDD] 폴백
@@ -71,6 +75,7 @@ export async function onRequestPost({ request, env }) {
 
   // LLM 추출
   let raw;
+  let finish = ''; // 출력이 잘렸는지(length) 구분해 실패 안내에 쓴다
   try {
     const res = await fetch(OPENROUTER_URL, {
       method: 'POST',
@@ -78,17 +83,21 @@ export async function onRequestPost({ request, env }) {
       body: JSON.stringify({
         model: env.OPENROUTER_MODEL,
         temperature: 0.2,
-        max_tokens: 3000, // 추론·응답 토큰 여유(모델 무관)
+        // 출력 예산은 섹션 A 항목 수에 비례한다. 3000 이던 값으로는 260903 회차(7건, 각
+        // 주요내용 8·시사점 4·인사이트 5불릿)에서 JSON 이 중간에 끊겨 파싱 실패 → NO_ITEMS 였다.
+        // 한글 1자가 대략 토큰 1개이므로 7건이면 8,000토큰을 넘는다.
+        max_tokens: 16000,
         reasoning: { enabled: false }, // qwen 등 추론모델: 추론이 응답 예산을 잡아먹어 빈 출력(NO_ITEMS) → 추론 비활성
         messages: [
           { role: 'system', content: SYSTEM },
-          { role: 'user', content: `알려진 대상 기업: ${known.join(', ') || '(없음)'}\n날짜: ${date}\n\n${sectionA.slice(0, 14000)}` },
+          { role: 'user', content: `알려진 대상 기업: ${known.join(', ') || '(없음)'}\n날짜: ${date}\n\n${sectionA.slice(0, MAX_SECTION_CHARS)}` },
         ],
       }),
     });
     if (!res.ok) { console.error('/api/dev/import-daily openrouter', res.status); return Response.json({ error: 'LLM_FAILED' }, { status: 502 }); }
     const data = await res.json();
     raw = data?.choices?.[0]?.message?.content || '';
+    finish = String(data?.choices?.[0]?.finish_reason || '');
   } catch (err) {
     console.error('/api/dev/import-daily fetch', err);
     return Response.json({ error: 'LLM_FAILED' }, { status: 502 });
@@ -101,7 +110,14 @@ export async function onRequestPost({ request, env }) {
     const parsed = JSON.parse(m ? m[0] : raw);
     if (Array.isArray(parsed)) items = parsed;
   } catch { /* 빈 목록 */ }
-  if (!items.length) return Response.json({ error: 'NO_ITEMS', hint: '섹션 A에서 기업 항목을 추출하지 못했습니다', rawHead: raw.slice(0, 200) }, { status: 422 });
+  // 실패 안내는 원인을 구분해 적는다. 「추출하지 못했습니다」만 띄우면 섹션 A 마커를
+  // 의심하게 되는데, 실제로는 출력 토큰이 모자라 JSON 이 끊긴 경우가 있었다(260903 회차).
+  if (!items.length) {
+    const hint = finish === 'length'
+      ? `LLM 출력이 max_tokens 한도에서 끊겨 JSON 을 완성하지 못했습니다 (섹션 A ${sectionA.length}자). 회차 항목 수가 많으면 한도를 올려야 합니다`
+      : `섹션 A에서 기업 항목을 추출하지 못했습니다 (섹션 A ${sectionA.length}자, finish_reason=${finish || '미확인'})`;
+    return Response.json({ error: 'NO_ITEMS', hint, rawHead: raw.slice(0, 200) }, { status: 422 });
+  }
 
   const arr = (v) => (Array.isArray(v) ? v.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 50) : []);
   let upserted = 0;
